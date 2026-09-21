@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using ScheduleRisk.Web.Services;
 
 namespace ScheduleRisk.Web.Components;
@@ -7,7 +8,7 @@ namespace ScheduleRisk.Web.Components;
 public abstract class StateComponent : ComponentBase, IDisposable
 {
     [Inject] protected AppState State { get; set; } = null!;
-    [Inject] protected Microsoft.JSInterop.IJSRuntime JS { get; set; } = null!;
+    [Inject] protected IJSRuntime JS { get; set; } = null!;
 
     protected override void OnInitialized() => State.Changed += OnStateChanged;
 
