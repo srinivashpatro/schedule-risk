@@ -1,0 +1,46 @@
+@inherits StateComponent
+
+<div class="topbar">
+    <div class="topbar-inner">
+        <div class="brand">
+            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--a)" /><path d="M6 24 C12 24 14 8 26 8" stroke="var(--a-ink)" stroke-width="3" fill="none" /></svg>
+            <div>
+                <h1>Schedule Risk</h1>
+                <div class="muted small">@(State.FileName ?? "Risk analysis for Primavera P6 schedules. Your files never leave this browser.")</div>
+            </div>
+        </div>
+        <nav class="tabs">
+            <button class="tab @(tab == 1 ? "active" : "")" @onclick="@(() => tab = 1)"><span class="num">1</span>Schedule</button>
+            <button class="tab @(tab == 2 ? "active" : "")" disabled="@(State.Cpm == null)" @onclick="@(() => tab = 2)"><span class="num">2</span>Risk model</button>
+            <button class="tab @(tab == 3 ? "active" : "")" disabled="@(State.Cpm == null)" @onclick="@(() => tab = 3)"><span class="num">3</span>Simulate &amp; results</button>
+        </nav>
+    </div>
+</div>
+
+<main>
+    @if (State.Error != null)
+    {
+        <div class="error">@State.Error <button class="link" @onclick="@(() => { State.Error = null; })">Dismiss</button></div>
+    }
+    @if (tab == 1)
+    {
+        <SchedulePanel OnNext="@(() => tab = 2)" />
+    }
+    else if (tab == 2)
+    {
+        <RiskModelPanel OnNext="@(() => tab = 3)" />
+    }
+    else
+    {
+        <ResultsPanel />
+    }
+</main>
+
+@if (State.Busy)
+{
+    <div class="busy"><div class="card"><b>@State.BusyText</b><div class="muted small">This runs on your computer, in this tab.</div></div></div>
+}
+
+@code {
+    private int tab = 1;
+}

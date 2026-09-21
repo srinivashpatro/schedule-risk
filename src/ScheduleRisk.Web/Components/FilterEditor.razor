@@ -1,0 +1,75 @@
+@* Edits which activities a row applies to. *@
+<div class="filter">
+    <select value="@Spec.Kind" @onchange="OnKind">
+        @foreach (var k in Kinds)
+        {
+            <option value="@k">@Label(k)</option>
+        }
+    </select>
+    @switch (Spec.Kind)
+    {
+        case FilterKind.Activities:
+            <input @bind="Spec.Value" placeholder="Activity IDs, comma separated" />
+            break;
+        case FilterKind.Wbs:
+            <input @bind="Spec.Value" placeholder="WBS codes, e.g. CIV, MECH" />
+            break;
+        case FilterKind.Code:
+            <select @bind="Spec.CodeType">
+                <option value="">Code type…</option>
+                @foreach (var t in CodeTypes)
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+            <input @bind="Spec.Value" placeholder="Values, comma separated" />
+            break;
+        case FilterKind.NamePattern:
+            <input @bind="Spec.Value" placeholder="Text or pattern in activity name" />
+            break;
+        case FilterKind.Custom:
+            <textarea @bind="Spec.CustomJson" rows="2"></textarea>
+            break;
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FilterSpec Spec { get; set; } = null!;
+    [Parameter] public IEnumerable<string> CodeTypes { get; set; } = Enumerable.Empty<string>();
+
+    private static readonly FilterKind[] Kinds =
+        { FilterKind.All, FilterKind.Activities, FilterKind.Wbs, FilterKind.Code, FilterKind.NamePattern, FilterKind.Critical, FilterKind.Custom };
+
+    private static string Label(FilterKind k) => k switch
+    {
+        FilterKind.All => "All activities",
+        FilterKind.Activities => "Activity IDs",
+        FilterKind.Wbs => "WBS",
+        FilterKind.Code => "Activity code",
+        FilterKind.NamePattern => "Name contains",
+        FilterKind.Critical => "Critical path",
+        _ => "Custom (JSON)",
+    };
+
+    private void OnKind(ChangeEventArgs e)
+    {
+        if (Enum.TryParse<FilterKind>(e.Value?.ToString(), out var k))
+        {
+            if (k == FilterKind.Custom && string.IsNullOrWhiteSpace(Spec.CustomJson))
+            {
+                var tmp = Spec.Clone();
+                using var ms = new MemoryStream();
+                using (var w = new System.Text.Json.Utf8JsonWriter(ms))
+                {
+                    w.WriteStartObject();
+                    tmp.Write(w);
+                    w.WriteEndObject();
+                }
+                using var doc = System.Text.Json.JsonDocument.Parse(ms.ToArray());
+                Spec.CustomJson = doc.RootElement.GetProperty("filter").GetRawText();
+            }
+            if (k != Spec.Kind && k is FilterKind.Activities or FilterKind.Wbs or FilterKind.Code or FilterKind.NamePattern) Spec.Value = "";
+            Spec.Kind = k;
+        }
+    }
+}

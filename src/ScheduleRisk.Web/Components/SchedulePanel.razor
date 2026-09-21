@@ -1,0 +1,217 @@
+@inherits StateComponent
+
+@if (State.Schedule == null)
+{
+    <div class="drop">
+        <h2>Open a Primavera P6 schedule</h2>
+        <p class="muted">Choose an .xer export. It is read and calculated here in your browser; nothing is uploaded.</p>
+        <InputFile OnChange="OnFile" />
+    </div>
+    <h3>What happens next</h3>
+    <ol class="muted">
+        <li>The schedule is recalculated with P6's rules and compared with the dates P6 saved in the file.</li>
+        <li>You describe the uncertainty and risks (or import a saved risk model).</li>
+        <li>A Monte Carlo simulation gives P50/P80 dates, the activities that drive them and a risk ranking.</li>
+    </ol>
+}
+else
+{
+    var s = State.Schedule;
+    var r = State.Cpm;
+    <div class="row">
+        @if (State.Projects.Count > 1)
+        {
+            <label>Project
+                <select value="@State.ProjectId" @onchange="OnProject">
+                    @foreach (var p in State.Projects)
+                    {
+                        <option value="@p.Id">@p.ShortName</option>
+                    }
+                </select>
+            </label>
+        }
+        <span class="spacer"></span>
+        <label class="btn">Open another file <InputFile OnChange="OnFile" style="display:none" /></label>
+        @if (r != null)
+        {
+            <button @onclick="ExportCsv">Download dates (CSV)</button>
+            <button class="primary" @onclick="() => OnNext.InvokeAsync()">Next: risk model →</button>
+        }
+    </div>
+
+    <div class="tiles">
+        <div class="tile"><b>@s.ProjectCode</b><span>Project</span></div>
+        <div class="tile"><b>@s.Activities.Count.ToString("N0")</b><span>Activities (@s.Relationships.Count.ToString("N0") relationships)</span></div>
+        <div class="tile"><b>@AppState.Day(s.Settings.DataDate)</b><span>Data date</span></div>
+        @if (r != null)
+        {
+            <div class="tile"><b>@AppState.Day(r.ProjectFinish)</b><span>Deterministic finish</span></div>
+            <div class="tile"><b>@CriticalCount</b><span>Critical activities</span></div>
+        }
+    </div>
+
+    if (State.Verify != null && State.Verify.Compared > 0)
+    {
+        var v = State.Verify;
+        if (v.Passed)
+        {
+            <div class="good"><b>Matches P6.</b> All @v.FieldsCompared.ToString("N0") early/late dates and float values we recalculated agree with the values P6 saved in this file.</div>
+        }
+        else
+        {
+            <div class="note">
+                <b>@v.FieldsMatched.ToString("N0") of @v.FieldsCompared.ToString("N0") dates and float values match P6</b>
+                (@v.ActivitiesMatched.ToString("N0") of @v.Compared.ToString("N0") activities fully match).
+                Differences usually mean the file uses a P6 option the engine does not handle yet, or the file was not rescheduled before export.
+                <details>
+                    <summary>Show the largest differences</summary>
+                    <div class="wrap"><table class="plain">
+                        <tr><th>Activity</th><th>Field</th><th>P6</th><th>Ours</th><th class="n">Difference (h)</th></tr>
+                        @foreach (var d in v.Worst(40))
+                        {
+                            <tr><td>@d.Code</td><td>@d.Field.Replace('_', ' ')</td><td>@(d.Field == "total_float" ? Num(d.P6 / 60.0) + " h" : AppState.DayTime(d.P6))</td>
+                                <td>@(d.Field == "total_float" ? Num(d.Ours / 60.0) + " h" : AppState.DayTime(d.Ours))</td><td class="n">@Num(d.DeltaMinutes / 60.0)</td></tr>
+                        }
+                    </table></div>
+                </details>
+            </div>
+        }
+    }
+    else if (r != null)
+    {
+        <div class="note">This file has no P6-calculated dates to compare with (it may not have been scheduled before export), so the engine check was skipped.</div>
+    }
+
+    if (State.Warnings.Count > 0)
+    {
+        <details>
+            <summary>@State.Warnings.Count file warnings</summary>
+            <ul class="small">
+                @foreach (var w in State.Warnings.Take(200))
+                {
+                    <li>@w</li>
+                }
+            </ul>
+        </details>
+    }
+
+    if (State.Checks.Count > 0)
+    {
+        <h2>Schedule health</h2>
+        <div class="wrap card" style="padding:0">
+            <table class="plain">
+                <tr><th>Check</th><th>Result</th><th class="n">Count</th><th class="n">%</th><th>Notes</th></tr>
+                @foreach (var c in State.Checks)
+                {
+                    <tr>
+                        <td>@c.Title</td>
+                        <td class="@(c.Passed ? "pass" : "fail")">@(c.Passed ? "Pass" : "Review")</td>
+                        <td class="n">@c.Count / @c.Total</td>
+                        <td class="n">@Num(c.Pct)</td>
+                        <td class="small">
+                            @c.Note
+                            @if (c.Items.Count > 0 && !c.Passed)
+                            {
+                                <details><summary>@Math.Min(c.Items.Count, 100) items</summary><span class="small">@string.Join(", ", c.Items.Take(100))</span></details>
+                            }
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+    }
+
+    if (r != null)
+    {
+        <h2>Activities</h2>
+        <div class="row" style="margin-bottom:8px">
+            <input placeholder="Search ID or name" @bind="search" @bind:event="oninput" style="min-width:240px" />
+            <label class="chk"><input type="checkbox" @bind="criticalOnly" /> Critical only</label>
+            <span class="muted small">@Rows.Count.ToString("N0") shown</span>
+        </div>
+        <div class="grid-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Status</th><th class="n">Rem. dur (d)</th><th>Early start</th><th>Early finish</th><th>Late finish</th><th class="n">Float (d)</th></tr>
+                </thead>
+                <tbody>
+                    <Virtualize Items="Rows" Context="a" ItemSize="33" OverscanCount="20">
+                        @{ int j = a.Index; double mpd = a.Calendar.MinutesPerDay; }
+                        <tr class="@(r.IsCritical(s, j) ? "crit" : "")">
+                            <td>@a.Code</td>
+                            <td>@a.Name</td>
+                            <td class="small">@StatusText(a)</td>
+                            <td class="n">@Num(a.RemainingDuration / mpd)</td>
+                            <td>@AppState.DayTime(r.ES[j])</td>
+                            <td>@AppState.DayTime(r.EF[j])</td>
+                            <td>@AppState.DayTime(r.LF[j])</td>
+                            <td class="n">@(r.TF[j] == Time.None ? "" : Num(r.TF[j] / mpd))</td>
+                        </tr>
+                    </Virtualize>
+                </tbody>
+            </table>
+        </div>
+        <p class="muted small">Red edge = critical. Durations and float are in working days of each activity's calendar. Calculated in @State.CpmTime.TotalMilliseconds.ToString("F0") ms.</p>
+    }
+}
+
+@code {
+    [Parameter] public EventCallback OnNext { get; set; }
+
+    private string search = "";
+    private bool criticalOnly;
+
+    private int CriticalCount => State.Schedule == null || State.Cpm == null ? 0
+        : State.Schedule.Activities.Count(a => State.Cpm.IsCritical(State.Schedule, a.Index));
+
+    private List<Activity> Rows
+    {
+        get
+        {
+            var s = State.Schedule;
+            var r = State.Cpm;
+            if (s == null || r == null) return new List<Activity>();
+            IEnumerable<Activity> q = s.Activities;
+            if (criticalOnly) q = q.Where(a => r.IsCritical(s, a.Index));
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                string t = search.Trim();
+                q = q.Where(a => a.Code.Contains(t, StringComparison.OrdinalIgnoreCase) || a.Name.Contains(t, StringComparison.OrdinalIgnoreCase));
+            }
+            return q.ToList();
+        }
+    }
+
+    private static string StatusText(Activity a) => a.Status switch
+    {
+        ActivityStatus.Complete => "Complete",
+        ActivityStatus.InProgress => "In progress",
+        _ => a.IsMilestone ? "Milestone" : a.IsSummary ? "Summary" : "Not started",
+    };
+
+    private async Task OnFile(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await using var stream = e.File.OpenReadStream(maxAllowedSize: 500L * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            await State.LoadXerAsync(e.File.Name, ms.ToArray());
+            search = "";
+            criticalOnly = false;
+        }
+        catch (Exception ex)
+        {
+            State.Error = "Could not open the file: " + ex.Message;
+            State.Notify();
+        }
+    }
+
+    private Task OnProject(ChangeEventArgs e) => State.SelectProjectAsync(e.Value?.ToString() ?? "");
+
+    private async Task ExportCsv()
+    {
+        if (State.Schedule == null || State.Cpm == null) return;
+        await Download($"{State.Schedule.ProjectCode}-cpm.csv", "text/csv", CsvExport.Cpm(State.Schedule, State.Cpm));
+    }
+}

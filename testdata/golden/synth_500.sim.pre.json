@@ -1,0 +1,2971 @@
+{
+ "iterations": 500,
+ "batches": 1,
+ "converged": null,
+ "scenario": "pre",
+ "deterministic_finish": "2028-09-13 17:00",
+ "prob_meet_deterministic": 0.0,
+ "finish": {
+  "P5": "2028-12-04 09:34",
+  "P10": "2028-12-14 08:21",
+  "P20": "2029-01-11 14:16",
+  "P30": "2029-02-01 13:48",
+  "P40": "2029-02-23 13:17",
+  "P50": "2029-03-15 14:51",
+  "P60": "2029-04-11 08:07",
+  "P70": "2029-05-22 08:39",
+  "P80": "2029-06-29 09:18",
+  "P90": "2029-08-15 10:41",
+  "P95": "2029-09-13 13:49",
+  "min": "2028-10-10 09:16",
+  "max": "2030-02-12 10:53",
+  "mean": "2029-04-04 08:54",
+  "stdev_working_days": 63.8561
+ },
+ "milestones": [
+  {
+   "code": "A01180",
+   "name": "PROC activity 118",
+   "P10": "2027-03-03 09:28",
+   "P50": "2027-03-08 11:31",
+   "P80": "2027-05-13 16:50",
+   "P90": "2027-05-31 14:41"
+  },
+  {
+   "code": "A01210",
+   "name": "PROC activity 121",
+   "P10": "2027-03-04 08:28",
+   "P50": "2027-03-09 11:31",
+   "P80": "2027-05-14 16:50",
+   "P90": "2027-05-31 13:07"
+  },
+  {
+   "code": "A01250",
+   "name": "PROC activity 125",
+   "P10": "2027-03-03 14:55",
+   "P50": "2027-03-05 16:52",
+   "P80": "2027-05-13 13:07",
+   "P90": "2027-05-27 10:28"
+  },
+  {
+   "code": "A01390",
+   "name": "PROC activity 139",
+   "P10": "2027-04-20 14:13",
+   "P50": "2027-04-29 14:57",
+   "P80": "2027-06-30 11:51",
+   "P90": "2027-07-15 09:30"
+  },
+  {
+   "code": "A01810",
+   "name": "CIV activity 181",
+   "P10": "2027-06-30 13:56",
+   "P50": "2027-07-13 09:29",
+   "P80": "2027-11-17 16:49",
+   "P90": "2027-12-27 13:00"
+  },
+  {
+   "code": "A02020",
+   "name": "CIV activity 202",
+   "P10": "2027-09-06 11:20",
+   "P50": "2027-09-29 10:02",
+   "P80": "2028-01-31 16:52",
+   "P90": "2028-03-13 14:19"
+  },
+  {
+   "code": "A02310",
+   "name": "CIV activity 231",
+   "P10": "2027-09-22 15:58",
+   "P50": "2027-10-20 14:41",
+   "P80": "2028-02-21 09:45",
+   "P90": "2028-04-03 08:06"
+  },
+  {
+   "code": "A02600",
+   "name": "MECH activity 260",
+   "P10": "2027-11-22 13:53",
+   "P50": "2027-12-28 15:08",
+   "P80": "2028-04-25 15:23",
+   "P90": "2028-06-14 13:28"
+  },
+  {
+   "code": "A03280",
+   "name": "MECH activity 328",
+   "P10": "2028-01-17 08:00",
+   "P50": "2028-02-25 11:53",
+   "P80": "2028-06-26 08:00",
+   "P90": "2028-08-10 08:00"
+  },
+  {
+   "code": "A03870",
+   "name": "ELEC activity 387",
+   "P10": "2028-05-05 11:29",
+   "P50": "2028-06-29 11:35",
+   "P80": "2028-10-23 10:54",
+   "P90": "2028-12-06 08:44"
+  },
+  {
+   "code": "A04100",
+   "name": "ELEC activity 410",
+   "P10": "2028-03-13 16:01",
+   "P50": "2028-04-28 11:24",
+   "P80": "2028-08-25 08:00",
+   "P90": "2028-10-11 13:19"
+  },
+  {
+   "code": "A04300",
+   "name": "COMM activity 430",
+   "P10": "2028-07-19 11:00",
+   "P50": "2028-09-15 15:48",
+   "P80": "2029-01-10 11:00",
+   "P90": "2029-02-21 10:33"
+  },
+  {
+   "code": "A04710",
+   "name": "COMM activity 471",
+   "P10": "2028-09-18 08:11",
+   "P50": "2028-11-14 14:57",
+   "P80": "2029-03-12 14:33",
+   "P90": "2029-04-24 11:28"
+  },
+  {
+   "code": "A04730",
+   "name": "COMM activity 473",
+   "P10": "2028-09-11 09:05",
+   "P50": "2028-11-08 08:18",
+   "P80": "2029-03-05 13:18",
+   "P90": "2029-04-16 11:28"
+  },
+  {
+   "code": "A04780",
+   "name": "COMM activity 478",
+   "P10": "2028-09-25 09:14",
+   "P50": "2028-11-28 13:55",
+   "P80": "2029-03-21 15:22",
+   "P90": "2029-05-07 09:09"
+  },
+  {
+   "code": "A05000",
+   "name": "COMM activity 500",
+   "P10": "2028-12-14 08:21",
+   "P50": "2029-03-15 14:51",
+   "P80": "2029-06-29 09:18",
+   "P90": "2029-08-15 10:41"
+  }
+ ],
+ "activities": [
+  {
+   "code": "A04970",
+   "name": "COMM activity 497",
+   "criticality": 1.0,
+   "sensitivity": 0.373559,
+   "cruciality": 0.373559
+  },
+  {
+   "code": "A04880",
+   "name": "COMM activity 488",
+   "criticality": 1.0,
+   "sensitivity": 0.367341,
+   "cruciality": 0.367341
+  },
+  {
+   "code": "A04960",
+   "name": "COMM activity 496",
+   "criticality": 1.0,
+   "sensitivity": 0.351428,
+   "cruciality": 0.351428
+  },
+  {
+   "code": "A04700",
+   "name": "COMM activity 470",
+   "criticality": 0.75,
+   "sensitivity": 0.412447,
+   "cruciality": 0.309335
+  },
+  {
+   "code": "A04720",
+   "name": "COMM activity 472",
+   "criticality": 0.75,
+   "sensitivity": 0.391243,
+   "cruciality": 0.293432
+  },
+  {
+   "code": "A04160",
+   "name": "ELEC activity 416",
+   "criticality": 0.404,
+   "sensitivity": 0.247723,
+   "cruciality": 0.10008
+  },
+  {
+   "code": "A04000",
+   "name": "ELEC activity 400",
+   "criticality": 0.1,
+   "sensitivity": 0.284131,
+   "cruciality": 0.028413
+  },
+  {
+   "code": "A03800",
+   "name": "ELEC activity 380",
+   "criticality": 0.1,
+   "sensitivity": 0.209973,
+   "cruciality": 0.020997
+  },
+  {
+   "code": "A04120",
+   "name": "ELEC activity 412",
+   "criticality": 0.1,
+   "sensitivity": 0.20699,
+   "cruciality": 0.020699
+  },
+  {
+   "code": "A04600",
+   "name": "COMM activity 460",
+   "criticality": 0.498,
+   "sensitivity": 0.036915,
+   "cruciality": 0.018384
+  },
+  {
+   "code": "A04220",
+   "name": "COMM activity 422",
+   "criticality": 0.2,
+   "sensitivity": 0.0581,
+   "cruciality": 0.01162
+  },
+  {
+   "code": "A04360",
+   "name": "COMM activity 436",
+   "criticality": 0.2,
+   "sensitivity": 0.053816,
+   "cruciality": 0.010763
+  },
+  {
+   "code": "A04390",
+   "name": "COMM activity 439",
+   "criticality": 0.134,
+   "sensitivity": -0.045948,
+   "cruciality": -0.006157
+  },
+  {
+   "code": "A04550",
+   "name": "COMM activity 455",
+   "criticality": 0.2,
+   "sensitivity": 0.030171,
+   "cruciality": 0.006034
+  },
+  {
+   "code": "A03380",
+   "name": "ELEC activity 338",
+   "criticality": 0.024,
+   "sensitivity": 0.244678,
+   "cruciality": 0.005872
+  },
+  {
+   "code": "A04490",
+   "name": "COMM activity 449",
+   "criticality": 0.134,
+   "sensitivity": 0.040433,
+   "cruciality": 0.005418
+  },
+  {
+   "code": "A03660",
+   "name": "ELEC activity 366",
+   "criticality": 0.024,
+   "sensitivity": 0.211341,
+   "cruciality": 0.005072
+  },
+  {
+   "code": "A03770",
+   "name": "ELEC activity 377",
+   "criticality": 0.024,
+   "sensitivity": 0.188535,
+   "cruciality": 0.004525
+  },
+  {
+   "code": "A04570",
+   "name": "COMM activity 457",
+   "criticality": 0.182,
+   "sensitivity": 0.02375,
+   "cruciality": 0.004323
+  },
+  {
+   "code": "A03580",
+   "name": "ELEC activity 358",
+   "criticality": 0.024,
+   "sensitivity": 0.167867,
+   "cruciality": 0.004029
+  },
+  {
+   "code": "A03270",
+   "name": "MECH activity 327",
+   "criticality": 0.02,
+   "sensitivity": 0.201397,
+   "cruciality": 0.004028
+  },
+  {
+   "code": "A02900",
+   "name": "MECH activity 290",
+   "criticality": 0.014,
+   "sensitivity": 0.284253,
+   "cruciality": 0.00398
+  },
+  {
+   "code": "A04520",
+   "name": "COMM activity 452",
+   "criticality": 0.2,
+   "sensitivity": 0.018028,
+   "cruciality": 0.003606
+  },
+  {
+   "code": "A03790",
+   "name": "ELEC activity 379",
+   "criticality": 0.024,
+   "sensitivity": 0.148956,
+   "cruciality": 0.003575
+  },
+  {
+   "code": "A02860",
+   "name": "MECH activity 286",
+   "criticality": 0.014,
+   "sensitivity": 0.200755,
+   "cruciality": 0.002811
+  },
+  {
+   "code": "A04750",
+   "name": "COMM activity 475",
+   "criticality": 0.25,
+   "sensitivity": -0.010667,
+   "cruciality": -0.002667
+  },
+  {
+   "code": "A02790",
+   "name": "MECH activity 279",
+   "criticality": 0.014,
+   "sensitivity": 0.17502,
+   "cruciality": 0.00245
+  },
+  {
+   "code": "A02840",
+   "name": "MECH activity 284",
+   "criticality": 0.014,
+   "sensitivity": 0.171172,
+   "cruciality": 0.002396
+  },
+  {
+   "code": "A03150",
+   "name": "MECH activity 315",
+   "criticality": 0.014,
+   "sensitivity": 0.168418,
+   "cruciality": 0.002358
+  },
+  {
+   "code": "A03000",
+   "name": "MECH activity 300",
+   "criticality": 0.014,
+   "sensitivity": 0.155339,
+   "cruciality": 0.002175
+  },
+  {
+   "code": "A04210",
+   "name": "COMM activity 421",
+   "criticality": 0.068,
+   "sensitivity": 0.028598,
+   "cruciality": 0.001945
+  },
+  {
+   "code": "A01970",
+   "name": "CIV activity 197",
+   "criticality": 0.004,
+   "sensitivity": 0.336375,
+   "cruciality": 0.001345
+  },
+  {
+   "code": "A04460",
+   "name": "COMM activity 446",
+   "criticality": 0.068,
+   "sensitivity": 0.019387,
+   "cruciality": 0.001318
+  },
+  {
+   "code": "A01800",
+   "name": "CIV activity 180",
+   "criticality": 0.004,
+   "sensitivity": 0.321889,
+   "cruciality": 0.001288
+  },
+  {
+   "code": "A01720",
+   "name": "CIV activity 172",
+   "criticality": 0.004,
+   "sensitivity": 0.248875,
+   "cruciality": 0.000995
+  },
+  {
+   "code": "A02760",
+   "name": "MECH activity 276",
+   "criticality": 0.004,
+   "sensitivity": 0.191173,
+   "cruciality": 0.000765
+  },
+  {
+   "code": "A02060",
+   "name": "CIV activity 206",
+   "criticality": 0.002,
+   "sensitivity": 0.342882,
+   "cruciality": 0.000686
+  },
+  {
+   "code": "A02190",
+   "name": "CIV activity 219",
+   "criticality": 0.002,
+   "sensitivity": 0.341295,
+   "cruciality": 0.000683
+  },
+  {
+   "code": "A02470",
+   "name": "CIV activity 247",
+   "criticality": 0.002,
+   "sensitivity": 0.319507,
+   "cruciality": 0.000639
+  },
+  {
+   "code": "A02130",
+   "name": "CIV activity 213",
+   "criticality": 0.002,
+   "sensitivity": 0.318507,
+   "cruciality": 0.000637
+  },
+  {
+   "code": "A02420",
+   "name": "CIV activity 242",
+   "criticality": 0.002,
+   "sensitivity": 0.31818,
+   "cruciality": 0.000636
+  },
+  {
+   "code": "A02460",
+   "name": "CIV activity 246",
+   "criticality": 0.002,
+   "sensitivity": 0.317586,
+   "cruciality": 0.000635
+  },
+  {
+   "code": "A01980",
+   "name": "CIV activity 198",
+   "criticality": 0.002,
+   "sensitivity": 0.31322,
+   "cruciality": 0.000626
+  },
+  {
+   "code": "A02200",
+   "name": "CIV activity 220",
+   "criticality": 0.002,
+   "sensitivity": 0.292555,
+   "cruciality": 0.000585
+  },
+  {
+   "code": "A02330",
+   "name": "CIV activity 233",
+   "criticality": 0.002,
+   "sensitivity": 0.269698,
+   "cruciality": 0.000539
+  },
+  {
+   "code": "A02360",
+   "name": "CIV activity 236",
+   "criticality": 0.002,
+   "sensitivity": 0.268205,
+   "cruciality": 0.000536
+  },
+  {
+   "code": "A02210",
+   "name": "CIV activity 221",
+   "criticality": 0.002,
+   "sensitivity": 0.265914,
+   "cruciality": 0.000532
+  },
+  {
+   "code": "A02320",
+   "name": "CIV activity 232",
+   "criticality": 0.002,
+   "sensitivity": 0.262823,
+   "cruciality": 0.000526
+  },
+  {
+   "code": "A03330",
+   "name": "MECH activity 333",
+   "criticality": 0.002,
+   "sensitivity": 0.248567,
+   "cruciality": 0.000497
+  },
+  {
+   "code": "A02930",
+   "name": "MECH activity 293",
+   "criticality": 0.002,
+   "sensitivity": 0.243224,
+   "cruciality": 0.000486
+  },
+  {
+   "code": "A02110",
+   "name": "CIV activity 211",
+   "criticality": 0.002,
+   "sensitivity": 0.233492,
+   "cruciality": 0.000467
+  },
+  {
+   "code": "A02820",
+   "name": "MECH activity 282",
+   "criticality": 0.002,
+   "sensitivity": 0.212196,
+   "cruciality": 0.000424
+  },
+  {
+   "code": "A02700",
+   "name": "MECH activity 270",
+   "criticality": 0.002,
+   "sensitivity": 0.20461,
+   "cruciality": 0.000409
+  },
+  {
+   "code": "A03110",
+   "name": "MECH activity 311",
+   "criticality": 0.002,
+   "sensitivity": 0.203197,
+   "cruciality": 0.000406
+  },
+  {
+   "code": "A02530",
+   "name": "MECH activity 253",
+   "criticality": 0.002,
+   "sensitivity": 0.200637,
+   "cruciality": 0.000401
+  },
+  {
+   "code": "A02920",
+   "name": "MECH activity 292",
+   "criticality": 0.002,
+   "sensitivity": 0.151766,
+   "cruciality": 0.000304
+  },
+  {
+   "code": "A01670",
+   "name": "PROC activity 167",
+   "criticality": 0.004,
+   "sensitivity": 0.055959,
+   "cruciality": 0.000224
+  },
+  {
+   "code": "A03170",
+   "name": "MECH activity 317",
+   "criticality": 0.002,
+   "sensitivity": 0.111037,
+   "cruciality": 0.000222
+  },
+  {
+   "code": "A04430",
+   "name": "COMM activity 443",
+   "criticality": 0.002,
+   "sensitivity": 0.073537,
+   "cruciality": 0.000147
+  },
+  {
+   "code": "A04440",
+   "name": "COMM activity 444",
+   "criticality": 0.002,
+   "sensitivity": 0.061215,
+   "cruciality": 0.000122
+  },
+  {
+   "code": "A04530",
+   "name": "COMM activity 453",
+   "criticality": 0.068,
+   "sensitivity": 0.001153,
+   "cruciality": 7.8e-05
+  },
+  {
+   "code": "A04270",
+   "name": "COMM activity 427",
+   "criticality": 0.002,
+   "sensitivity": -0.030535,
+   "cruciality": -6.1e-05
+  },
+  {
+   "code": "A04540",
+   "name": "COMM activity 454",
+   "criticality": 0.002,
+   "sensitivity": 0.013695,
+   "cruciality": 2.7e-05
+  },
+  {
+   "code": "A05000",
+   "name": "COMM activity 500",
+   "criticality": 1.0,
+   "sensitivity": 0.0,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04710",
+   "name": "COMM activity 471",
+   "criticality": 0.068,
+   "sensitivity": 0.0,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01810",
+   "name": "CIV activity 181",
+   "criticality": 0.004,
+   "sensitivity": 0.0,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02020",
+   "name": "CIV activity 202",
+   "criticality": 0.002,
+   "sensitivity": 0.0,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00860",
+   "name": "PROC activity 86",
+   "criticality": 0.0,
+   "sensitivity": 0.078319,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00870",
+   "name": "PROC activity 87",
+   "criticality": 0.0,
+   "sensitivity": 0.030733,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00890",
+   "name": "PROC activity 89",
+   "criticality": 0.0,
+   "sensitivity": -0.007163,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A00900",
+   "name": "PROC activity 90",
+   "criticality": 0.0,
+   "sensitivity": 0.071822,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00920",
+   "name": "PROC activity 92",
+   "criticality": 0.0,
+   "sensitivity": 0.037568,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00940",
+   "name": "PROC activity 94",
+   "criticality": 0.0,
+   "sensitivity": 0.085649,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00950",
+   "name": "PROC activity 95",
+   "criticality": 0.0,
+   "sensitivity": 0.092442,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00960",
+   "name": "PROC activity 96",
+   "criticality": 0.0,
+   "sensitivity": 0.057755,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A00980",
+   "name": "PROC activity 98",
+   "criticality": 0.0,
+   "sensitivity": 0.042983,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01000",
+   "name": "PROC activity 100",
+   "criticality": 0.0,
+   "sensitivity": 0.72296,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01010",
+   "name": "PROC activity 101",
+   "criticality": 0.0,
+   "sensitivity": 0.646917,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01020",
+   "name": "PROC activity 102",
+   "criticality": 0.0,
+   "sensitivity": 0.720902,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01030",
+   "name": "PROC activity 103",
+   "criticality": 0.0,
+   "sensitivity": 0.739148,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01050",
+   "name": "PROC activity 105",
+   "criticality": 0.0,
+   "sensitivity": 0.751125,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01060",
+   "name": "PROC activity 106",
+   "criticality": 0.0,
+   "sensitivity": 0.736776,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01070",
+   "name": "PROC activity 107",
+   "criticality": 0.0,
+   "sensitivity": 0.74791,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01080",
+   "name": "PROC activity 108",
+   "criticality": 0.0,
+   "sensitivity": 0.739615,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01090",
+   "name": "PROC activity 109",
+   "criticality": 0.0,
+   "sensitivity": 0.738305,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01110",
+   "name": "PROC activity 111",
+   "criticality": 0.0,
+   "sensitivity": 0.755308,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01120",
+   "name": "PROC activity 112",
+   "criticality": 0.0,
+   "sensitivity": 0.719494,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01130",
+   "name": "PROC activity 113",
+   "criticality": 0.0,
+   "sensitivity": 0.741182,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01140",
+   "name": "PROC activity 114",
+   "criticality": 0.0,
+   "sensitivity": 0.744255,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01150",
+   "name": "PROC activity 115",
+   "criticality": 0.0,
+   "sensitivity": 0.745748,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01160",
+   "name": "PROC activity 116",
+   "criticality": 0.0,
+   "sensitivity": 0.754444,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01170",
+   "name": "PROC activity 117",
+   "criticality": 0.0,
+   "sensitivity": 0.753461,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01190",
+   "name": "PROC activity 119",
+   "criticality": 0.0,
+   "sensitivity": 0.739942,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01200",
+   "name": "PROC activity 120",
+   "criticality": 0.0,
+   "sensitivity": 0.737942,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01220",
+   "name": "PROC activity 122",
+   "criticality": 0.0,
+   "sensitivity": 0.740714,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01230",
+   "name": "PROC activity 123",
+   "criticality": 0.0,
+   "sensitivity": 0.740036,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01240",
+   "name": "PROC activity 124",
+   "criticality": 0.0,
+   "sensitivity": 0.735741,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01260",
+   "name": "PROC activity 126",
+   "criticality": 0.0,
+   "sensitivity": 0.714048,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01270",
+   "name": "PROC activity 127",
+   "criticality": 0.0,
+   "sensitivity": 0.724683,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01280",
+   "name": "PROC activity 128",
+   "criticality": 0.0,
+   "sensitivity": 0.744748,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01290",
+   "name": "PROC activity 129",
+   "criticality": 0.0,
+   "sensitivity": 0.738767,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01300",
+   "name": "PROC activity 130",
+   "criticality": 0.0,
+   "sensitivity": 0.039106,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01310",
+   "name": "PROC activity 131",
+   "criticality": 0.0,
+   "sensitivity": 0.024003,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01320",
+   "name": "PROC activity 132",
+   "criticality": 0.0,
+   "sensitivity": -0.006788,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01330",
+   "name": "PROC activity 133",
+   "criticality": 0.0,
+   "sensitivity": -0.000417,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01340",
+   "name": "PROC activity 134",
+   "criticality": 0.0,
+   "sensitivity": 0.005134,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01350",
+   "name": "PROC activity 135",
+   "criticality": 0.0,
+   "sensitivity": -0.007211,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01360",
+   "name": "PROC activity 136",
+   "criticality": 0.0,
+   "sensitivity": -0.079297,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01370",
+   "name": "PROC activity 137",
+   "criticality": 0.0,
+   "sensitivity": 0.021053,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01380",
+   "name": "PROC activity 138",
+   "criticality": 0.0,
+   "sensitivity": 0.086391,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01400",
+   "name": "PROC activity 140",
+   "criticality": 0.0,
+   "sensitivity": -0.057345,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01410",
+   "name": "PROC activity 141",
+   "criticality": 0.0,
+   "sensitivity": 0.050232,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01420",
+   "name": "PROC activity 142",
+   "criticality": 0.0,
+   "sensitivity": 0.014134,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01430",
+   "name": "PROC activity 143",
+   "criticality": 0.0,
+   "sensitivity": 0.04283,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01440",
+   "name": "PROC activity 144",
+   "criticality": 0.0,
+   "sensitivity": 0.059872,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01450",
+   "name": "PROC activity 145",
+   "criticality": 0.0,
+   "sensitivity": -0.082075,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01460",
+   "name": "PROC activity 146",
+   "criticality": 0.0,
+   "sensitivity": 0.020728,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01470",
+   "name": "PROC activity 147",
+   "criticality": 0.0,
+   "sensitivity": -0.001143,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01480",
+   "name": "PROC activity 148",
+   "criticality": 0.0,
+   "sensitivity": 0.018017,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01490",
+   "name": "PROC activity 149",
+   "criticality": 0.0,
+   "sensitivity": 0.098173,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01500",
+   "name": "PROC activity 150",
+   "criticality": 0.0,
+   "sensitivity": 0.039041,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01510",
+   "name": "PROC activity 151",
+   "criticality": 0.0,
+   "sensitivity": 0.004646,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01520",
+   "name": "PROC activity 152",
+   "criticality": 0.0,
+   "sensitivity": 0.030649,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01530",
+   "name": "PROC activity 153",
+   "criticality": 0.0,
+   "sensitivity": 0.046316,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01540",
+   "name": "PROC activity 154",
+   "criticality": 0.0,
+   "sensitivity": -0.005262,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01550",
+   "name": "PROC activity 155",
+   "criticality": 0.0,
+   "sensitivity": 0.098484,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01560",
+   "name": "PROC activity 156",
+   "criticality": 0.0,
+   "sensitivity": 0.022408,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01570",
+   "name": "PROC activity 157",
+   "criticality": 0.0,
+   "sensitivity": 0.036108,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01580",
+   "name": "PROC activity 158",
+   "criticality": 0.0,
+   "sensitivity": 0.008413,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01590",
+   "name": "PROC activity 159",
+   "criticality": 0.0,
+   "sensitivity": 0.06798,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01600",
+   "name": "PROC activity 160",
+   "criticality": 0.0,
+   "sensitivity": 0.035635,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01610",
+   "name": "PROC activity 161",
+   "criticality": 0.0,
+   "sensitivity": -0.041887,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01620",
+   "name": "PROC activity 162",
+   "criticality": 0.0,
+   "sensitivity": 0.00334,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01630",
+   "name": "PROC activity 163",
+   "criticality": 0.0,
+   "sensitivity": -0.005849,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01640",
+   "name": "PROC activity 164",
+   "criticality": 0.0,
+   "sensitivity": -0.01672,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01650",
+   "name": "PROC activity 165",
+   "criticality": 0.0,
+   "sensitivity": 0.009432,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01660",
+   "name": "PROC activity 166",
+   "criticality": 0.0,
+   "sensitivity": -0.005892,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A01680",
+   "name": "CIV activity 168",
+   "criticality": 0.0,
+   "sensitivity": 0.284337,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01690",
+   "name": "CIV activity 169",
+   "criticality": 0.0,
+   "sensitivity": 0.352143,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01700",
+   "name": "CIV activity 170",
+   "criticality": 0.0,
+   "sensitivity": 0.293792,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01710",
+   "name": "CIV activity 171",
+   "criticality": 0.0,
+   "sensitivity": 0.311729,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01730",
+   "name": "CIV activity 173",
+   "criticality": 0.0,
+   "sensitivity": 0.302443,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01740",
+   "name": "CIV activity 174",
+   "criticality": 0.0,
+   "sensitivity": 0.229566,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01750",
+   "name": "CIV activity 175",
+   "criticality": 0.0,
+   "sensitivity": 0.258707,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01760",
+   "name": "CIV activity 176",
+   "criticality": 0.0,
+   "sensitivity": 0.315766,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01770",
+   "name": "CIV activity 177",
+   "criticality": 0.0,
+   "sensitivity": 0.255385,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01780",
+   "name": "CIV activity 178",
+   "criticality": 0.0,
+   "sensitivity": 0.289511,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01790",
+   "name": "CIV activity 179",
+   "criticality": 0.0,
+   "sensitivity": 0.305396,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01820",
+   "name": "CIV activity 182",
+   "criticality": 0.0,
+   "sensitivity": 0.352408,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01830",
+   "name": "CIV activity 183",
+   "criticality": 0.0,
+   "sensitivity": 0.335592,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01840",
+   "name": "CIV activity 184",
+   "criticality": 0.0,
+   "sensitivity": 0.309528,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01850",
+   "name": "CIV activity 185",
+   "criticality": 0.0,
+   "sensitivity": 0.270723,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01860",
+   "name": "CIV activity 186",
+   "criticality": 0.0,
+   "sensitivity": 0.220807,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01870",
+   "name": "CIV activity 187",
+   "criticality": 0.0,
+   "sensitivity": 0.264156,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01880",
+   "name": "CIV activity 188",
+   "criticality": 0.0,
+   "sensitivity": 0.277646,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01890",
+   "name": "CIV activity 189",
+   "criticality": 0.0,
+   "sensitivity": 0.321225,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01900",
+   "name": "CIV activity 190",
+   "criticality": 0.0,
+   "sensitivity": 0.231399,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01910",
+   "name": "CIV activity 191",
+   "criticality": 0.0,
+   "sensitivity": 0.343699,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01920",
+   "name": "CIV activity 192",
+   "criticality": 0.0,
+   "sensitivity": 0.298162,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01930",
+   "name": "CIV activity 193",
+   "criticality": 0.0,
+   "sensitivity": 0.331782,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01940",
+   "name": "CIV activity 194",
+   "criticality": 0.0,
+   "sensitivity": 0.35315,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01950",
+   "name": "CIV activity 195",
+   "criticality": 0.0,
+   "sensitivity": 0.318472,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01960",
+   "name": "CIV activity 196",
+   "criticality": 0.0,
+   "sensitivity": 0.278702,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A01990",
+   "name": "CIV activity 199",
+   "criticality": 0.0,
+   "sensitivity": 0.333246,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02000",
+   "name": "CIV activity 200",
+   "criticality": 0.0,
+   "sensitivity": 0.31921,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02010",
+   "name": "CIV activity 201",
+   "criticality": 0.0,
+   "sensitivity": 0.347758,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02030",
+   "name": "CIV activity 203",
+   "criticality": 0.0,
+   "sensitivity": 0.292381,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02040",
+   "name": "CIV activity 204",
+   "criticality": 0.0,
+   "sensitivity": 0.307665,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02050",
+   "name": "CIV activity 205",
+   "criticality": 0.0,
+   "sensitivity": 0.31929,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02070",
+   "name": "CIV activity 207",
+   "criticality": 0.0,
+   "sensitivity": 0.29492,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02080",
+   "name": "CIV activity 208",
+   "criticality": 0.0,
+   "sensitivity": 0.265242,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02090",
+   "name": "CIV activity 209",
+   "criticality": 0.0,
+   "sensitivity": 0.311946,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02100",
+   "name": "CIV activity 210",
+   "criticality": 0.0,
+   "sensitivity": 0.311424,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02120",
+   "name": "CIV activity 212",
+   "criticality": 0.0,
+   "sensitivity": 0.296657,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02140",
+   "name": "CIV activity 214",
+   "criticality": 0.0,
+   "sensitivity": 0.26963,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02150",
+   "name": "CIV activity 215",
+   "criticality": 0.0,
+   "sensitivity": 0.285441,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02160",
+   "name": "CIV activity 216",
+   "criticality": 0.0,
+   "sensitivity": 0.323468,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02170",
+   "name": "CIV activity 217",
+   "criticality": 0.0,
+   "sensitivity": 0.340877,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02180",
+   "name": "CIV activity 218",
+   "criticality": 0.0,
+   "sensitivity": 0.319746,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02220",
+   "name": "CIV activity 222",
+   "criticality": 0.0,
+   "sensitivity": 0.268718,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02230",
+   "name": "CIV activity 223",
+   "criticality": 0.0,
+   "sensitivity": 0.29731,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02240",
+   "name": "CIV activity 224",
+   "criticality": 0.0,
+   "sensitivity": 0.306419,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02250",
+   "name": "CIV activity 225",
+   "criticality": 0.0,
+   "sensitivity": 0.24056,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02260",
+   "name": "CIV activity 226",
+   "criticality": 0.0,
+   "sensitivity": 0.228098,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02270",
+   "name": "CIV activity 227",
+   "criticality": 0.0,
+   "sensitivity": 0.271588,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02280",
+   "name": "CIV activity 228",
+   "criticality": 0.0,
+   "sensitivity": 0.282923,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02290",
+   "name": "CIV activity 229",
+   "criticality": 0.0,
+   "sensitivity": 0.312976,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02300",
+   "name": "CIV activity 230",
+   "criticality": 0.0,
+   "sensitivity": 0.30716,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02340",
+   "name": "CIV activity 234",
+   "criticality": 0.0,
+   "sensitivity": 0.333498,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02350",
+   "name": "CIV activity 235",
+   "criticality": 0.0,
+   "sensitivity": 0.2608,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02370",
+   "name": "CIV activity 237",
+   "criticality": 0.0,
+   "sensitivity": 0.236718,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02380",
+   "name": "CIV activity 238",
+   "criticality": 0.0,
+   "sensitivity": 0.222247,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02390",
+   "name": "CIV activity 239",
+   "criticality": 0.0,
+   "sensitivity": 0.277097,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02400",
+   "name": "CIV activity 240",
+   "criticality": 0.0,
+   "sensitivity": 0.316273,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02410",
+   "name": "CIV activity 241",
+   "criticality": 0.0,
+   "sensitivity": 0.320223,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02430",
+   "name": "CIV activity 243",
+   "criticality": 0.0,
+   "sensitivity": 0.2818,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02440",
+   "name": "CIV activity 244",
+   "criticality": 0.0,
+   "sensitivity": 0.302324,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02450",
+   "name": "CIV activity 245",
+   "criticality": 0.0,
+   "sensitivity": 0.347347,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02480",
+   "name": "CIV activity 248",
+   "criticality": 0.0,
+   "sensitivity": 0.26016,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02490",
+   "name": "CIV activity 249",
+   "criticality": 0.0,
+   "sensitivity": 0.219627,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02500",
+   "name": "CIV activity 250",
+   "criticality": 0.0,
+   "sensitivity": 0.287962,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02510",
+   "name": "MECH activity 251",
+   "criticality": 0.0,
+   "sensitivity": 0.192047,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02520",
+   "name": "MECH activity 252",
+   "criticality": 0.0,
+   "sensitivity": 0.155798,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02540",
+   "name": "MECH activity 254",
+   "criticality": 0.0,
+   "sensitivity": 0.220558,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02550",
+   "name": "MECH activity 255",
+   "criticality": 0.0,
+   "sensitivity": 0.218358,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02560",
+   "name": "MECH activity 256",
+   "criticality": 0.0,
+   "sensitivity": 0.15907,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02570",
+   "name": "MECH activity 257",
+   "criticality": 0.0,
+   "sensitivity": 0.223526,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02580",
+   "name": "MECH activity 258",
+   "criticality": 0.0,
+   "sensitivity": 0.173436,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02590",
+   "name": "MECH activity 259",
+   "criticality": 0.0,
+   "sensitivity": 0.269972,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02610",
+   "name": "MECH activity 261",
+   "criticality": 0.0,
+   "sensitivity": 0.23035,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02620",
+   "name": "MECH activity 262",
+   "criticality": 0.0,
+   "sensitivity": 0.161483,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02630",
+   "name": "MECH activity 263",
+   "criticality": 0.0,
+   "sensitivity": 0.157785,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02640",
+   "name": "MECH activity 264",
+   "criticality": 0.0,
+   "sensitivity": 0.248921,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02650",
+   "name": "MECH activity 265",
+   "criticality": 0.0,
+   "sensitivity": 0.206934,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02660",
+   "name": "MECH activity 266",
+   "criticality": 0.0,
+   "sensitivity": 0.217168,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02670",
+   "name": "MECH activity 267",
+   "criticality": 0.0,
+   "sensitivity": 0.22277,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02680",
+   "name": "MECH activity 268",
+   "criticality": 0.0,
+   "sensitivity": 0.196291,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02690",
+   "name": "MECH activity 269",
+   "criticality": 0.0,
+   "sensitivity": 0.27294,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02710",
+   "name": "MECH activity 271",
+   "criticality": 0.0,
+   "sensitivity": 0.167891,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02720",
+   "name": "MECH activity 272",
+   "criticality": 0.0,
+   "sensitivity": 0.22188,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02730",
+   "name": "MECH activity 273",
+   "criticality": 0.0,
+   "sensitivity": 0.082102,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02740",
+   "name": "MECH activity 274",
+   "criticality": 0.0,
+   "sensitivity": 0.201894,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02750",
+   "name": "MECH activity 275",
+   "criticality": 0.0,
+   "sensitivity": 0.261679,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02770",
+   "name": "MECH activity 277",
+   "criticality": 0.0,
+   "sensitivity": 0.147395,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02780",
+   "name": "MECH activity 278",
+   "criticality": 0.0,
+   "sensitivity": 0.188943,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02800",
+   "name": "MECH activity 280",
+   "criticality": 0.0,
+   "sensitivity": 0.247903,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02810",
+   "name": "MECH activity 281",
+   "criticality": 0.0,
+   "sensitivity": 0.166991,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02830",
+   "name": "MECH activity 283",
+   "criticality": 0.0,
+   "sensitivity": 0.209363,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02850",
+   "name": "MECH activity 285",
+   "criticality": 0.0,
+   "sensitivity": 0.210472,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02870",
+   "name": "MECH activity 287",
+   "criticality": 0.0,
+   "sensitivity": 0.202531,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02880",
+   "name": "MECH activity 288",
+   "criticality": 0.0,
+   "sensitivity": 0.244342,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02890",
+   "name": "MECH activity 289",
+   "criticality": 0.0,
+   "sensitivity": 0.283773,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02910",
+   "name": "MECH activity 291",
+   "criticality": 0.0,
+   "sensitivity": 0.229702,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02940",
+   "name": "MECH activity 294",
+   "criticality": 0.0,
+   "sensitivity": 0.138392,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02950",
+   "name": "MECH activity 295",
+   "criticality": 0.0,
+   "sensitivity": 0.182212,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02960",
+   "name": "MECH activity 296",
+   "criticality": 0.0,
+   "sensitivity": 0.202005,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02970",
+   "name": "MECH activity 297",
+   "criticality": 0.0,
+   "sensitivity": 0.194254,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02980",
+   "name": "MECH activity 298",
+   "criticality": 0.0,
+   "sensitivity": 0.241615,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A02990",
+   "name": "MECH activity 299",
+   "criticality": 0.0,
+   "sensitivity": 0.113022,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03010",
+   "name": "MECH activity 301",
+   "criticality": 0.0,
+   "sensitivity": 0.09974,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03020",
+   "name": "MECH activity 302",
+   "criticality": 0.0,
+   "sensitivity": 0.211106,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03030",
+   "name": "MECH activity 303",
+   "criticality": 0.0,
+   "sensitivity": 0.196372,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03040",
+   "name": "MECH activity 304",
+   "criticality": 0.0,
+   "sensitivity": 0.184809,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03050",
+   "name": "MECH activity 305",
+   "criticality": 0.0,
+   "sensitivity": 0.200361,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03060",
+   "name": "MECH activity 306",
+   "criticality": 0.0,
+   "sensitivity": 0.20016,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03070",
+   "name": "MECH activity 307",
+   "criticality": 0.0,
+   "sensitivity": 0.226242,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03080",
+   "name": "MECH activity 308",
+   "criticality": 0.0,
+   "sensitivity": 0.224724,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03090",
+   "name": "MECH activity 309",
+   "criticality": 0.0,
+   "sensitivity": 0.135668,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03100",
+   "name": "MECH activity 310",
+   "criticality": 0.0,
+   "sensitivity": 0.198899,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03120",
+   "name": "MECH activity 312",
+   "criticality": 0.0,
+   "sensitivity": 0.196588,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03130",
+   "name": "MECH activity 313",
+   "criticality": 0.0,
+   "sensitivity": 0.158009,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03140",
+   "name": "MECH activity 314",
+   "criticality": 0.0,
+   "sensitivity": 0.16907,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03160",
+   "name": "MECH activity 316",
+   "criticality": 0.0,
+   "sensitivity": 0.225433,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03180",
+   "name": "MECH activity 318",
+   "criticality": 0.0,
+   "sensitivity": 0.1581,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03190",
+   "name": "MECH activity 319",
+   "criticality": 0.0,
+   "sensitivity": 0.154676,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03200",
+   "name": "MECH activity 320",
+   "criticality": 0.0,
+   "sensitivity": 0.173538,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03210",
+   "name": "MECH activity 321",
+   "criticality": 0.0,
+   "sensitivity": 0.151317,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03220",
+   "name": "MECH activity 322",
+   "criticality": 0.0,
+   "sensitivity": 0.198561,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03230",
+   "name": "MECH activity 323",
+   "criticality": 0.0,
+   "sensitivity": 0.225221,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03240",
+   "name": "MECH activity 324",
+   "criticality": 0.0,
+   "sensitivity": 0.135339,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03250",
+   "name": "MECH activity 325",
+   "criticality": 0.0,
+   "sensitivity": 0.202862,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03260",
+   "name": "MECH activity 326",
+   "criticality": 0.0,
+   "sensitivity": 0.165124,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03290",
+   "name": "MECH activity 329",
+   "criticality": 0.0,
+   "sensitivity": 0.234357,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03300",
+   "name": "MECH activity 330",
+   "criticality": 0.0,
+   "sensitivity": 0.223801,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03310",
+   "name": "MECH activity 331",
+   "criticality": 0.0,
+   "sensitivity": 0.154105,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03320",
+   "name": "MECH activity 332",
+   "criticality": 0.0,
+   "sensitivity": 0.188803,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03340",
+   "name": "MECH activity 334",
+   "criticality": 0.0,
+   "sensitivity": 0.143865,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03350",
+   "name": "ELEC activity 335",
+   "criticality": 0.0,
+   "sensitivity": 0.189255,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03360",
+   "name": "ELEC activity 336",
+   "criticality": 0.0,
+   "sensitivity": 0.205956,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03370",
+   "name": "ELEC activity 337",
+   "criticality": 0.0,
+   "sensitivity": 0.200487,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03390",
+   "name": "ELEC activity 339",
+   "criticality": 0.0,
+   "sensitivity": 0.158684,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03400",
+   "name": "ELEC activity 340",
+   "criticality": 0.0,
+   "sensitivity": 0.233001,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03410",
+   "name": "ELEC activity 341",
+   "criticality": 0.0,
+   "sensitivity": 0.293714,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03420",
+   "name": "ELEC activity 342",
+   "criticality": 0.0,
+   "sensitivity": 0.086326,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03430",
+   "name": "ELEC activity 343",
+   "criticality": 0.0,
+   "sensitivity": 0.248831,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03440",
+   "name": "ELEC activity 344",
+   "criticality": 0.0,
+   "sensitivity": 0.190252,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03450",
+   "name": "ELEC activity 345",
+   "criticality": 0.0,
+   "sensitivity": 0.22903,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03460",
+   "name": "ELEC activity 346",
+   "criticality": 0.0,
+   "sensitivity": 0.163471,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03470",
+   "name": "ELEC activity 347",
+   "criticality": 0.0,
+   "sensitivity": 0.154831,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03480",
+   "name": "ELEC activity 348",
+   "criticality": 0.0,
+   "sensitivity": 0.20543,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03490",
+   "name": "ELEC activity 349",
+   "criticality": 0.0,
+   "sensitivity": 0.0804,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03500",
+   "name": "ELEC activity 350",
+   "criticality": 0.0,
+   "sensitivity": 0.204277,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03510",
+   "name": "ELEC activity 351",
+   "criticality": 0.0,
+   "sensitivity": 0.171089,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03520",
+   "name": "ELEC activity 352",
+   "criticality": 0.0,
+   "sensitivity": 0.179883,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03530",
+   "name": "ELEC activity 353",
+   "criticality": 0.0,
+   "sensitivity": 0.251061,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03540",
+   "name": "ELEC activity 354",
+   "criticality": 0.0,
+   "sensitivity": 0.144243,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03550",
+   "name": "ELEC activity 355",
+   "criticality": 0.0,
+   "sensitivity": 0.186677,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03560",
+   "name": "ELEC activity 356",
+   "criticality": 0.0,
+   "sensitivity": 0.189361,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03570",
+   "name": "ELEC activity 357",
+   "criticality": 0.0,
+   "sensitivity": 0.165123,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03590",
+   "name": "ELEC activity 359",
+   "criticality": 0.0,
+   "sensitivity": 0.278169,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03600",
+   "name": "ELEC activity 360",
+   "criticality": 0.0,
+   "sensitivity": 0.112933,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03610",
+   "name": "ELEC activity 361",
+   "criticality": 0.0,
+   "sensitivity": 0.204579,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03620",
+   "name": "ELEC activity 362",
+   "criticality": 0.0,
+   "sensitivity": 0.10754,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03630",
+   "name": "ELEC activity 363",
+   "criticality": 0.0,
+   "sensitivity": 0.270559,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03640",
+   "name": "ELEC activity 364",
+   "criticality": 0.0,
+   "sensitivity": 0.199733,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03650",
+   "name": "ELEC activity 365",
+   "criticality": 0.0,
+   "sensitivity": 0.114811,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03670",
+   "name": "ELEC activity 367",
+   "criticality": 0.0,
+   "sensitivity": 0.200153,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03680",
+   "name": "ELEC activity 368",
+   "criticality": 0.0,
+   "sensitivity": 0.212779,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03690",
+   "name": "ELEC activity 369",
+   "criticality": 0.0,
+   "sensitivity": 0.164345,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03700",
+   "name": "ELEC activity 370",
+   "criticality": 0.0,
+   "sensitivity": 0.179782,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03710",
+   "name": "ELEC activity 371",
+   "criticality": 0.0,
+   "sensitivity": 0.098722,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03720",
+   "name": "ELEC activity 372",
+   "criticality": 0.0,
+   "sensitivity": 0.091904,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03730",
+   "name": "ELEC activity 373",
+   "criticality": 0.0,
+   "sensitivity": 0.255036,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03740",
+   "name": "ELEC activity 374",
+   "criticality": 0.0,
+   "sensitivity": 0.197576,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03750",
+   "name": "ELEC activity 375",
+   "criticality": 0.0,
+   "sensitivity": 0.118594,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03760",
+   "name": "ELEC activity 376",
+   "criticality": 0.0,
+   "sensitivity": 0.220284,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03780",
+   "name": "ELEC activity 378",
+   "criticality": 0.0,
+   "sensitivity": 0.298483,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03810",
+   "name": "ELEC activity 381",
+   "criticality": 0.0,
+   "sensitivity": 0.189351,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03820",
+   "name": "ELEC activity 382",
+   "criticality": 0.0,
+   "sensitivity": 0.24657,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03830",
+   "name": "ELEC activity 383",
+   "criticality": 0.0,
+   "sensitivity": 0.214111,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03840",
+   "name": "ELEC activity 384",
+   "criticality": 0.0,
+   "sensitivity": 0.238845,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03850",
+   "name": "ELEC activity 385",
+   "criticality": 0.0,
+   "sensitivity": 0.220687,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03860",
+   "name": "ELEC activity 386",
+   "criticality": 0.0,
+   "sensitivity": 0.274266,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03880",
+   "name": "ELEC activity 388",
+   "criticality": 0.0,
+   "sensitivity": 0.138986,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03890",
+   "name": "ELEC activity 389",
+   "criticality": 0.0,
+   "sensitivity": 0.165587,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03900",
+   "name": "ELEC activity 390",
+   "criticality": 0.0,
+   "sensitivity": 0.231839,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03910",
+   "name": "ELEC activity 391",
+   "criticality": 0.0,
+   "sensitivity": 0.227993,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03920",
+   "name": "ELEC activity 392",
+   "criticality": 0.0,
+   "sensitivity": 0.172454,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03930",
+   "name": "ELEC activity 393",
+   "criticality": 0.0,
+   "sensitivity": 0.187153,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03940",
+   "name": "ELEC activity 394",
+   "criticality": 0.0,
+   "sensitivity": 0.055615,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03950",
+   "name": "ELEC activity 395",
+   "criticality": 0.0,
+   "sensitivity": 0.180996,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03960",
+   "name": "ELEC activity 396",
+   "criticality": 0.0,
+   "sensitivity": 0.206647,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03970",
+   "name": "ELEC activity 397",
+   "criticality": 0.0,
+   "sensitivity": 0.089828,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03980",
+   "name": "ELEC activity 398",
+   "criticality": 0.0,
+   "sensitivity": 0.153581,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A03990",
+   "name": "ELEC activity 399",
+   "criticality": 0.0,
+   "sensitivity": 0.210663,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04010",
+   "name": "ELEC activity 401",
+   "criticality": 0.0,
+   "sensitivity": 0.165299,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04020",
+   "name": "ELEC activity 402",
+   "criticality": 0.0,
+   "sensitivity": 0.206221,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04030",
+   "name": "ELEC activity 403",
+   "criticality": 0.0,
+   "sensitivity": 0.230562,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04040",
+   "name": "ELEC activity 404",
+   "criticality": 0.0,
+   "sensitivity": 0.14602,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04050",
+   "name": "ELEC activity 405",
+   "criticality": 0.0,
+   "sensitivity": 0.187544,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04060",
+   "name": "ELEC activity 406",
+   "criticality": 0.0,
+   "sensitivity": 0.1868,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04070",
+   "name": "ELEC activity 407",
+   "criticality": 0.0,
+   "sensitivity": 0.180172,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04080",
+   "name": "ELEC activity 408",
+   "criticality": 0.0,
+   "sensitivity": 0.187334,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04090",
+   "name": "ELEC activity 409",
+   "criticality": 0.0,
+   "sensitivity": 0.142175,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04110",
+   "name": "ELEC activity 411",
+   "criticality": 0.0,
+   "sensitivity": 0.248232,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04130",
+   "name": "ELEC activity 413",
+   "criticality": 0.0,
+   "sensitivity": 0.152065,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04140",
+   "name": "ELEC activity 414",
+   "criticality": 0.0,
+   "sensitivity": 0.225168,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04150",
+   "name": "ELEC activity 415",
+   "criticality": 0.0,
+   "sensitivity": 0.200644,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04170",
+   "name": "ELEC activity 417",
+   "criticality": 0.0,
+   "sensitivity": 0.159963,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04180",
+   "name": "COMM activity 418",
+   "criticality": 0.0,
+   "sensitivity": -0.056265,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04190",
+   "name": "COMM activity 419",
+   "criticality": 0.0,
+   "sensitivity": 0.077912,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04200",
+   "name": "COMM activity 420",
+   "criticality": 0.0,
+   "sensitivity": 0.117483,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04230",
+   "name": "COMM activity 423",
+   "criticality": 0.0,
+   "sensitivity": 0.030766,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04240",
+   "name": "COMM activity 424",
+   "criticality": 0.0,
+   "sensitivity": -0.02221,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04250",
+   "name": "COMM activity 425",
+   "criticality": 0.0,
+   "sensitivity": -0.034735,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04260",
+   "name": "COMM activity 426",
+   "criticality": 0.0,
+   "sensitivity": 0.035945,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04280",
+   "name": "COMM activity 428",
+   "criticality": 0.0,
+   "sensitivity": -0.021398,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04290",
+   "name": "COMM activity 429",
+   "criticality": 0.0,
+   "sensitivity": 0.017913,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04310",
+   "name": "COMM activity 431",
+   "criticality": 0.0,
+   "sensitivity": 0.011721,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04320",
+   "name": "COMM activity 432",
+   "criticality": 0.0,
+   "sensitivity": -0.002205,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04330",
+   "name": "COMM activity 433",
+   "criticality": 0.0,
+   "sensitivity": 0.005872,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04340",
+   "name": "COMM activity 434",
+   "criticality": 0.0,
+   "sensitivity": -0.05452,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04350",
+   "name": "COMM activity 435",
+   "criticality": 0.0,
+   "sensitivity": 0.035702,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04370",
+   "name": "COMM activity 437",
+   "criticality": 0.0,
+   "sensitivity": -0.006099,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04380",
+   "name": "COMM activity 438",
+   "criticality": 0.0,
+   "sensitivity": 0.069704,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04400",
+   "name": "COMM activity 440",
+   "criticality": 0.0,
+   "sensitivity": -0.015652,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04410",
+   "name": "COMM activity 441",
+   "criticality": 0.0,
+   "sensitivity": 0.024685,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04420",
+   "name": "COMM activity 442",
+   "criticality": 0.0,
+   "sensitivity": -0.002294,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04450",
+   "name": "COMM activity 445",
+   "criticality": 0.0,
+   "sensitivity": 0.030964,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04470",
+   "name": "COMM activity 447",
+   "criticality": 0.0,
+   "sensitivity": -0.032836,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04480",
+   "name": "COMM activity 448",
+   "criticality": 0.0,
+   "sensitivity": -0.064261,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04500",
+   "name": "COMM activity 450",
+   "criticality": 0.0,
+   "sensitivity": 0.027262,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04510",
+   "name": "COMM activity 451",
+   "criticality": 0.0,
+   "sensitivity": -0.023593,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04560",
+   "name": "COMM activity 456",
+   "criticality": 0.0,
+   "sensitivity": -0.03727,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04580",
+   "name": "COMM activity 458",
+   "criticality": 0.0,
+   "sensitivity": 0.071507,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04590",
+   "name": "COMM activity 459",
+   "criticality": 0.0,
+   "sensitivity": 0.02237,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04610",
+   "name": "COMM activity 461",
+   "criticality": 0.0,
+   "sensitivity": -0.032161,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04620",
+   "name": "COMM activity 462",
+   "criticality": 0.0,
+   "sensitivity": 0.079943,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04630",
+   "name": "COMM activity 463",
+   "criticality": 0.0,
+   "sensitivity": -0.068497,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04640",
+   "name": "COMM activity 464",
+   "criticality": 0.0,
+   "sensitivity": 0.037363,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04650",
+   "name": "COMM activity 465",
+   "criticality": 0.0,
+   "sensitivity": 0.09298,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04660",
+   "name": "COMM activity 466",
+   "criticality": 0.0,
+   "sensitivity": 0.023303,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04670",
+   "name": "COMM activity 467",
+   "criticality": 0.0,
+   "sensitivity": 0.036414,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04680",
+   "name": "COMM activity 468",
+   "criticality": 0.0,
+   "sensitivity": 0.037323,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04690",
+   "name": "COMM activity 469",
+   "criticality": 0.0,
+   "sensitivity": 0.116719,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04740",
+   "name": "COMM activity 474",
+   "criticality": 0.0,
+   "sensitivity": -0.074191,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04760",
+   "name": "COMM activity 476",
+   "criticality": 0.0,
+   "sensitivity": 0.018426,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04770",
+   "name": "COMM activity 477",
+   "criticality": 0.0,
+   "sensitivity": -0.049638,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04790",
+   "name": "COMM activity 479",
+   "criticality": 0.0,
+   "sensitivity": 0.037757,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04800",
+   "name": "COMM activity 480",
+   "criticality": 0.0,
+   "sensitivity": 0.051798,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04810",
+   "name": "COMM activity 481",
+   "criticality": 0.0,
+   "sensitivity": 0.018133,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04820",
+   "name": "COMM activity 482",
+   "criticality": 0.0,
+   "sensitivity": -0.030733,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04830",
+   "name": "COMM activity 483",
+   "criticality": 0.0,
+   "sensitivity": 0.031092,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04840",
+   "name": "COMM activity 484",
+   "criticality": 0.0,
+   "sensitivity": 0.091696,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04850",
+   "name": "COMM activity 485",
+   "criticality": 0.0,
+   "sensitivity": 0.033099,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04860",
+   "name": "COMM activity 486",
+   "criticality": 0.0,
+   "sensitivity": 0.003955,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04870",
+   "name": "COMM activity 487",
+   "criticality": 0.0,
+   "sensitivity": 0.001134,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04890",
+   "name": "COMM activity 489",
+   "criticality": 0.0,
+   "sensitivity": 0.059107,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04900",
+   "name": "COMM activity 490",
+   "criticality": 0.0,
+   "sensitivity": -0.008512,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04910",
+   "name": "COMM activity 491",
+   "criticality": 0.0,
+   "sensitivity": 0.023541,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04920",
+   "name": "COMM activity 492",
+   "criticality": 0.0,
+   "sensitivity": 0.027461,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04930",
+   "name": "COMM activity 493",
+   "criticality": 0.0,
+   "sensitivity": 0.035812,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04940",
+   "name": "COMM activity 494",
+   "criticality": 0.0,
+   "sensitivity": -0.076364,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04950",
+   "name": "COMM activity 495",
+   "criticality": 0.0,
+   "sensitivity": -0.009539,
+   "cruciality": -0.0
+  },
+  {
+   "code": "A04980",
+   "name": "COMM activity 498",
+   "criticality": 0.0,
+   "sensitivity": 0.03309,
+   "cruciality": 0.0
+  },
+  {
+   "code": "A04990",
+   "name": "COMM activity 499",
+   "criticality": 0.0,
+   "sensitivity": -0.016586,
+   "cruciality": -0.0
+  }
+ ],
+ "risks": [
+  {
+   "id": "R01",
+   "title": "Late vendor data for long-lead equipment",
+   "occurrence": 0.4,
+   "sensitivity": 0.829561,
+   "mean_finish_delta_days": 104.4231
+  },
+  {
+   "id": "R04",
+   "title": "Commissioning rework",
+   "occurrence": 0.5,
+   "sensitivity": 0.404453,
+   "mean_finish_delta_days": 43.5336
+  },
+  {
+   "id": "R02",
+   "title": "Ground conditions worse than survey",
+   "occurrence": 0.25,
+   "sensitivity": 0.222996,
+   "mean_finish_delta_days": 28.7359
+  },
+  {
+   "id": "R03",
+   "title": "Permit approval delay",
+   "occurrence": 0.3,
+   "sensitivity": -0.011262,
+   "mean_finish_delta_days": 3.1065
+  }
+ ],
+ "drivers": [
+  {
+   "id": "D01",
+   "title": "Site productivity",
+   "sensitivity": 0.346009
+  },
+  {
+   "id": "D02",
+   "title": "Weather (7-day crews)",
+   "sensitivity": 0.043955
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+bin/
+obj/
+.vs/
+*.user
+sra-output/
+__pycache__/
+TestResults/

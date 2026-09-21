@@ -1,0 +1,201 @@
+@inherits StateComponent
+
+<div class="card">
+    <div class="row">
+        <label class="chk"><input type="checkbox" @bind="withMitigation" disabled="@State.Running" /> Also run post-mitigation</label>
+        <span class="muted small">@IterationText</span>
+        <span class="spacer"></span>
+        @if (State.Running)
+        {
+            <button @onclick="State.Cancel">Cancel</button>
+        }
+        else
+        {
+            <button class="primary" @onclick="Run" disabled="@(State.Cpm == null)">Run simulation</button>
+        }
+    </div>
+    @if (State.Running)
+    {
+        <div class="row" style="margin-top:12px">
+            <span>@State.RunLabel</span>
+            <div class="progress"><div style="width:@ProgressPct"></div></div>
+            <span class="muted small">@State.Done.ToString("N0") / @State.Total.ToString("N0")</span>
+        </div>
+    }
+</div>
+
+@if (State.ModelWarnings.Count > 0)
+{
+    <details style="margin-top:10px">
+        <summary>@State.ModelWarnings.Count model warnings</summary>
+        <ul class="small">
+            @foreach (var w in State.ModelWarnings)
+            {
+                <li>@w</li>
+            }
+        </ul>
+    </details>
+}
+
+@if (State.Pre != null && State.Schedule != null)
+{
+    var pre = State.Pre;
+    var post = State.Post;
+    var s = State.Schedule;
+    var pcal = s.Settings.ProjectCalendar;
+    double mpd = pcal.MinutesPerDay;
+    long p50 = pre.FinishPercentiles[50], p80 = pre.FinishPercentiles[80], p90 = pre.FinishPercentiles[90];
+
+    <div class="row" style="margin-top:14px">
+        <h2 style="margin:0">Results</h2>
+        <span class="muted small">@pre.Iterations.ToString("N0") iterations, seed @pre.Seed, @pre.Elapsed.TotalSeconds.ToString("F1") s</span>
+        <span class="spacer"></span>
+        <button @onclick="DownloadReport">Download report (HTML)</button>
+        <button @onclick="DownloadCsv">Download tables (CSV)</button>
+    </div>
+
+    <div class="tiles">
+        <div class="tile"><b>@AppState.Day(pre.DeterministicFinish)</b><span>Deterministic finish</span></div>
+        <div class="tile"><b>@Pct(pre.ProbMeetDeterministic)</b><span>Chance of meeting it</span></div>
+        <div class="tile"><b>@AppState.Day(p50)</b><span>P50 (+@Num(pcal.WorkBetween(pre.DeterministicFinish, p50) / mpd, 0) working days)</span></div>
+        <div class="tile"><b>@AppState.Day(p80)</b><span>P80 (+@Num(pcal.WorkBetween(pre.DeterministicFinish, p80) / mpd, 0) working days)</span></div>
+        @if (post != null)
+        {
+            <div class="tile"><b>@AppState.Day(post.FinishPercentiles[80])</b><span>P80 after mitigation (@Num(pcal.WorkBetween(p80, post.FinishPercentiles[80]) / mpd, 0) days)</span></div>
+        }
+        else
+        {
+            <div class="tile"><b>@AppState.Day(p90)</b><span>P90</span></div>
+        }
+    </div>
+
+    <h3>Project finish</h3>
+    <div class="card">
+        @((MarkupString)HtmlReport.SCurve(pre, post, s))
+        <div class="legend">
+            <span><i class="sw" style="background:var(--a)"></i>Pre-mitigation</span>
+            @if (post != null)
+            {
+                <span><i class="sw" style="background:var(--b)"></i>Post-mitigation</span>
+            }
+            <span class="muted">Bars: spread of finish dates. Dashed line: deterministic finish.</span>
+        </div>
+    </div>
+
+    <h3>Confidence levels</h3>
+    <div class="card wrap" style="padding:0">
+        <table class="plain">
+            <tr><th>Percentile</th><th>Pre-mitigation</th>
+                @if (post != null)
+                {
+                    <th>Post-mitigation</th><th class="n">Gain (working days)</th>
+                }
+            </tr>
+            @foreach (var kv in pre.FinishPercentiles)
+            {
+                <tr>
+                    <td>P@(kv.Key)</td>
+                    <td>@AppState.Day(kv.Value)</td>
+                    @if (post != null)
+                    {
+                        long pv = post.FinishPercentiles[kv.Key];
+                        <td>@AppState.Day(pv)</td>
+                        <td class="n">@Num(pcal.WorkBetween(pv, kv.Value) / mpd)</td>
+                    }
+                </tr>
+            }
+        </table>
+    </div>
+
+    if (pre.Risks.Count > 0)
+    {
+        <h3>Which risks matter</h3>
+        <p class="muted small">Bar length: how strongly the risk's impact moves the finish date (rank correlation). Delta: average finish when the risk happens minus when it does not.</p>
+        <div class="card">@((MarkupString)HtmlReport.Tornado(pre.Risks.Take(15).Select(r => (r.Id + " " + r.Title, r.Sensitivity)).ToList()))</div>
+        <div class="card wrap" style="padding:0;margin-top:8px">
+            <table class="plain">
+                <tr><th>Risk</th><th class="n">Occurred</th><th class="n">Sensitivity</th><th class="n">Finish delta (working days)</th></tr>
+                @foreach (var r in pre.Risks)
+                {
+                    <tr><td>@r.Id @r.Title</td><td class="n">@Pct(r.Occurrence)</td><td class="n">@Num(r.Sensitivity, 2)</td>
+                        <td class="n">@(r.MeanFinishDeltaDays.HasValue ? Num(r.MeanFinishDeltaDays.Value) : "")</td></tr>
+                }
+            </table>
+        </div>
+    }
+    if (pre.Drivers.Count > 0)
+    {
+        <h3>Risk drivers</h3>
+        <div class="card">@((MarkupString)HtmlReport.Tornado(pre.Drivers.Select(d => (d.Id + " " + d.Title, d.Sensitivity)).ToList()))</div>
+    }
+
+    <h3>Activities that drive the finish</h3>
+    <p class="muted small">Criticality: share of iterations in which the activity was critical. Sensitivity: how closely its duration tracks the finish date. Cruciality = both together; start here.</p>
+    <div class="card wrap" style="padding:0">
+        <table class="plain">
+            <tr><th>Activity</th><th class="n">Criticality</th><th class="n">Sensitivity</th><th class="n">Cruciality</th></tr>
+            @foreach (var a in pre.Activities.Take(showAll ? 500 : 25))
+            {
+                <tr><td>@a.Code <span class="muted">@a.Name</span></td><td class="n">@Pct(a.Criticality)</td><td class="n">@Num(a.Sensitivity, 2)</td><td class="n">@Num(a.Cruciality, 3)</td></tr>
+            }
+        </table>
+    </div>
+    if (pre.Activities.Count > 25)
+    {
+        <button class="link" @onclick="@(() => showAll = !showAll)">@(showAll ? "Show top 25" : $"Show up to 500 of {pre.Activities.Count:N0}")</button>
+    }
+
+    if (pre.Milestones.Count > 0)
+    {
+        <h3>Milestones</h3>
+        <div class="card wrap" style="padding:0">
+            <table class="plain">
+                <tr><th>Milestone</th><th>Deterministic</th><th>P10</th><th>P50</th><th>P80</th><th>P90</th></tr>
+                @foreach (var ms in pre.Milestones)
+                {
+                    <tr><td>@ms.Code <span class="muted">@ms.Name</span></td><td>@AppState.Day(ms.Deterministic)</td><td>@AppState.Day(ms.P10)</td>
+                        <td>@AppState.Day(ms.P50)</td><td>@AppState.Day(ms.P80)</td><td>@AppState.Day(ms.P90)</td></tr>
+                }
+            </table>
+        </div>
+    }
+}
+else if (!State.Running)
+{
+    <div class="drop" style="margin-top:14px;padding:32px">
+        <h2>Ready to simulate</h2>
+        <p class="muted">Uses the risk model from step 2. Everything runs in this browser tab; larger schedules take longer.</p>
+    </div>
+}
+
+@code {
+    private bool withMitigation = true;
+    private bool showAll;
+
+    private string IterationText => State.Model.Convergence.Enabled
+        ? $"until converged (max {State.Model.Convergence.MaxIterations:N0} iterations)"
+        : $"{State.Model.Iterations:N0} iterations per scenario";
+
+    private string ProgressPct => State.Total > 0
+        ? (100.0 * State.Done / State.Total).ToString("F1", CultureInfo.InvariantCulture) + "%"
+        : "0%";
+
+    private Task Run() => State.RunAsync(withMitigation && State.Model.Risks.Any(r => r.Mitigated));
+
+    private async Task DownloadReport()
+    {
+        if (State.Pre == null || State.Schedule == null || State.Cpm == null) return;
+        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Checks,
+            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name);
+        await Download($"{State.Schedule.ProjectCode}-risk-report.html", "text/html", html);
+    }
+
+    private async Task DownloadCsv()
+    {
+        if (State.Pre == null || State.Schedule == null) return;
+        string code = State.Schedule.ProjectCode;
+        await Download($"{code}-activities.csv", "text/csv", CsvExport.Activities(State.Pre));
+        await Download($"{code}-risks.csv", "text/csv", CsvExport.Risks(State.Pre));
+        if (State.PreResult != null) await Download($"{code}-iterations.csv", "text/csv", CsvExport.Iterations(State.PreResult));
+    }
+}

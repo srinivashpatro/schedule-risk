@@ -1,0 +1,22 @@
+@* Three-point distribution: type, min, most likely, max. *@
+<span class="filter">
+    <select @bind="Dist.Distribution" title="Distribution">
+        <option value="triangle">Triangle</option>
+        <option value="pert">PERT</option>
+        <option value="uniform">Uniform</option>
+    </select>
+    <input type="number" step="any" @bind="Dist.Min" title="Minimum" />
+    @if (Dist.Distribution != "uniform")
+    {
+        <input type="number" step="any" @bind="Dist.MostLikely" title="Most likely" />
+    }
+    <input type="number" step="any" @bind="Dist.Max" title="Maximum" />
+    @if (Dist.Validate() is string err)
+    {
+        <span class="fail small" title="@err">!</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public DistSpec Dist { get; set; } = null!;
+}

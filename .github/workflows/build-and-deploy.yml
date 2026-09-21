@@ -1,0 +1,58 @@
+name: Build, test and publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build
+        run: dotnet build ScheduleRisk.sln -c Release
+
+      - name: Test
+        run: dotnet test ScheduleRisk.sln -c Release --no-build --logger "console;verbosity=normal"
+
+      - name: Python reference tests
+        run: cd reference/python && python3 -m unittest discover -s tests
+
+      - name: Publish web app
+        run: dotnet publish src/ScheduleRisk.Web -c Release -o publish
+
+      - name: Prepare for GitHub Pages
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO}/\" />|" publish/wwwroot/index.html
+          cp publish/wwwroot/index.html publish/wwwroot/404.html
+          touch publish/wwwroot/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
