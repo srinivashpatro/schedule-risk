@@ -5,9 +5,10 @@ read a P6 XER file, recalculate it with a CPM engine that follows P6's rules,
 check the schedule's health, apply a risk model, run a Monte Carlo simulation,
 and report P-dates, criticality, sensitivity and risk rankings.
 
-Status: **v0.2 - engine core, command line, and a browser app (Blazor WebAssembly).**
+Status: **v0.3 - engine core, command line, and a browser app (Blazor WebAssembly).**
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
-and the site can be hosted as plain static files.
+and the site can be hosted as plain static files. Try it at
+<https://srinivashpatro.github.io/schedule-risk/>.
 
 ## Build and test (Windows)
 
@@ -15,9 +16,9 @@ and the site can be hosted as plain static files.
 2. Open a terminal in this folder and run `build-and-test.cmd`
    (or open `ScheduleRisk.sln` in Visual Studio 2022 and use Test Explorer).
 
-> The C# code was written in a sandbox **without a .NET compiler**. It was checked against a
-> Python twin of the engine that *was* run and tested, but the first `dotnet build` may still
-> report compile errors. Paste them back to Claude and they will be fixed.
+GitHub Actions runs the same build and tests, plus the Python reference tests, on every push to
+`main`, and publishes the browser app to GitHub Pages when they pass
+(see [.github/workflows/build-and-deploy.yml](.github/workflows/build-and-deploy.yml)).
 
 ## Browser app
 
@@ -34,7 +35,8 @@ one CPU core in the browser, so they are much slower than the command line (spee
 measured). For large schedules, turn on ahead-of-time compilation: run
 `dotnet workload install wasm-tools` once and add `<RunAOTCompilation>true</RunAOTCompilation>`
 to `ScheduleRisk.Web.csproj` before publishing (bigger download, several times faster).
-If you host it in a sub-folder (e.g. GitHub Pages), change `<base href="/">` in
+For GitHub Pages the workflow sets `<base href>` to the repository's sub-folder automatically.
+To host the site in a sub-folder anywhere else, change `<base href="/" />` in
 `src/ScheduleRisk.Web/wwwroot/index.html` to that folder.
 
 ## Command line
