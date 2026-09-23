@@ -11,6 +11,14 @@ window.sraDownload = function (fileName, contentType, text) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
 
+// Keep --nav-h equal to the sticky top bar's height (it wraps on narrow screens) so
+// the risk-model side column can stick just below it.
+window.sraWatchNav = function () {
+    const nav = document.querySelector(".topnav");
+    if (!nav || !window.ResizeObserver) return;
+    new ResizeObserver(() => document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px")).observe(nav);
+};
+
 // Hover readout for the project-finish chart (HtmlReport.SCurve with interactive: true).
 // Its div.scurve carries per-day data in data-scurve: for every calendar day, how many
 // iterations finished by the end of that day. A crosshair snaps to the nearest day and one

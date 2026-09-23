@@ -1,19 +1,19 @@
 @* Three-point distribution: type, min, most likely, max. *@
 <span class="filter">
-    <select @bind="Dist.Distribution" title="Distribution">
+    <select class="input sm" @bind="Dist.Distribution" title="Distribution" aria-label="Distribution">
         <option value="triangle">Triangle</option>
         <option value="pert">PERT</option>
         <option value="uniform">Uniform</option>
     </select>
-    <input type="number" step="any" @bind="Dist.Min" title="Minimum" />
+    <input class="input sm" type="number" step="any" @bind="Dist.Min" title="Minimum" aria-label="Minimum" />
     @if (Dist.Distribution != "uniform")
     {
-        <input type="number" step="any" @bind="Dist.MostLikely" title="Most likely" />
+        <input class="input sm ml" type="number" step="any" @bind="Dist.MostLikely" title="Most likely" aria-label="Most likely" />
     }
-    <input type="number" step="any" @bind="Dist.Max" title="Maximum" />
+    <input class="input sm" type="number" step="any" @bind="Dist.Max" title="Maximum" aria-label="Maximum" />
     @if (Dist.Validate() is string err)
     {
-        <span class="fail small" title="@err">!</span>
+        <span class="tag tag-accent" title="@err">! @err</span>
     }
 </span>
 

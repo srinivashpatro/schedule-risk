@@ -1,40 +1,13 @@
 @inherits StateComponent
 
-<div class="card">
-    <div class="row">
-        <label class="chk"><input type="checkbox" @bind="withMitigation" disabled="@State.Running" /> Also run post-mitigation</label>
-        <span class="muted small">@IterationText</span>
-        <span class="spacer"></span>
-        @if (State.Running)
-        {
-            <button @onclick="State.Cancel">Cancel</button>
-        }
-        else
-        {
-            <button class="primary" @onclick="Run" disabled="@(State.Cpm == null)">Run simulation</button>
-        }
-    </div>
-    @if (State.Running)
-    {
-        <div class="row" style="margin-top:12px">
-            <span>@State.RunLabel</span>
-            <div class="progress"><div style="width:@ProgressPct"></div></div>
-            <span class="muted small">@State.Done.ToString("N0") / @State.Total.ToString("N0")</span>
-        </div>
-    }
-</div>
-
-@if (State.ModelWarnings.Count > 0)
+@if (State.Running)
 {
-    <details style="margin-top:10px">
-        <summary>@State.ModelWarnings.Count model warnings</summary>
-        <ul class="small">
-            @foreach (var w in State.ModelWarnings)
-            {
-                <li>@w</li>
-            }
-        </ul>
-    </details>
+    <section class="pad rule-b runbar">
+        <span class="strong">@State.RunLabel</span>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="@State.Total" aria-valuenow="@State.Done"><div style="width:@ProgressPct"></div></div>
+        <span class="sub">@State.Done.ToString("N0") / @State.Total.ToString("N0")</span>
+        <button class="btn btn-secondary" @onclick="State.Cancel">Cancel</button>
+    </section>
 }
 
 @if (State.Pre != null && State.Schedule != null)
@@ -44,158 +17,285 @@
     var s = State.Schedule;
     var pcal = s.Settings.ProjectCalendar;
     double mpd = pcal.MinutesPerDay;
-    long p50 = pre.FinishPercentiles[50], p80 = pre.FinishPercentiles[80], p90 = pre.FinishPercentiles[90];
+    int pct = State.Percentile;
+    long det = pre.DeterministicFinish;
+    long q50 = pre.FinishPercentiles[50], qp = Q(pre, pct);
+    double WorkDays(long a, long b) => pcal.WorkBetween(a, b) / mpd;
+    string Delta(long t) { double d = WorkDays(det, t); return (d >= 0 ? "+" : "") + Num(d, 0) + " working days"; }
 
-    <div class="row" style="margin-top:14px">
-        <h2 style="margin:0">Results</h2>
-        <span class="muted small">@pre.Iterations.ToString("N0") iterations, seed @pre.Seed, @pre.Elapsed.TotalSeconds.ToString("F1") s</span>
-        <span class="spacer"></span>
-        <button @onclick="DownloadReport">Download report (HTML)</button>
-        <button @onclick="DownloadCsv">Download tables (CSV)</button>
-    </div>
-
-    <div class="tiles">
-        <div class="tile"><b>@AppState.Day(pre.DeterministicFinish)</b><span>Deterministic finish</span></div>
-        <div class="tile"><b>@Pct(pre.ProbMeetDeterministic)</b><span>Chance of meeting it</span></div>
-        <div class="tile"><b>@AppState.Day(p50)</b><span>P50 (+@Num(pcal.WorkBetween(pre.DeterministicFinish, p50) / mpd, 0) working days)</span></div>
-        <div class="tile"><b>@AppState.Day(p80)</b><span>P80 (+@Num(pcal.WorkBetween(pre.DeterministicFinish, p80) / mpd, 0) working days)</span></div>
+    <section class="kpis rule-b">
+        <div class="kpi hot">
+            <span class="l">Chance of deterministic finish</span>
+            <span class="v">@Pct(pre.ProbMeetDeterministic)</span>
+            <span class="s">@AppState.Day(det)</span>
+        </div>
+        <div class="kpi">
+            <span class="l">P50 finish</span>
+            <span class="v">@Short(q50)</span>
+            <span class="s">@Delta(q50) vs deterministic</span>
+        </div>
+        <div class="kpi">
+            <span class="l">P@(pct) finish</span>
+            <span class="v">@Short(qp)</span>
+            <span class="s">@Delta(qp) vs deterministic</span>
+        </div>
+        <div class="kpi">
+            <span class="l">Contingency at P@(pct)</span>
+            <span class="v">@Num(Math.Max(0, WorkDays(det, qp)), 0) days</span>
+            <span class="s">@TopDriver(pre)</span>
+        </div>
         @if (post != null)
         {
-            <div class="tile"><b>@AppState.Day(post.FinishPercentiles[80])</b><span>P80 after mitigation (@Num(pcal.WorkBetween(p80, post.FinishPercentiles[80]) / mpd, 0) days)</span></div>
+            long pp = Q(post, pct);
+            double gain = WorkDays(pp, qp);
+            <div class="kpi">
+                <span class="l">P@(pct) after mitigation</span>
+                <span class="v">@Short(pp)</span>
+                <span class="s">@Num(Math.Abs(gain), 0) working days @(gain >= 0 ? "earlier" : "later")</span>
+            </div>
+        }
+    </section>
+
+    <section class="chart-row rule-b">
+        <div class="chart-col">
+            <div class="headrow wrap-row">
+                <div>
+                    <h4>Finish date distribution</h4>
+                    <span class="sub">@pre.Iterations.ToString("N0") iterations · seed @pre.Seed · @pre.Elapsed.TotalSeconds.ToString("F1") s</span>
+                </div>
+                <div class="chart-controls">
+                    <div class="seg" role="radiogroup" aria-label="Chart type">
+                        <label class="seg-opt"><input type="radio" name="chart" checked="@histogram" @onchange="@(() => histogram = true)" />Histogram</label>
+                        <label class="seg-opt"><input type="radio" name="chart" checked="@(!histogram)" @onchange="@(() => histogram = false)" />Cumulative</label>
+                    </div>
+                    <div class="slider">
+                        <label for="conf" class="sub">Confidence P@(pct)</label>
+                        <input id="conf" type="range" min="5" max="95" step="5" value="@pct" @oninput="SetPercentile" />
+                    </div>
+                </div>
+            </div>
+            @((MarkupString)HtmlReport.SCurve(pre, post, s, interactive: true, percentile: pct, histogram: histogram))
+            <div class="legend">
+                @if (!histogram)
+                {
+                    <span><i class="key-line" style="background:var(--a)"></i>Pre-mitigation</span>
+                    @if (post != null)
+                    {
+                        <span><i class="key-line" style="background:var(--b)"></i>Post-mitigation</span>
+                    }
+                }
+                <span><i class="key-box in"></i><i class="key-box"></i>@(post != null ? "Pre-mitigation finish dates" : "Finish dates"), red up to P@(pct)</span>
+                <span><i class="key-dash"></i>Deterministic finish</span>
+                <span class="sub">Hover or use the arrow keys to read the chance of finishing by any date.</span>
+            </div>
+        </div>
+        <div class="conf-col">
+            <h4>Confidence table</h4>
+            <div class="wrap">
+                <table class="table conf">
+                    <thead>
+                        <tr>
+                            <th>Level</th>
+                            @if (post != null)
+                            {
+                                <th>Pre</th><th>Post</th><th class="n">Gain (d)</th>
+                            }
+                            else
+                            {
+                                <th>Finish</th><th class="n">Δ (working d)</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var kv in pre.FinishPercentiles)
+                        {
+                            int level = kv.Key;
+                            <tr class="@(level == pct ? "sel" : "")" @onclick="@(() => State.Percentile = level)" tabindex="0"
+                                @onkeydown="@(e => { if (e.Key is "Enter" or " ") State.Percentile = level; })" aria-selected="@(level == pct ? "true" : "false")">
+                                <td>P@(level)</td>
+                                <td class="nowrap">@AppState.Day(kv.Value)</td>
+                                @if (post != null)
+                                {
+                                    long pv = post.FinishPercentiles[level];
+                                    <td class="nowrap">@AppState.Day(pv)</td>
+                                    <td class="n">@Num(WorkDays(pv, kv.Value))</td>
+                                }
+                                else
+                                {
+                                    <td class="n">@(WorkDays(det, kv.Value) >= 0 ? "+" : "")@Num(WorkDays(det, kv.Value), 0)</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <span class="sub">Click a row to show that level on the chart.</span>
+        </div>
+    </section>
+
+    <section class="two-col rule-b">
+        @if (pre.Risks.Count > 0)
+        {
+            var top = Math.Max(0.01, pre.Risks.Max(r => Math.Abs(r.Sensitivity)));
+            <div class="stack">
+                <div><h4>Risk ranking</h4><span class="sub">Rank correlation of each risk's impact with the project finish</span></div>
+                <div class="barlist">
+                    @foreach (var (r, i) in pre.Risks.Take(12).Select((r, i) => (r, i)))
+                    {
+                        <div class="barrow" title="@($"{r.Id} {r.Title}: occurred in {Pct(r.Occurrence)} of iterations" + (r.MeanFinishDeltaDays.HasValue ? $", finish {Num(r.MeanFinishDeltaDays.Value)} working days later on average when it does" : ""))">
+                            <span class="id">@r.Id</span>
+                            <span class="nm">@r.Title</span>
+                            <div class="track"><div class="fill @(i == 0 ? "top" : "")" style="width:@W(Math.Abs(r.Sensitivity), top)"></div></div>
+                            <span class="val">@Num(r.Sensitivity, 2)</span>
+                        </div>
+                    }
+                </div>
+            </div>
         }
         else
         {
-            <div class="tile"><b>@AppState.Day(p90)</b><span>P90</span></div>
-        }
-    </div>
-
-    <h3>Project finish</h3>
-    <div class="card">
-        @((MarkupString)HtmlReport.SCurve(pre, post, s, interactive: true))
-        <div class="legend">
-            <span><i class="sw" style="background:var(--a)"></i>Pre-mitigation</span>
-            @if (post != null)
-            {
-                <span><i class="sw" style="background:var(--b)"></i>Post-mitigation</span>
-            }
-            <span class="muted">Bars: spread of finish dates. Dashed line: deterministic finish. Hover the chart to read the chance of finishing by any date.</span>
-        </div>
-    </div>
-
-    <h3>Confidence levels</h3>
-    <div class="card wrap" style="padding:0">
-        <table class="plain">
-            <tr><th>Percentile</th><th>Pre-mitigation</th>
-                @if (post != null)
-                {
-                    <th>Post-mitigation</th><th class="n">Gain (working days)</th>
-                }
-            </tr>
-            @foreach (var kv in pre.FinishPercentiles)
-            {
-                <tr>
-                    <td>P@(kv.Key)</td>
-                    <td>@AppState.Day(kv.Value)</td>
-                    @if (post != null)
+            var bySens = pre.Activities.OrderByDescending(a => Math.Abs(a.Sensitivity)).Take(12).ToList();
+            var top = Math.Max(0.01, bySens.Select(a => Math.Abs(a.Sensitivity)).DefaultIfEmpty(0).Max());
+            <div class="stack">
+                <div><h4>Duration sensitivity</h4><span class="sub">Correlation of activity duration with project finish</span></div>
+                <div class="barlist">
+                    @foreach (var (a, i) in bySens.Select((a, i) => (a, i)))
                     {
-                        long pv = post.FinishPercentiles[kv.Key];
-                        <td>@AppState.Day(pv)</td>
-                        <td class="n">@Num(pcal.WorkBetween(pv, kv.Value) / mpd)</td>
+                        <div class="barrow" title="@($"{a.Code} {a.Name}")">
+                            <span class="id">@a.Code</span>
+                            <span class="nm">@a.Name</span>
+                            <div class="track"><div class="fill @(i == 0 ? "top" : "")" style="width:@W(Math.Abs(a.Sensitivity), top)"></div></div>
+                            <span class="val">@Num(a.Sensitivity, 2)</span>
+                        </div>
                     }
-                </tr>
-            }
-        </table>
-    </div>
-
-    if (pre.Risks.Count > 0)
-    {
-        <h3>Which risks matter</h3>
-        <p class="muted small">Bar length: how strongly the risk's impact moves the finish date (rank correlation). Delta: average finish when the risk happens minus when it does not.</p>
-        <div class="card">@((MarkupString)HtmlReport.Tornado(pre.Risks.Take(15).Select(r => (r.Id + " " + r.Title, r.Sensitivity)).ToList()))</div>
-        <div class="card wrap" style="padding:0;margin-top:8px">
-            <table class="plain">
-                <tr><th>Risk</th><th class="n">Occurred</th><th class="n">Sensitivity</th><th class="n">Finish delta (working days)</th></tr>
-                @foreach (var r in pre.Risks)
+                </div>
+            </div>
+        }
+        <div class="stack">
+            <div><h4>Criticality index</h4><span class="sub">Share of iterations where the activity sits on the critical path</span></div>
+            <div class="barlist">
+                @foreach (var a in pre.Activities.OrderByDescending(a => a.Criticality).ThenByDescending(a => a.Cruciality).Take(12))
                 {
-                    <tr><td>@r.Id @r.Title</td><td class="n">@Pct(r.Occurrence)</td><td class="n">@Num(r.Sensitivity, 2)</td>
-                        <td class="n">@(r.MeanFinishDeltaDays.HasValue ? Num(r.MeanFinishDeltaDays.Value) : "")</td></tr>
+                    <div class="barrow" title="@($"{a.Code} {a.Name}")">
+                        <span class="id">@a.Code</span>
+                        <span class="nm">@a.Name</span>
+                        <div class="track"><div class="fill ink" style="width:@W(a.Criticality, 1)"></div></div>
+                        <span class="val">@Pct(a.Criticality)</span>
+                    </div>
                 }
+            </div>
+        </div>
+    </section>
+
+    @if (pre.Drivers.Count > 0)
+    {
+        var topD = Math.Max(0.01, pre.Drivers.Max(d => Math.Abs(d.Sensitivity)));
+        <section class="pad rule-b stack">
+            <div><h4>Risk drivers</h4><span class="sub">Rank correlation of each driver's sampled factor with the project finish</span></div>
+            <div class="barlist narrow">
+                @foreach (var (d, i) in pre.Drivers.Select((d, i) => (d, i)))
+                {
+                    <div class="barrow" title="@($"{d.Id} {d.Title}")">
+                        <span class="id">@d.Id</span>
+                        <span class="nm">@d.Title</span>
+                        <div class="track"><div class="fill @(i == 0 ? "top" : "")" style="width:@W(Math.Abs(d.Sensitivity), topD)"></div></div>
+                        <span class="val">@Num(d.Sensitivity, 2)</span>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="pad rule-b stack">
+        <div><h4>Activities that drive the finish</h4><span class="sub">Criticality: share of iterations in which the activity was critical. Sensitivity: how closely its duration tracks the finish date. Cruciality = both together; start here.</span></div>
+        <div class="wrap">
+            <table class="table">
+                <thead><tr><th>ID</th><th>Activity</th><th class="n">Criticality</th><th class="n">Sensitivity</th><th class="n">Cruciality</th></tr></thead>
+                <tbody>
+                    @foreach (var a in pre.Activities.Take(showAll ? 500 : 25))
+                    {
+                        <tr><td class="dim">@a.Code</td><td class="strong">@a.Name</td><td class="n">@Pct(a.Criticality)</td><td class="n">@Num(a.Sensitivity, 2)</td><td class="n">@Num(a.Cruciality, 3)</td></tr>
+                    }
+                </tbody>
             </table>
         </div>
-    }
-    if (pre.Drivers.Count > 0)
+        @if (pre.Activities.Count > 25)
+        {
+            <div><button class="btn btn-ghost" @onclick="@(() => showAll = !showAll)">@(showAll ? "Show top 25" : $"Show up to 500 of {pre.Activities.Count:N0}")</button></div>
+        }
+    </section>
+
+    @if (pre.Milestones.Count > 0)
     {
-        <h3>Risk drivers</h3>
-        <div class="card">@((MarkupString)HtmlReport.Tornado(pre.Drivers.Select(d => (d.Id + " " + d.Title, d.Sensitivity)).ToList()))</div>
+        <section class="pad rule-b stack">
+            <h4>Milestones</h4>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Milestone</th><th>Deterministic</th><th>P10</th><th>P50</th><th>P80</th><th>P90</th></tr></thead>
+                    <tbody>
+                        @foreach (var ms in pre.Milestones)
+                        {
+                            <tr><td class="dim">@ms.Code</td><td class="strong">@ms.Name</td><td>@AppState.Day(ms.Deterministic)</td><td>@AppState.Day(ms.P10)</td>
+                                <td>@AppState.Day(ms.P50)</td><td>@AppState.Day(ms.P80)</td><td>@AppState.Day(ms.P90)</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
     }
 
-    <h3>Activities that drive the finish</h3>
-    <p class="muted small">Criticality: share of iterations in which the activity was critical. Sensitivity: how closely its duration tracks the finish date. Cruciality = both together; start here.</p>
-    <div class="card wrap" style="padding:0">
-        <table class="plain">
-            <tr><th>Activity</th><th class="n">Criticality</th><th class="n">Sensitivity</th><th class="n">Cruciality</th></tr>
-            @foreach (var a in pre.Activities.Take(showAll ? 500 : 25))
-            {
-                <tr><td>@a.Code <span class="muted">@a.Name</span></td><td class="n">@Pct(a.Criticality)</td><td class="n">@Num(a.Sensitivity, 2)</td><td class="n">@Num(a.Cruciality, 3)</td></tr>
-            }
-        </table>
-    </div>
-    if (pre.Activities.Count > 25)
-    {
-        <button class="link" @onclick="@(() => showAll = !showAll)">@(showAll ? "Show top 25" : $"Show up to 500 of {pre.Activities.Count:N0}")</button>
-    }
-
-    if (pre.Milestones.Count > 0)
-    {
-        <h3>Milestones</h3>
-        <div class="card wrap" style="padding:0">
-            <table class="plain">
-                <tr><th>Milestone</th><th>Deterministic</th><th>P10</th><th>P50</th><th>P80</th><th>P90</th></tr>
-                @foreach (var ms in pre.Milestones)
-                {
-                    <tr><td>@ms.Code <span class="muted">@ms.Name</span></td><td>@AppState.Day(ms.Deterministic)</td><td>@AppState.Day(ms.P10)</td>
-                        <td>@AppState.Day(ms.P50)</td><td>@AppState.Day(ms.P80)</td><td>@AppState.Day(ms.P90)</td></tr>
-                }
-            </table>
-        </div>
-    }
+    <section class="pad runfoot">
+        @if (State.ModelWarnings.Count > 0)
+        {
+            <details>
+                <summary>@State.ModelWarnings.Count model warnings</summary>
+                <ul class="small">
+                    @foreach (var w in State.ModelWarnings)
+                    {
+                        <li>@w</li>
+                    }
+                </ul>
+            </details>
+        }
+        <span class="spacer"></span>
+        <button class="btn btn-secondary" disabled="@State.Running" @onclick="State.RunAsync">Run again</button>
+    </section>
 }
 else if (!State.Running)
 {
-    <div class="drop" style="margin-top:14px;padding:32px">
-        <h2>Ready to simulate</h2>
-        <p class="muted">Uses the risk model from step 2. Everything runs in this browser tab; larger schedules take longer.</p>
-    </div>
+    <section class="hero rule-b">
+        <div class="hero-text">
+            <span class="kicker">Step 03</span>
+            <h1>Ready to simulate</h1>
+            <p class="lede">Uses the risk model from step 2. Everything runs in this browser tab; larger schedules take longer.</p>
+        </div>
+        <div class="hero-drop ready">
+            <button class="btn btn-primary btn-wide" disabled="@(State.Cpm == null)" @onclick="State.RunAsync">Run simulation →</button>
+        </div>
+    </section>
 }
 
 @code {
-    private bool withMitigation = true;
+    private bool histogram;
     private bool showAll;
-
-    private string IterationText => State.Model.Convergence.Enabled
-        ? $"until converged (max {State.Model.Convergence.MaxIterations:N0} iterations)"
-        : $"{State.Model.Iterations:N0} iterations per scenario";
 
     private string ProgressPct => State.Total > 0
         ? (100.0 * State.Done / State.Total).ToString("F1", CultureInfo.InvariantCulture) + "%"
         : "0%";
 
-    private Task Run() => State.RunAsync(withMitigation && State.Model.Risks.Any(r => r.Mitigated));
+    private static long Q(SimulationSummary sum, int p) => Statistics.PercentileSorted(sum.SortedFinish, p);
 
-    private async Task DownloadReport()
-    {
-        if (State.Pre == null || State.Schedule == null || State.Cpm == null) return;
-        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Checks,
-            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name);
-        await Download($"{State.Schedule.ProjectCode}-risk-report.html", "text/html", html);
-    }
+    private static string Short(long m) => Time.FromMinutes(m).ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
 
-    private async Task DownloadCsv()
+    private static string W(double v, double top) =>
+        (Math.Clamp(v / top, 0, 1) * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+
+    private static string TopDriver(SimulationSummary pre) =>
+        pre.Risks.Count > 0 ? "Top risk: " + pre.Risks[0].Title
+        : pre.Activities.Count > 0 ? "Most crucial: " + pre.Activities[0].Name : "";
+
+    private void SetPercentile(ChangeEventArgs e)
     {
-        if (State.Pre == null || State.Schedule == null) return;
-        string code = State.Schedule.ProjectCode;
-        await Download($"{code}-activities.csv", "text/csv", CsvExport.Activities(State.Pre));
-        await Download($"{code}-risks.csv", "text/csv", CsvExport.Risks(State.Pre));
-        if (State.PreResult != null) await Download($"{code}-iterations.csv", "text/csv", CsvExport.Iterations(State.PreResult));
+        if (int.TryParse(e.Value?.ToString(), out int p)) State.Percentile = Math.Clamp(p, 5, 95);
     }
 }

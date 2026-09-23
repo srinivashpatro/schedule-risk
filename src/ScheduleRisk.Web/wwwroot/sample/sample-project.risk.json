@@ -1,0 +1,35 @@
+{
+  "name": "Synthetic 500 - example risk model",
+  "simulation": { "iterations": 500, "seed": 20260921, "sampling": "lhs" },
+  "uncertainty": [
+    { "filter": { "all": true }, "distribution": "pert", "min": 90, "mostLikely": 100, "max": 125, "units": "percent" },
+    { "filter": { "code": { "Discipline": ["PIP", "INS"] } }, "distribution": "triangle", "min": 95, "mostLikely": 105, "max": 150, "units": "percent" },
+    { "filter": { "wbs": "PROC" }, "distribution": "uniform", "min": 100, "mostLikely": 100, "max": 140, "units": "percent" }
+  ],
+  "risks": [
+    { "id": "R01", "title": "Late vendor data for long-lead equipment", "probability": 0.40,
+      "impact": { "distribution": "triangle", "min": 10, "mostLikely": 20, "max": 45, "units": "days" },
+      "filter": { "wbs": "PROC", "namePattern": "activity (1[0-2][0-9])$" },
+      "mitigated": { "probability": 0.15, "impact": { "distribution": "triangle", "min": 5, "mostLikely": 10, "max": 20, "units": "days" } } },
+    { "id": "R02", "title": "Ground conditions worse than survey", "probability": 0.25,
+      "impact": { "distribution": "pert", "min": 10, "mostLikely": 25, "max": 60, "units": "percent" },
+      "filter": { "wbs": "CIV" } },
+    { "id": "R03", "title": "Permit approval delay", "probability": 0.30,
+      "impact": { "distribution": "uniform", "min": 5, "mostLikely": 5, "max": 30, "units": "days" },
+      "activities": ["A01010"] },
+    { "id": "R04", "title": "Commissioning rework", "probability": 0.50,
+      "impact": { "distribution": "triangle", "min": 3, "mostLikely": 7, "max": 20, "units": "days" },
+      "filter": { "wbs": "COMM", "critical": true },
+      "mitigated": { "probability": 0.2 } }
+  ],
+  "drivers": [
+    { "id": "D01", "title": "Site productivity", "probability": 1.0, "distribution": "triangle",
+      "min": 95, "mostLikely": 105, "max": 125, "filter": { "wbs": ["CIV", "MECH", "ELEC"] } },
+    { "id": "D02", "title": "Weather (7-day crews)", "probability": 0.6, "distribution": "uniform",
+      "min": 100, "mostLikely": 100, "max": 115, "filter": { "code": { "Discipline": "CIV" } } }
+  ],
+  "correlations": [
+    { "filter": { "code": { "Discipline": "ELE" }, "wbs": "ELEC" }, "coefficient": 0.6 },
+    { "filter": { "wbs": "MECH", "code": { "Discipline": "MEC" } }, "coefficient": 0.5 }
+  ]
+}

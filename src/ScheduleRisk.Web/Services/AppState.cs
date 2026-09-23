@@ -71,6 +71,28 @@ public sealed class AppState
         }
     }
 
+    /// <summary>The bundled sample (wwwroot/sample: a synthetic 500-activity schedule and its risk model).</summary>
+    public async Task LoadSampleAsync(HttpClient http)
+    {
+        byte[] xer;
+        string model;
+        try
+        {
+            xer = await http.GetByteArrayAsync("sample/sample-project.xer");
+            model = await http.GetStringAsync("sample/sample-project.risk.json");
+        }
+        catch (Exception e)
+        {
+            Error = "Could not load the sample project: " + e.Message;
+            Notify();
+            return;
+        }
+        await LoadXerAsync("sample-project.xer", xer);
+        if (Schedule == null) return;
+        Model = RiskModelDocument.FromJson(model);
+        Notify();
+    }
+
     public async Task SelectProjectAsync(string projectId)
     {
         if (Doc == null || projectId == ProjectId) return;
@@ -160,6 +182,16 @@ public sealed class AppState
     }
 
     public void Cancel() => _cts?.Cancel();
+
+    /// <summary>Also run the post-mitigation scenario; only used when the model has mitigated risks.</summary>
+    public bool WithMitigation { get; set; } = true;
+
+    public bool HasMitigation => Model.Risks.Any(r => r.Mitigated);
+
+    /// <summary>Confidence level shown on the results page (5-95).</summary>
+    public int Percentile { get; set; } = 80;
+
+    public Task RunAsync() => RunAsync(WithMitigation && HasMitigation);
 
     public async Task RunAsync(bool withMitigation)
     {

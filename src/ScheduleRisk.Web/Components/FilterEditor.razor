@@ -1,6 +1,6 @@
 @* Edits which activities a row applies to. *@
 <div class="filter">
-    <select value="@Spec.Kind" @onchange="OnKind">
+    <select class="input sm" value="@Spec.Kind" @onchange="OnKind" aria-label="Applies to">
         @foreach (var k in Kinds)
         {
             <option value="@k">@Label(k)</option>
@@ -9,26 +9,26 @@
     @switch (Spec.Kind)
     {
         case FilterKind.Activities:
-            <input @bind="Spec.Value" placeholder="Activity IDs, comma separated" />
+            <input class="input sm" @bind="Spec.Value" placeholder="Activity IDs, comma separated" aria-label="Activity IDs, comma separated" />
             break;
         case FilterKind.Wbs:
-            <input @bind="Spec.Value" placeholder="WBS codes, e.g. CIV, MECH" />
+            <input class="input sm" @bind="Spec.Value" placeholder="WBS codes, e.g. CIV, MECH" aria-label="WBS codes, e.g. CIV, MECH" />
             break;
         case FilterKind.Code:
-            <select @bind="Spec.CodeType">
+            <select class="input sm" @bind="Spec.CodeType" aria-label="Code type">
                 <option value="">Code type…</option>
                 @foreach (var t in CodeTypes)
                 {
                     <option value="@t">@t</option>
                 }
             </select>
-            <input @bind="Spec.Value" placeholder="Values, comma separated" />
+            <input class="input sm" @bind="Spec.Value" placeholder="Values, comma separated" aria-label="Values, comma separated" />
             break;
         case FilterKind.NamePattern:
-            <input @bind="Spec.Value" placeholder="Text or pattern in activity name" />
+            <input class="input sm" @bind="Spec.Value" placeholder="Text or pattern in activity name" aria-label="Text or pattern in activity name" />
             break;
         case FilterKind.Custom:
-            <textarea @bind="Spec.CustomJson" rows="2"></textarea>
+            <textarea class="input sm code" @bind="Spec.CustomJson" rows="2" aria-label="Filter JSON"></textarea>
             break;
     }
 </div>

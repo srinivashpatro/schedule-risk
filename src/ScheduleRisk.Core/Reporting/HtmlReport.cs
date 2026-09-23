@@ -141,26 +141,35 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
     /// Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).
     /// <paramref name="interactive"/> wraps it in a focusable <c>div.scurve</c> whose <c>data-scurve</c> JSON holds, for every
     /// calendar day, how many iterations finished by the end of that day; the browser app's js/app.js draws the hover readout.
+    /// <paramref name="percentile"/> (browser app) marks that confidence level with a labelled line, gives the bars up to it
+    /// the class <c>in</c>, and labels the deterministic line and, with two scenarios, each curve.
+    /// <paramref name="histogram"/> draws the bars at full height, without the curves and the percent axis.
     /// </summary>
-    public static string SCurve(SimulationSummary pre, SimulationSummary? post, Schedule s, bool interactive = false)
+    public static string SCurve(SimulationSummary pre, SimulationSummary? post, Schedule s, bool interactive = false,
+                                int? percentile = null, bool histogram = false)
     {
-        const int W = 960, H = 300, L = 48, R = 16, T = 12, B = 34;
+        const int W = 960, H = 300, L = 48, R = 16, B = 34;
+        int T = percentile == null ? 12 : 44; // room above the plot for the line labels
         long lo = pre.SortedFinish[0], hi = pre.SortedFinish[^1];
         if (post != null) { lo = Math.Min(lo, post.SortedFinish[0]); hi = Math.Max(hi, post.SortedFinish[^1]); }
         lo = Math.Min(lo, pre.DeterministicFinish);
         if (hi <= lo) hi = lo + 1440;
         double X(long t) => L + (double)(t - lo) / (hi - lo) * (W - L - R);
         double Y(double p) => T + (1 - p) * (H - T - B);
+        string what = histogram ? "Distribution of project finish dates" : "Cumulative probability of project finish";
         var sb = new StringBuilder();
         sb.Append($"<svg viewBox=\"0 0 {W} {H}\" width=\"100%\" role=\"img\"");
         sb.Append(interactive
-            ? " tabindex=\"0\" aria-label=\"Cumulative probability of project finish. Focus and use the arrow keys to read the chance of finishing by each date.\">"
-            : " aria-label=\"Cumulative probability of project finish\">");
-        for (int k = 0; k <= 4; k++)
+            ? $" tabindex=\"0\" aria-label=\"{what}. Focus and use the arrow keys to read the chance of finishing by each date.\">"
+            : $" aria-label=\"{what}\">");
+        if (!histogram)
         {
-            double p = k / 4.0;
-            sb.Append($"<line x1=\"{L}\" x2=\"{W - R}\" y1=\"{F(Y(p))}\" y2=\"{F(Y(p))}\" stroke=\"var(--line)\"/>");
-            sb.Append($"<text x=\"{L - 6}\" y=\"{F(Y(p) + 4)}\" text-anchor=\"end\">{p * 100:F0}%</text>");
+            for (int k = 0; k <= 4; k++)
+            {
+                double p = k / 4.0;
+                sb.Append($"<line x1=\"{L}\" x2=\"{W - R}\" y1=\"{F(Y(p))}\" y2=\"{F(Y(p))}\" stroke=\"var(--line)\"/>");
+                sb.Append($"<text x=\"{L - 6}\" y=\"{F(Y(p) + 4)}\" text-anchor=\"end\">{p * 100:F0}%</text>");
+            }
         }
         // histogram (pre) behind the curve
         const int bins = 40;
@@ -172,10 +181,12 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         }
         int cmax = Math.Max(1, counts.Max());
         double bw = (W - L - R) / (double)bins;
+        long cut = percentile is int pc ? Statistics.PercentileSorted(pre.SortedFinish, pc) : 0;
         for (int k = 0; k < bins; k++)
         {
-            double h = counts[k] / (double)cmax * (H - T - B) * 0.45;
-            sb.Append($"<rect x=\"{F(L + k * bw + 1)}\" y=\"{F(H - B - h)}\" width=\"{F(bw - 2)}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\" class=\"bar\"/>");
+            double h = counts[k] / (double)cmax * (H - T - B) * (histogram ? 1 : 0.45);
+            string cls = percentile != null && lo + (hi - lo) * (k + 0.5) / bins <= cut ? "bar in" : "bar";
+            sb.Append($"<rect x=\"{F(L + k * bw + 1)}\" y=\"{F(H - B - h)}\" width=\"{F(bw - 2)}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\" class=\"{cls}\"/>");
         }
         void Curve(long[] sorted, string color)
         {
@@ -187,10 +198,35 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
             path.Append('L').Append(F(X(sorted[^1]))).Append(',').Append(F(Y(1)));
             sb.Append($"<path d=\"{path}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"2.2\"/>");
         }
-        Curve(pre.SortedFinish, "var(--a)");
-        if (post != null) Curve(post.SortedFinish, "var(--b)");
+        if (!histogram)
+        {
+            Curve(pre.SortedFinish, "var(--a)");
+            if (post != null) Curve(post.SortedFinish, "var(--b)");
+        }
         double xd = X(pre.DeterministicFinish);
-        sb.Append($"<line x1=\"{F(xd)}\" x2=\"{F(xd)}\" y1=\"{T}\" y2=\"{H - B}\" stroke=\"var(--fg)\" stroke-dasharray=\"4 4\" opacity=\".6\"/>");
+        sb.Append($"<line x1=\"{F(xd)}\" x2=\"{F(xd)}\" y1=\"{(percentile == null ? T : 4)}\" y2=\"{H - B}\" stroke=\"var(--fg)\" stroke-dasharray=\"4 4\" opacity=\".6\"/>");
+        if (percentile is int pct)
+        {
+            void Label(double x, int y, string cls, string text)
+            {
+                bool right = x < W - R - 170;
+                sb.Append($"<text x=\"{F(right ? x + 6 : x - 6)}\" y=\"{y}\" text-anchor=\"{(right ? "start" : "end")}\" class=\"{cls}\">{E(text)}</text>");
+            }
+            double xc = X(cut);
+            sb.Append($"<line x1=\"{L}\" x2=\"{W - R}\" y1=\"{H - B}\" y2=\"{H - B}\" stroke=\"var(--fg)\" stroke-width=\"2\"/>");
+            sb.Append($"<line x1=\"{F(xc)}\" x2=\"{F(xc)}\" y1=\"20\" y2=\"{H - B}\" stroke=\"var(--b)\" stroke-width=\"2\" class=\"pline\"/>");
+            Label(xd, 14, "dlabel", "Deterministic " + D(pre.DeterministicFinish));
+            Label(xc, 32, "plabel", $"P{pct} " + D(cut));
+            if (post != null && !histogram)
+            {
+                // Name each curve beside its median: the later one on its right, the earlier one on its left.
+                long m1 = Statistics.PercentileSorted(pre.SortedFinish, 50), m2 = Statistics.PercentileSorted(post.SortedFinish, 50);
+                double y = Y(0.5) + 4;
+                bool preLater = m1 >= m2;
+                sb.Append($"<text x=\"{F(X(m1) + (preLater ? 8 : -8))}\" y=\"{F(y)}\" text-anchor=\"{(preLater ? "start" : "end")}\" class=\"slabel\">Pre-mitigation</text>");
+                sb.Append($"<text x=\"{F(X(m2) + (preLater ? -8 : 8))}\" y=\"{F(y)}\" text-anchor=\"{(preLater ? "end" : "start")}\" class=\"slabel\">Post-mitigation</text>");
+            }
+        }
         for (int k = 0; k <= 5; k++)
         {
             long t = lo + (hi - lo) * k / 5;
@@ -220,7 +256,7 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         Series("Pre-mitigation", "var(--a)", pre.SortedFinish);
         if (post != null) { js.Append(','); Series("Post-mitigation", "var(--b)", post.SortedFinish); }
         js.Append("]}");
-        return $"<div class=\"scurve\" data-scurve=\"{E(js.ToString())}\">{sb}</div>";
+        return $"<div class=\"scurve{(histogram ? " hist" : "")}\" data-scurve=\"{E(js.ToString())}\">{sb}</div>";
     }
 
     /// <summary>Horizontal tornado bars as inline SVG.</summary>

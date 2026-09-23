@@ -25,10 +25,15 @@ GitHub Actions runs the same build and tests, plus the Python reference tests, o
     run-web.cmd        # start locally, then open the address it prints
     publish-web.cmd    # static site in publish\wwwroot - copy to any web host
 
-Three steps in one page: **Schedule** (open XER, P6 check, health checks, activity grid) ->
-**Risk model** (uncertainty, risk register with mitigation, drivers, correlation; open/save
-model JSON) -> **Simulate & results** (progress, S-curve, P-dates, tornado, criticality,
-milestones; download HTML report and CSVs).
+Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
+health checks, activity grid) -> **Risk model** (uncertainty, risk register with mitigation,
+drivers, correlation, simulation settings; open/save model JSON; run) -> **Results** (P-dates at
+any confidence level, finish distribution as histogram or S-curve, confidence table, risk ranking,
+criticality, milestones; export the HTML report or CSVs).
+
+The look follows the Modernist design system from `design/redesign/` (vendored as
+`wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
+so the app still loads nothing from other sites.
 
 The first load downloads the .NET runtime (~10-15 MB, cached afterwards). Simulations run on
 one CPU core in the browser, so they are much slower than the command line (speed not yet

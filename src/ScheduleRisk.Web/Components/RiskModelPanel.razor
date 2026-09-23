@@ -2,159 +2,247 @@
 
 @{ var m = State.Model; var codeTypes = State.CodeTypes.ToList(); }
 
-<div class="row">
-    <div>
-        <input class="w-text" @bind="m.Name" style="font-weight:600;font-size:16px;min-width:280px" aria-label="Model name" />
-    </div>
-    <span class="spacer"></span>
-    <label class="btn">Open model… <InputFile OnChange="OnImport" style="display:none" /></label>
-    <button @onclick="Save">Save model</button>
-    <button @onclick="Reset">New model</button>
-    <button @onclick="Check">Check model</button>
-    <button class="primary" @onclick="() => OnNext.InvokeAsync()">Next: simulate →</button>
-</div>
-<p class="muted small">The model is saved as a small JSON file you keep with the schedule. The command-line tool reads the same file.</p>
-
-@if (checkMessage != null)
-{
-    <div class="@(checkOk ? "good" : "error")">
-        @checkMessage
-        @if (checkLines.Count > 0)
-        {
-            <ul class="small">
-                @foreach (var l in checkLines)
-                {
-                    <li>@l</li>
-                }
-            </ul>
-        }
-    </div>
-}
-
-<h2>Duration uncertainty</h2>
-<p class="muted small">How much each remaining duration could vary. Percent: 90 / 100 / 120 means 10% shorter to 20% longer. Later rows override earlier rows for the activities they select.</p>
-<div class="card wrap" style="padding:0">
-    <table class="plain">
-        <tr><th>Applies to</th><th>Distribution (min / most likely / max)</th><th>Units</th><th></th></tr>
-        @foreach (var u in m.Uncertainty)
-        {
-            <tr>
-                <td><FilterEditor Spec="u.Filter" CodeTypes="codeTypes" /></td>
-                <td><DistEditor Dist="u.Dist" /></td>
-                <td><select @bind="u.Units"><option value="percent">% of duration</option><option value="days">working days</option></select></td>
-                <td><button class="link danger" @onclick="() => m.Uncertainty.Remove(u)">Remove</button></td>
-            </tr>
-        }
-    </table>
-</div>
-<button class="link" @onclick="AddUncertainty">+ Add uncertainty row</button>
-
-<h2>Risk register</h2>
-<p class="muted small">Discrete events. If a risk occurs in an iteration, its impact is added to <b>each</b> activity it applies to, so map it to the activities it really hits.</p>
-<div class="card wrap" style="padding:0">
-    <table class="plain">
-        <tr><th>ID</th><th>Title</th><th class="n">Probability</th><th>Impact (min / ML / max)</th><th>Units</th><th>Applies to</th><th>Mitigation</th><th></th></tr>
-        @foreach (var r in m.Risks)
-        {
-            <tr>
-                <td><input class="w-id" @bind="r.Id" /></td>
-                <td><input class="w-text" @bind="r.Title" /></td>
-                <td class="n"><input type="number" min="0" max="100" step="1" value="@Num(r.Probability * 100, 0)" @onchange="@(e => r.Probability = ParsePct(e))" />%</td>
-                <td><DistEditor Dist="r.Impact" /></td>
-                <td><select @bind="r.ImpactUnits"><option value="days">days</option><option value="percent">% of dur.</option></select></td>
-                <td><FilterEditor Spec="r.Filter" CodeTypes="codeTypes" /></td>
-                <td>
-                    <label class="chk"><input type="checkbox" @bind="r.Mitigated" /> Mitigated</label>
-                    @if (r.Mitigated)
-                    {
-                        <div class="filter" style="margin-top:4px">
-                            <input type="number" min="0" max="100" step="1" value="@Num(r.MitigatedProbability * 100, 0)" @onchange="@(e => r.MitigatedProbability = ParsePct(e))" />%
-                            <label class="chk small"><input type="checkbox" @bind="r.MitigatedImpactDiffers" /> new impact</label>
-                        </div>
-                        if (r.MitigatedImpactDiffers)
-                        {
-                            <div style="margin-top:4px"><DistEditor Dist="r.MitigatedImpact" /></div>
-                        }
-                    }
-                </td>
-                <td><button class="link danger" @onclick="() => m.Risks.Remove(r)">Remove</button></td>
-            </tr>
-        }
-    </table>
-</div>
-<button class="link" @onclick="AddRisk">+ Add risk</button>
-
-<h2>Risk drivers</h2>
-<p class="muted small">A factor (in %) sampled once per iteration and applied to every selected activity, e.g. site productivity 95 / 105 / 125. It makes those activities move together.</p>
-<div class="card wrap" style="padding:0">
-    <table class="plain">
-        <tr><th>ID</th><th>Title</th><th class="n">Probability</th><th>Factor % (min / ML / max)</th><th>Applies to</th><th></th></tr>
-        @foreach (var d in m.Drivers)
-        {
-            <tr>
-                <td><input class="w-id" @bind="d.Id" /></td>
-                <td><input class="w-text" @bind="d.Title" /></td>
-                <td class="n"><input type="number" min="0" max="100" step="1" value="@Num(d.Probability * 100, 0)" @onchange="@(e => d.Probability = ParsePct(e))" />%</td>
-                <td><DistEditor Dist="d.Factor" /></td>
-                <td><FilterEditor Spec="d.Filter" CodeTypes="codeTypes" /></td>
-                <td><button class="link danger" @onclick="() => m.Drivers.Remove(d)">Remove</button></td>
-            </tr>
-        }
-    </table>
-</div>
-<button class="link" @onclick="AddDriver">+ Add driver</button>
-
-<h2>Correlation</h2>
-<p class="muted small">Activities whose durations tend to over-run together (same crew, same contractor). Applies to their duration uncertainty; 0 = independent, 0.9 = almost in lock-step.</p>
-<div class="card wrap" style="padding:0">
-    <table class="plain">
-        <tr><th>Activities</th><th class="n">Coefficient</th><th></th></tr>
-        @foreach (var c in m.Correlations)
-        {
-            <tr>
-                <td><FilterEditor Spec="c.Filter" CodeTypes="codeTypes" /></td>
-                <td class="n"><input type="number" min="-0.99" max="0.99" step="0.05" @bind="c.Coefficient" /></td>
-                <td><button class="link danger" @onclick="() => m.Correlations.Remove(c)">Remove</button></td>
-            </tr>
-        }
-    </table>
-</div>
-<button class="link" @onclick="AddCorrelation">+ Add correlation group</button>
-
-<h2>Simulation settings</h2>
-<div class="card">
-    <div class="row">
-        <label>Iterations <input type="number" min="100" max="100000" step="100" @bind="m.Iterations" /></label>
-        <label>Seed <input type="number" @bind="m.Seed" style="width:110px" /></label>
-        <button class="link" @onclick="NewSeed">new seed</button>
-        <label>Sampling
-            <select value="@(m.LatinHypercube ? "lhs" : "mc")" @onchange="@(e => m.LatinHypercube = (e.Value?.ToString() ?? "lhs") == "lhs")">
-                <option value="lhs">Latin Hypercube</option>
-                <option value="mc">Monte Carlo</option>
-            </select>
-        </label>
-        <label class="chk"><input type="checkbox" @bind="m.Convergence.Enabled" /> Stop when converged</label>
-    </div>
-    @if (m.Convergence.Enabled)
-    {
-        <div class="row" style="margin-top:10px">
-            <label>P <input class="w-sm" type="number" min="1" max="99" @bind="m.Convergence.Percentile" /> moves less than
-                <input class="w-sm" type="number" step="0.1" min="0" @bind="m.Convergence.ToleranceDays" /> days</label>
-            <label>batch <input type="number" min="50" step="50" @bind="m.Convergence.BatchSize" /></label>
-            <label>min <input type="number" min="100" step="100" @bind="m.Convergence.MinIterations" /></label>
-            <label>max <input type="number" min="100" step="100" @bind="m.Convergence.MaxIterations" /></label>
+<div class="split">
+    <aside class="side">
+        <div class="stack-sm">
+            <span class="kicker">Step 02</span>
+            <h2>Risk model</h2>
         </div>
-        <p class="muted small">Iterations above is ignored while convergence is on.</p>
-    }
-    <p class="muted small">The same schedule, model and seed always give the same results.</p>
+        <div class="field">
+            <label for="model-name">Model name</label>
+            <input id="model-name" class="input" @bind="m.Name" />
+        </div>
+        <div class="field">
+            <label>Model file</label>
+            <div class="btn-row">
+                <label class="btn btn-secondary">Open… <InputFile OnChange="OnImport" accept=".json" style="display:none" /></label>
+                <button class="btn btn-secondary" @onclick="Save">Save</button>
+                <button class="btn btn-secondary" @onclick="Reset">New</button>
+                <button class="btn btn-secondary" @onclick="Check">Check</button>
+            </div>
+            <span class="hint">A small JSON file you keep with the schedule. The command-line tool reads the same file.</span>
+        </div>
+        <div class="field">
+            <label>Iterations</label>
+            <div class="seg seg-fill">
+                @foreach (int n in IterationPresets)
+                {
+                    <label class="seg-opt"><input type="radio" name="iters" checked="@(m.Iterations == n)" @onchange="@(() => m.Iterations = n)" />@n.ToString("N0")</label>
+                }
+            </div>
+            <input class="input" type="number" min="100" max="100000" step="100" aria-label="Iterations" @bind="m.Iterations" disabled="@m.Convergence.Enabled" />
+        </div>
+        <div class="field">
+            <label>Sampling</label>
+            <div class="seg seg-fill">
+                <label class="seg-opt"><input type="radio" name="sampling" checked="@m.LatinHypercube" @onchange="@(() => m.LatinHypercube = true)" />Latin Hypercube</label>
+                <label class="seg-opt"><input type="radio" name="sampling" checked="@(!m.LatinHypercube)" @onchange="@(() => m.LatinHypercube = false)" />Monte Carlo</label>
+            </div>
+        </div>
+        <div class="field">
+            <label for="seed">Seed</label>
+            <div class="btn-row">
+                <input id="seed" class="input" type="number" @bind="m.Seed" />
+                <button class="btn btn-ghost" @onclick="NewSeed">New seed</button>
+            </div>
+            <span class="hint">The same schedule, model and seed always give the same results.</span>
+        </div>
+        <div class="field">
+            <label class="check"><input type="checkbox" @bind="m.Convergence.Enabled" /> Stop when converged</label>
+            @if (m.Convergence.Enabled)
+            {
+                <div class="conv">
+                    <span>P</span><input class="input" type="number" min="1" max="99" aria-label="Percentile" @bind="m.Convergence.Percentile" />
+                    <span>moves less than</span><input class="input" type="number" step="0.1" min="0" aria-label="Tolerance in days" @bind="m.Convergence.ToleranceDays" /><span>days</span>
+                </div>
+                <div class="conv">
+                    <span>Batch</span><input class="input" type="number" min="50" step="50" aria-label="Batch size" @bind="m.Convergence.BatchSize" />
+                    <span>min</span><input class="input" type="number" min="100" step="100" aria-label="Minimum iterations" @bind="m.Convergence.MinIterations" />
+                    <span>max</span><input class="input" type="number" min="100" step="100" aria-label="Maximum iterations" @bind="m.Convergence.MaxIterations" />
+                </div>
+            }
+        </div>
+        @if (State.HasMitigation)
+        {
+            <div class="field">
+                <label class="check"><input type="checkbox" @bind="State.WithMitigation" /> Also run post-mitigation</label>
+            </div>
+        }
+        <div class="side-foot">
+            <span class="sub">@RunSummary</span>
+            <button class="btn btn-primary btn-block" disabled="@(State.Running || State.Cpm == null)" @onclick="() => OnRun.InvokeAsync()">
+                @(State.Running ? "Running…" : "Run simulation →")
+            </button>
+        </div>
+    </aside>
+
+    <section class="main-col">
+        @if (checkMessage != null)
+        {
+            <div class="banner @(checkOk ? "ok" : "error")">
+                <div>
+                    <b>@checkMessage</b>
+                    @if (checkLines.Count > 0)
+                    {
+                        <ul class="small">
+                            @foreach (var l in checkLines)
+                            {
+                                <li>@l</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="block">
+            <div class="headrow">
+                <h4>Duration uncertainty</h4>
+                <span class="sub">Later rows override earlier rows for the activities they select.</span>
+            </div>
+            <p class="sub">How much each remaining duration could vary. Percent: 90 / 100 / 120 means 10% shorter to 20% longer.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>Applies to</th><th>Distribution · min / likely / max</th><th>Units</th><th class="rangecol">Range</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var u in m.Uncertainty)
+                        {
+                            <tr>
+                                <td><FilterEditor Spec="u.Filter" CodeTypes="codeTypes" /></td>
+                                <td><DistEditor Dist="u.Dist" /></td>
+                                <td><select class="input sm" @bind="u.Units" aria-label="Units"><option value="percent">% of duration</option><option value="days">working days</option></select></td>
+                                <td class="rangecol">@RangeBar(u.Dist, u.Units == "days" ? DaysScale : PercentScale)</td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove" aria-label="Remove row" @onclick="() => m.Uncertainty.Remove(u)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" @onclick="AddUncertainty">+ Add uncertainty row</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Risk register</h4></div>
+            <p class="sub">Discrete events. If a risk occurs in an iteration, its impact is added to <b>each</b> activity it applies to, so map it to the activities it really hits.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Title</th><th class="n">Probability</th><th>Impact · min / likely / max</th><th>Units</th><th>Applies to</th><th>Mitigation</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var r in m.Risks)
+                        {
+                            <tr>
+                                <td><input class="input sm w-id" @bind="r.Id" aria-label="Risk ID" /></td>
+                                <td><input class="input sm w-text" @bind="r.Title" aria-label="Risk title" /></td>
+                                <td class="n"><span class="unit"><input class="input sm" type="number" min="0" max="100" step="1" aria-label="Probability %" value="@Num(r.Probability * 100, 0)" @onchange="@(e => r.Probability = ParsePct(e))" />%</span></td>
+                                <td><DistEditor Dist="r.Impact" /></td>
+                                <td><select class="input sm" @bind="r.ImpactUnits" aria-label="Impact units"><option value="days">days</option><option value="percent">% of dur.</option></select></td>
+                                <td><FilterEditor Spec="r.Filter" CodeTypes="codeTypes" /></td>
+                                <td>
+                                    <label class="check"><input type="checkbox" @bind="r.Mitigated" /> Mitigated</label>
+                                    @if (r.Mitigated)
+                                    {
+                                        <div class="filter mt">
+                                            <span class="unit"><input class="input sm" type="number" min="0" max="100" step="1" aria-label="Mitigated probability %" value="@Num(r.MitigatedProbability * 100, 0)" @onchange="@(e => r.MitigatedProbability = ParsePct(e))" />%</span>
+                                            <label class="check small"><input type="checkbox" @bind="r.MitigatedImpactDiffers" /> new impact</label>
+                                        </div>
+                                        if (r.MitigatedImpactDiffers)
+                                        {
+                                            <div class="mt"><DistEditor Dist="r.MitigatedImpact" /></div>
+                                        }
+                                    }
+                                </td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove" aria-label="Remove row" @onclick="() => m.Risks.Remove(r)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" @onclick="AddRisk">+ Add risk</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Risk drivers</h4></div>
+            <p class="sub">A factor (in %) sampled once per iteration and applied to every selected activity, e.g. site productivity 95 / 105 / 125. It makes those activities move together.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>ID</th><th>Title</th><th class="n">Probability</th><th>Factor % · min / likely / max</th><th>Applies to</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var d in m.Drivers)
+                        {
+                            <tr>
+                                <td><input class="input sm w-id" @bind="d.Id" aria-label="Driver ID" /></td>
+                                <td><input class="input sm w-text" @bind="d.Title" aria-label="Driver title" /></td>
+                                <td class="n"><span class="unit"><input class="input sm" type="number" min="0" max="100" step="1" aria-label="Probability %" value="@Num(d.Probability * 100, 0)" @onchange="@(e => d.Probability = ParsePct(e))" />%</span></td>
+                                <td><DistEditor Dist="d.Factor" /></td>
+                                <td><FilterEditor Spec="d.Filter" CodeTypes="codeTypes" /></td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove" aria-label="Remove row" @onclick="() => m.Drivers.Remove(d)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" @onclick="AddDriver">+ Add driver</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Correlation</h4></div>
+            <p class="sub">Activities whose durations tend to over-run together (same crew, same contractor). Applies to their duration uncertainty; 0 = independent, 0.9 = almost in lock-step.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>Activities</th><th class="n">Coefficient</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var c in m.Correlations)
+                        {
+                            <tr>
+                                <td><FilterEditor Spec="c.Filter" CodeTypes="codeTypes" /></td>
+                                <td class="n"><input class="input sm" type="number" min="-0.99" max="0.99" step="0.05" aria-label="Coefficient" @bind="c.Coefficient" /></td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove" aria-label="Remove row" @onclick="() => m.Correlations.Remove(c)">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" @onclick="AddCorrelation">+ Add correlation group</button>
+        </div>
+    </section>
 </div>
 
 @code {
-    [Parameter] public EventCallback OnNext { get; set; }
+    [Parameter] public EventCallback OnRun { get; set; }
+
+    private static readonly int[] IterationPresets = { 1000, 5000, 10000 };
 
     private string? checkMessage;
     private bool checkOk;
     private readonly List<string> checkLines = new();
+
+    private string RunSummary
+    {
+        get
+        {
+            var m = State.Model;
+            string iters = m.Convergence.Enabled ? $"until converged (max {m.Convergence.MaxIterations:N0})" : $"{m.Iterations:N0} iterations";
+            string scen = State.HasMitigation && State.WithMitigation ? " · pre + post mitigation" : "";
+            return $"{iters} · {(m.LatinHypercube ? "Latin Hypercube" : "Monte Carlo")} · seed {m.Seed}{scen}";
+        }
+    }
+
+    // Range bars share one scale per unit so rows compare: percent rows from 0 to the largest max (at least 150%).
+    private double PercentScale => Math.Max(150, State.Model.Uncertainty.Where(u => u.Units != "days").Select(u => u.Dist.Max).DefaultIfEmpty(0).Max()) * 1.05;
+    private double DaysScale => Math.Max(1, State.Model.Uncertainty.Where(u => u.Units == "days").Select(u => u.Dist.Max).DefaultIfEmpty(0).Max()) * 1.05;
+
+    private static RenderFragment RangeBar(DistSpec d, double scale) => __builder =>
+    {
+        if (d.Validate() != null || scale <= 0) return;
+        string P(double v) => (Math.Clamp(v / scale, 0, 1) * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+        <div class="range" title="@($"{Num(d.Min, 0)} / {(d.Distribution == "uniform" ? "–" : Num(d.MostLikely, 0))} / {Num(d.Max, 0)}")">
+            <div class="range-fill" style="left:@P(d.Min);width:@P(d.Max - d.Min)"></div>
+            @if (d.Distribution != "uniform")
+            {
+                <div class="range-ml" style="left:@P(d.MostLikely)"></div>
+            }
+        </div>
+    };
 
     private static double ParsePct(ChangeEventArgs e) =>
         double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? Math.Clamp(v / 100.0, 0, 1) : 0;

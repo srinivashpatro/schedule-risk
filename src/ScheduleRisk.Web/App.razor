@@ -1,34 +1,42 @@
 @inherits StateComponent
 
-<div class="topbar">
-    <div class="topbar-inner">
-        <div class="brand">
-            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--a)" /><path d="M6 24 C12 24 14 8 26 8" stroke="var(--a-ink)" stroke-width="3" fill="none" /></svg>
-            <div>
-                <h1>Schedule Risk</h1>
-                <div class="muted small">@(State.FileName ?? "Risk analysis for Primavera P6 schedules. Your files never leave this browser.")</div>
-            </div>
-        </div>
-        <nav class="tabs">
-            <button class="tab @(tab == 1 ? "active" : "")" @onclick="@(() => tab = 1)"><span class="num">1</span>Schedule</button>
-            <button class="tab @(tab == 2 ? "active" : "")" disabled="@(State.Cpm == null)" @onclick="@(() => tab = 2)"><span class="num">2</span>Risk model</button>
-            <button class="tab @(tab == 3 ? "active" : "")" disabled="@(State.Cpm == null)" @onclick="@(() => tab = 3)"><span class="num">3</span>Simulate &amp; results</button>
-        </nav>
+<nav class="nav topnav">
+    <div class="brandcell">
+        <span class="brandmark" aria-hidden="true"></span>
+        <span class="nav-brand">Schedule Risk</span>
     </div>
-</div>
+    <div class="projcell">
+        <span class="eyebrow">Project</span>
+        <span class="projname" title="@State.FileName">@ProjectLabel</span>
+    </div>
+    <div class="steps">
+        @foreach (var (n, label) in Steps)
+        {
+            <button class="step @(tab == n ? "on" : "")" disabled="@(n > 1 && State.Cpm == null)" aria-current="@(tab == n ? "step" : null)"
+                    @onclick="@(() => Go(n))"><span class="n">0@(n)</span>@label</button>
+        }
+    </div>
+    <div class="navactions" title="Runs locally · no data leaves this device">
+        <button class="btn btn-primary" disabled="@(State.Pre == null)" @onclick="@(() => reportOpen = true)">Report ↓</button>
+    </div>
+</nav>
 
-<main>
-    @if (State.Error != null)
-    {
-        <div class="error">@State.Error <button class="link" @onclick="@(() => { State.Error = null; })">Dismiss</button></div>
-    }
+@if (State.Error != null)
+{
+    <div class="banner error" role="alert">
+        <span>@State.Error</span>
+        <button class="btn btn-ghost" @onclick="@(() => { State.Error = null; })">Dismiss</button>
+    </div>
+}
+
+<main class="page">
     @if (tab == 1)
     {
-        <SchedulePanel OnNext="@(() => tab = 2)" />
+        <SchedulePanel OnNext="@(() => Go(2))" />
     }
     else if (tab == 2)
     {
-        <RiskModelPanel OnNext="@(() => tab = 3)" />
+        <RiskModelPanel OnRun="RunFromModel" />
     }
     else
     {
@@ -36,11 +44,85 @@
     }
 </main>
 
+@if (reportOpen && State.Pre != null)
+{
+    <div class="dialog-backdrop" @onclick="@(() => reportOpen = false)">
+        <div class="dialog report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-title" @onclick:stopPropagation="true">
+            <div class="dialog-title" id="report-title">Export risk report</div>
+            <div class="field">
+                <label>Format</label>
+                <div class="seg seg-fill">
+                    <label class="seg-opt"><input type="radio" name="fmt" checked="@(!csv)" @onchange="@(() => csv = false)" />HTML report</label>
+                    <label class="seg-opt"><input type="radio" name="fmt" checked="@csv" @onchange="@(() => csv = true)" />CSV tables</label>
+                </div>
+            </div>
+            <div class="dialog-body">
+                @if (csv)
+                {
+                    <span>Three files for a spreadsheet: activities (criticality, sensitivity, cruciality), risks, and every iteration's finish date.</span>
+                }
+                else
+                {
+                    <span>One self-contained page with the summary, finish distribution, confidence table, risk ranking, driving activities, milestones and schedule checks. Opens in any browser.</span>
+                }
+            </div>
+            <div class="dialog-note">@ReportSummary</div>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" @onclick="@(() => reportOpen = false)">Cancel</button>
+                <button class="btn btn-primary btn-wide" @onclick="Export">Download</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (State.Busy)
 {
-    <div class="busy"><div class="card"><b>@State.BusyText</b><div class="muted small">This runs on your computer, in this tab.</div></div></div>
+    <div class="busy"><div class="dialog"><div class="dialog-title">@State.BusyText</div><div class="dialog-body">This runs on your computer, in this tab.</div></div></div>
 }
 
 @code {
+    private static readonly (int N, string Label)[] Steps = { (1, "Schedule"), (2, "Risk model"), (3, "Results") };
+
     private int tab = 1;
+    private bool reportOpen;
+    private bool csv;
+
+    private string ProjectLabel => State.Schedule == null ? "No schedule loaded"
+        : State.FileName is { } f ? $"{State.Schedule.ProjectCode} · {f}" : State.Schedule.ProjectCode;
+
+    private string ReportSummary
+    {
+        get
+        {
+            var pre = State.Pre!;
+            long q = Statistics.PercentileSorted(pre.SortedFinish, State.Percentile);
+            return $"{State.Schedule?.ProjectCode} · {pre.Iterations:N0} iterations · seed {pre.Seed} · P{State.Percentile} {AppState.Day(q)}"
+                + (State.Post != null ? " · pre- and post-mitigation" : "");
+        }
+    }
+
+    private async Task Export()
+    {
+        reportOpen = false;
+        if (csv) await DownloadTables();
+        else await DownloadReport();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await JS.InvokeVoidAsync("sraWatchNav");
+    }
+
+    private async Task Go(int n)
+    {
+        tab = n;
+        await JS.InvokeVoidAsync("scrollTo", 0, 0);
+    }
+
+    private async Task RunFromModel()
+    {
+        await Go(3);
+        StateHasChanged();
+        await State.RunAsync();
+    }
 }
