@@ -110,3 +110,19 @@ svg text { fill: var(--muted); font-size: 11px; }
   main { padding: 14px 12px 60px; }
   .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 }
+
+/* Project-finish chart hover readout (js/app.js) */
+.scurve { position: relative; }
+.scurve svg { display: block; cursor: crosshair; touch-action: pan-y; }
+.scurve svg:focus { outline: none; }
+.scurve svg:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
+.scurve rect.bar.on { opacity: .32; }
+.scurve-x { stroke: var(--fg); stroke-width: 1; opacity: .45; }
+.scurve-dot { stroke: var(--card); stroke-width: 2; }
+.scurve-tip { position: absolute; z-index: 2; pointer-events: none; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-shadow: 0 4px 14px rgba(0,0,0,.14); font-size: 12.5px; line-height: 1.5; white-space: nowrap; }
+.scurve-tip .tip-h { margin-bottom: 3px; }
+.scurve-tip .tip-h b { font-weight: 600; }
+.scurve-tip .tip-r b { display: inline-block; min-width: 3.3em; margin-right: 6px; font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.scurve-tip .tip-r i { display: inline-block; width: 12px; height: 2px; border-radius: 1px; margin-right: 8px; vertical-align: middle; }
+.scurve-tip .tip-r span, .scurve-tip .tip-n { color: var(--muted); }
+.scurve-tip .tip-n { margin-top: 3px; }

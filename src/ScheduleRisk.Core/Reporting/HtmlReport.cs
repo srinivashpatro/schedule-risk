@@ -137,8 +137,12 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
     private static void Tile(StringBuilder sb, string value, string label) =>
         sb.Append("<div class=\"tile\"><b>").Append(E(value)).Append("</b><span>").Append(E(label)).Append("</span></div>");
 
-    /// <summary>Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).</summary>
-    public static string SCurve(SimulationSummary pre, SimulationSummary? post, Schedule s)
+    /// <summary>
+    /// Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).
+    /// <paramref name="interactive"/> wraps it in a focusable <c>div.scurve</c> whose <c>data-scurve</c> JSON holds, for every
+    /// calendar day, how many iterations finished by the end of that day; the browser app's js/app.js draws the hover readout.
+    /// </summary>
+    public static string SCurve(SimulationSummary pre, SimulationSummary? post, Schedule s, bool interactive = false)
     {
         const int W = 960, H = 300, L = 48, R = 16, T = 12, B = 34;
         long lo = pre.SortedFinish[0], hi = pre.SortedFinish[^1];
@@ -148,7 +152,10 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         double X(long t) => L + (double)(t - lo) / (hi - lo) * (W - L - R);
         double Y(double p) => T + (1 - p) * (H - T - B);
         var sb = new StringBuilder();
-        sb.Append($"<svg viewBox=\"0 0 {W} {H}\" width=\"100%\" role=\"img\" aria-label=\"Cumulative probability of project finish\">");
+        sb.Append($"<svg viewBox=\"0 0 {W} {H}\" width=\"100%\" role=\"img\"");
+        sb.Append(interactive
+            ? " tabindex=\"0\" aria-label=\"Cumulative probability of project finish. Focus and use the arrow keys to read the chance of finishing by each date.\">"
+            : " aria-label=\"Cumulative probability of project finish\">");
         for (int k = 0; k <= 4; k++)
         {
             double p = k / 4.0;
@@ -168,7 +175,7 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         for (int k = 0; k < bins; k++)
         {
             double h = counts[k] / (double)cmax * (H - T - B) * 0.45;
-            sb.Append($"<rect x=\"{F(L + k * bw + 1)}\" y=\"{F(H - B - h)}\" width=\"{F(bw - 2)}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\"/>");
+            sb.Append($"<rect x=\"{F(L + k * bw + 1)}\" y=\"{F(H - B - h)}\" width=\"{F(bw - 2)}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\" class=\"bar\"/>");
         }
         void Curve(long[] sorted, string color)
         {
@@ -187,10 +194,33 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         for (int k = 0; k <= 5; k++)
         {
             long t = lo + (hi - lo) * k / 5;
-            sb.Append($"<text x=\"{F(X(t))}\" y=\"{H - 12}\" text-anchor=\"middle\">{D(t)}</text>");
+            sb.Append($"<text x=\"{F(X(t))}\" y=\"{H - 12}\" text-anchor=\"{(k == 5 ? "end" : "middle")}\">{D(t)}</text>");
         }
         sb.Append("</svg>");
-        return sb.ToString();
+        if (!interactive) return sb.ToString();
+
+        long day0 = lo / Time.MinutesPerDay, day1 = hi / Time.MinutesPerDay;
+        var js = new StringBuilder();
+        js.Append(string.Create(Inv, $"{{\"w\":{W},\"h\":{H},\"l\":{L},\"r\":{R},\"t\":{T},\"b\":{B},\"lo\":{lo},\"hi\":{hi},\"det\":{pre.DeterministicFinish},"))
+          .Append(string.Create(Inv, $"\"day0\":{day0 * Time.MinutesPerDay},\"date0\":\"{Time.FromMinutes(day0 * Time.MinutesPerDay).ToString("yyyy-MM-dd", Inv)}\","))
+          .Append("\"bins\":[").Append(string.Join(',', counts)).Append("],\"series\":[");
+        void Series(string name, string color, long[] sorted)
+        {
+            js.Append("{\"name\":\"").Append(name).Append("\",\"color\":\"").Append(color).Append("\",\"n\":").Append(sorted.Length).Append(",\"cum\":[");
+            int i = 0;
+            for (long d = day0; d <= day1; d++)
+            {
+                long end = (d + 1) * Time.MinutesPerDay; // finished before the next midnight
+                while (i < sorted.Length && sorted[i] < end) i++;
+                if (d > day0) js.Append(',');
+                js.Append(i);
+            }
+            js.Append("]}");
+        }
+        Series("Pre-mitigation", "var(--a)", pre.SortedFinish);
+        if (post != null) { js.Append(','); Series("Post-mitigation", "var(--b)", post.SortedFinish); }
+        js.Append("]}");
+        return $"<div class=\"scurve\" data-scurve=\"{E(js.ToString())}\">{sb}</div>";
     }
 
     /// <summary>Horizontal tornado bars as inline SVG.</summary>

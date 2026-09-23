@@ -71,14 +71,14 @@
 
     <h3>Project finish</h3>
     <div class="card">
-        @((MarkupString)HtmlReport.SCurve(pre, post, s))
+        @((MarkupString)HtmlReport.SCurve(pre, post, s, interactive: true))
         <div class="legend">
             <span><i class="sw" style="background:var(--a)"></i>Pre-mitigation</span>
             @if (post != null)
             {
                 <span><i class="sw" style="background:var(--b)"></i>Post-mitigation</span>
             }
-            <span class="muted">Bars: spread of finish dates. Dashed line: deterministic finish.</span>
+            <span class="muted">Bars: spread of finish dates. Dashed line: deterministic finish. Hover the chart to read the chance of finishing by any date.</span>
         </div>
     </div>
 

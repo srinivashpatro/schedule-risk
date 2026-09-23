@@ -1,4 +1,9 @@
+using System.Net;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Cpm;
+using ScheduleRisk.Core.Reporting;
 using ScheduleRisk.Core.Risk;
 using ScheduleRisk.Core.Simulation;
 
@@ -66,5 +71,45 @@ public class WebSupportTests
         var s = TestData.Load("parallel_1.xer");
         var m = RiskModelLoader.LoadJson(s, doc.ToJson());
         Assert.NotNull(m.Uncertainty[s.ByCode["P1"]]);
+    }
+
+    [Fact]
+    public void Interactive_finish_chart_carries_per_day_cumulative_counts()
+    {
+        var (s, crit) = Synth500();
+        var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), crit);
+        SimulationSummary Summary(Scenario sc)
+        {
+            var mc = new MonteCarloEngine(s, m, sc);
+            return SimulationSummary.Build(mc, mc.Run(300, 11));
+        }
+        var pre = Summary(Scenario.PreMitigation);
+        var post = Summary(Scenario.PostMitigation);
+
+        Assert.DoesNotContain("data-scurve", HtmlReport.SCurve(pre, post, s)); // the downloadable report stays static
+        string html = HtmlReport.SCurve(pre, post, s, interactive: true);
+        var attr = Regex.Match(html, "data-scurve=\"([^\"]*)\"");
+        Assert.True(attr.Success);
+        var d = JsonDocument.Parse(WebUtility.HtmlDecode(attr.Groups[1].Value)).RootElement;
+
+        long day0 = d.GetProperty("day0").GetInt64();
+        Assert.Equal(0, day0 % Time.MinutesPerDay);
+        Assert.Equal(Time.FromMinutes(day0).ToString("yyyy-MM-dd"), d.GetProperty("date0").GetString());
+        Assert.Equal(pre.Iterations, d.GetProperty("bins").EnumerateArray().Sum(b => b.GetInt32()));
+
+        var series = d.GetProperty("series").EnumerateArray().ToList();
+        Assert.Equal(2, series.Count);
+        foreach (var (json, sum) in series.Zip(new[] { pre, post }))
+        {
+            var cum = json.GetProperty("cum").EnumerateArray().Select(x => x.GetInt32()).ToArray();
+            Assert.Equal(sum.Iterations, json.GetProperty("n").GetInt32());
+            Assert.Equal(sum.Iterations, cum[^1]);
+            for (int k = 0; k < cum.Length; k++)
+                Assert.Equal(sum.SortedFinish.Count(t => t < day0 + (k + 1L) * Time.MinutesPerDay), cum[k]);
+            // Reading the curve on the P80 date gives at least 80%, and the day before gives less.
+            int k80 = (int)((sum.FinishPercentiles[80] - day0) / Time.MinutesPerDay);
+            Assert.True(cum[k80] >= 0.8 * sum.Iterations);
+            Assert.True(cum[k80 - 1] < 0.8 * sum.Iterations);
+        }
     }
 }
