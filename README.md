@@ -99,9 +99,9 @@ constraints); a file using the others is not detected yet.
 with probability, impact and mitigated values; risk drivers; correlation groups; Latin Hypercube
 sampling; seed-reproducible results independent of CPU count; batch convergence.
 
-**Outputs:** P5-P95 finish dates, probability of meeting the deterministic date, milestone P-dates,
-criticality index, duration sensitivity (Spearman), cruciality, risk and driver tornado data,
-pre/post-mitigation comparison. A project Must Finish By sets P6's float in the deterministic
+**Outputs:** P5-P95 finish dates, probability of meeting the deterministic date and the project's Must
+Finish By (when it has one), milestone P-dates, criticality index, duration sensitivity (Spearman),
+cruciality, risk and driver tornado data, pre/post-mitigation comparison. A project Must Finish By sets P6's float in the deterministic
 schedule but does not change the simulation: each iteration measures criticality to its own finish,
 and the risk model's `critical` filter picks the activities that drive the deterministic finish.
 

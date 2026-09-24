@@ -50,6 +50,12 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         sb.Append("<div class=\"tiles\">");
         Tile(sb, D(pre.DeterministicFinish), "Deterministic finish (CPM)");
         Tile(sb, $"{pre.ProbMeetDeterministic * 100:F0}%", "Chance of meeting it");
+        if (pre.ProbMeetMustFinishBy is double pm)
+        {
+            double gap = Math.Round(WorkDaysBetween(pre.MustFinishBy, p80));
+            string where = gap > 0 ? $"P80 is {F(gap, 0)} working days after it" : gap < 0 ? $"P80 is {F(-gap, 0)} working days before it" : "P80 is on it";
+            Tile(sb, $"{pm * 100:F0}%", $"Chance of meeting the Must Finish By ({D(pre.MustFinishBy)}); {where}");
+        }
         Tile(sb, D(p50), $"P50 (+{F(WorkDaysBetween(pre.DeterministicFinish, p50), 0)} working days)");
         Tile(sb, D(p80), $"P80 (+{F(WorkDaysBetween(pre.DeterministicFinish, p80), 0)} working days)");
         if (post != null)
@@ -62,7 +68,14 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         sb.Append(SCurve(pre, post, s));
         sb.Append("<div class=\"legend\"><span><i class=\"sw\" style=\"background:var(--a)\"></i>Pre-mitigation</span>");
         if (post != null) sb.Append("<span><i class=\"sw\" style=\"background:var(--b)\"></i>Post-mitigation</span>");
-        sb.Append("<span>Dashed line: deterministic finish</span></div></div>");
+        sb.Append("<span>Dashed line: deterministic finish</span>");
+        if (pre.MustFinishBy != Time.None)
+        {
+            var (_, _, onChart) = ChartRange(pre, post);
+            sb.Append("<span>").Append(onChart ? "Dotted line: Must Finish By " + D(pre.MustFinishBy)
+                : $"Must Finish By {D(pre.MustFinishBy)}, off the chart ({(pre.MustFinishBy > pre.SortedFinish[^1] ? "later" : "earlier")})").Append("</span>");
+        }
+        sb.Append("</div></div>");
 
         sb.Append("<h2>Confidence levels</h2><div class=\"wrap\"><table><tr><th>Percentile</th><th>Pre-mitigation</th>");
         if (post != null) sb.Append("<th>Post-mitigation</th><th>Improvement (working days)</th>");
@@ -149,11 +162,10 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
                                 int? percentile = null, bool histogram = false)
     {
         const int W = 960, H = 300, L = 48, R = 16, B = 34;
-        int T = percentile == null ? 12 : 44; // room above the plot for the line labels
-        long lo = pre.SortedFinish[0], hi = pre.SortedFinish[^1];
-        if (post != null) { lo = Math.Min(lo, post.SortedFinish[0]); hi = Math.Max(hi, post.SortedFinish[^1]); }
-        lo = Math.Min(lo, pre.DeterministicFinish);
-        if (hi <= lo) hi = lo + 1440;
+        long mfb = pre.MustFinishBy;
+        // room above the plot for the line labels: deterministic, P-level and, with one, the Must Finish By
+        int T = percentile == null ? 12 : mfb != Time.None ? 62 : 44;
+        var (lo, hi, mfbOnChart) = ChartRange(pre, post);
         double X(long t) => L + (double)(t - lo) / (hi - lo) * (W - L - R);
         double Y(double p) => T + (1 - p) * (H - T - B);
         string what = histogram ? "Distribution of project finish dates" : "Cumulative probability of project finish";
@@ -205,6 +217,8 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         }
         double xd = X(pre.DeterministicFinish);
         sb.Append($"<line x1=\"{F(xd)}\" x2=\"{F(xd)}\" y1=\"{(percentile == null ? T : 4)}\" y2=\"{H - B}\" stroke=\"var(--fg)\" stroke-dasharray=\"4 4\" opacity=\".6\"/>");
+        if (mfb != Time.None && mfbOnChart)
+            sb.Append($"<line x1=\"{F(X(mfb))}\" x2=\"{F(X(mfb))}\" y1=\"{(percentile == null ? T : 40)}\" y2=\"{H - B}\" stroke=\"var(--fg)\" stroke-width=\"2\" stroke-dasharray=\"1 4\" stroke-linecap=\"round\" class=\"mline\"/>");
         if (percentile is int pct)
         {
             void Label(double x, int y, string cls, string text)
@@ -217,6 +231,12 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
             sb.Append($"<line x1=\"{F(xc)}\" x2=\"{F(xc)}\" y1=\"20\" y2=\"{H - B}\" stroke=\"var(--b)\" stroke-width=\"2\" class=\"pline\"/>");
             Label(xd, 14, "dlabel", "Deterministic " + D(pre.DeterministicFinish));
             Label(xc, 32, "plabel", $"P{pct} " + D(cut));
+            if (mfb != Time.None)
+            {
+                if (mfbOnChart) Label(X(mfb), 50, "mlabel", "Must Finish By " + D(mfb));
+                else if (mfb > hi) sb.Append($"<text x=\"{W - R}\" y=\"50\" text-anchor=\"end\" class=\"mlabel\">{E("Must Finish By " + D(mfb) + " →")}</text>");
+                else sb.Append($"<text x=\"{L}\" y=\"50\" text-anchor=\"start\" class=\"mlabel\">{E("← Must Finish By " + D(mfb))}</text>");
+            }
             if (post != null && !histogram)
             {
                 // Name each curve beside its median: the later one on its right, the earlier one on its left.
@@ -237,7 +257,9 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
 
         long day0 = lo / Time.MinutesPerDay, day1 = hi / Time.MinutesPerDay;
         var js = new StringBuilder();
-        js.Append(string.Create(Inv, $"{{\"w\":{W},\"h\":{H},\"l\":{L},\"r\":{R},\"t\":{T},\"b\":{B},\"lo\":{lo},\"hi\":{hi},\"det\":{pre.DeterministicFinish},"))
+        js.Append(string.Create(Inv, $"{{\"w\":{W},\"h\":{H},\"l\":{L},\"r\":{R},\"t\":{T},\"b\":{B},\"lo\":{lo},\"hi\":{hi},\"det\":{pre.DeterministicFinish},"));
+        if (mfb != Time.None) js.Append(string.Create(Inv, $"\"mfb\":{mfb},"));
+        js
           .Append(string.Create(Inv, $"\"day0\":{day0 * Time.MinutesPerDay},\"date0\":\"{Time.FromMinutes(day0 * Time.MinutesPerDay).ToString("yyyy-MM-dd", Inv)}\","))
           .Append("\"bins\":[").Append(string.Join(',', counts)).Append("],\"series\":[");
         void Series(string name, string color, long[] sorted)
@@ -260,6 +282,23 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
     }
 
     /// <summary>Horizontal tornado bars as inline SVG.</summary>
+    /// <summary>
+    /// The chart's date range: every finish and the deterministic finish, plus the Must Finish By when it lies within a
+    /// fifth of the range beyond it. A deadline further off would squash the curve, so it is labelled at the edge instead.
+    /// </summary>
+    private static (long Lo, long Hi, bool MfbOnChart) ChartRange(SimulationSummary pre, SimulationSummary? post)
+    {
+        long lo = pre.SortedFinish[0], hi = pre.SortedFinish[^1];
+        if (post != null) { lo = Math.Min(lo, post.SortedFinish[0]); hi = Math.Max(hi, post.SortedFinish[^1]); }
+        lo = Math.Min(lo, pre.DeterministicFinish);
+        if (hi <= lo) hi = lo + 1440;
+        long mfb = pre.MustFinishBy;
+        if (mfb == Time.None) return (lo, hi, false);
+        long margin = (hi - lo) / 5;
+        if (mfb < lo - margin || mfb > hi + margin) return (lo, hi, false);
+        return (Math.Min(lo, mfb), Math.Max(hi, mfb), true);
+    }
+
     public static string Tornado(List<(string Label, double Value)> rows)
     {
         if (rows.Count == 0) return "";

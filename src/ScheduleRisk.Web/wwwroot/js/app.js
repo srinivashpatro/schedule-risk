@@ -114,6 +114,8 @@ window.sraWatchNav = function () {
                 rows.push(r);
             }
             if (k === Math.floor((d.det - d.day0) / DAY)) rows.push(div("tip-n", "Deterministic finish (CPM)"));
+            // A Must Finish By at 00:00 is met by finishing the day before.
+            if (d.mfb != null && k === Math.floor((d.mfb - 1 - d.day0) / DAY)) rows.push(div("tip-n", "Must Finish By"));
             const n0 = d.series[0].n;
             const from = d.lo + (d.hi - d.lo) * bin / nb, to = d.lo + (d.hi - d.lo) * (bin + 1) / nb;
             rows.push(div("tip-n", "Bar: " + pct(d.bins[bin], n0) + " of " + (d.series.length > 1 ? "pre-mitigation " : "") +

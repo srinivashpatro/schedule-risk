@@ -172,6 +172,7 @@ simulate writes to --out (default: ./sra-output):
             File.WriteAllText(Path.Combine(outDir, $"summary.{tag}.json"), sum.ToJson());
             Console.WriteLine($"{tag}-mitigation: {res.Iterations} iterations in {res.Elapsed.TotalSeconds:F1}s  " +
                               $"deterministic {Time.Format(sum.DeterministicFinish)} ({sum.ProbMeetDeterministic:P0})  " +
+                              (sum.ProbMeetMustFinishBy is double pm ? $"must finish by {Time.Format(sum.MustFinishBy)} ({pm:P0})  " : "") +
                               $"P50 {Time.Format(sum.FinishPercentiles[50])}  P80 {Time.Format(sum.FinishPercentiles[80])}  P90 {Time.Format(sum.FinishPercentiles[90])}");
             if (sc == Scenario.PreMitigation) { pre = sum; preRes = res; } else post = sum;
         }

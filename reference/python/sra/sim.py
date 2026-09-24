@@ -273,6 +273,11 @@ def summarize(sim, res, top=None):
     out = {"iterations": n, "batches": res.batches, "converged": res.converged, "scenario": sim.scenario,
            "deterministic_finish": fmt_min(res.deterministic)}
     out["prob_meet_deterministic"] = sum(1 for f in fin if f <= res.deterministic) / n
+    # A Must Finish By at 00:00 means by the end of the previous day, as in P6, so compare instants.
+    mfb = s.settings.must_finish_by
+    if mfb is not None:
+        out["must_finish_by"] = fmt_min(mfb)
+        out["prob_meet_must_finish_by"] = sum(1 for f in fin if f <= mfb) / n
     fw = [pcal.work_at(f) for f in fin]
     mean_w = sum(fw) / n
     var = sum((x - mean_w) ** 2 for x in fw) / (n - 1) if n > 1 else 0.0

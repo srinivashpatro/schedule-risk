@@ -45,6 +45,10 @@ public sealed class SimulationSummary
     public long Seed { get; init; }
     public long DeterministicFinish { get; init; }
     public double ProbMeetDeterministic { get; init; }
+    /// <summary>The project's Must Finish By, or <see cref="Time.None"/> when it has none.</summary>
+    public long MustFinishBy { get; init; } = Time.None;
+    /// <summary>Share of iterations finishing on or before the Must Finish By; null when it has none.</summary>
+    public double? ProbMeetMustFinishBy { get; init; }
     public SortedDictionary<int, long> FinishPercentiles { get; } = new();
     public long FinishMin { get; init; }
     public long FinishMax { get; init; }
@@ -83,12 +87,18 @@ public sealed class SimulationSummary
         }
         int meet = 0;
         foreach (var f in fin) if (f <= res.Deterministic) meet++;
+        // A Must Finish By at 00:00 means by the end of the previous day, as in P6, so compare instants.
+        long mfb = s.Settings.MustFinishBy;
+        int meetMfb = 0;
+        if (mfb != Time.None) foreach (var f in fin) if (f <= mfb) meetMfb++;
 
         var sum = new SimulationSummary
         {
             Iterations = n, Batches = res.Batches, Converged = res.Converged, Scenario = res.Scenario, Seed = res.Seed,
             DeterministicFinish = res.Deterministic,
             ProbMeetDeterministic = (double)meet / n,
+            MustFinishBy = mfb,
+            ProbMeetMustFinishBy = mfb != Time.None ? (double)meetMfb / n : null,
             FinishMin = sorted[0], FinishMax = sorted[^1],
             FinishMean = pcal.TimeFinish(MathX.RoundHalfUp(meanW)),
             StdevWorkingDays = R(Math.Sqrt(variance) / mpd, 4),
@@ -176,6 +186,11 @@ public sealed class SimulationSummary
             w.WriteNumber("seed", Seed);
             w.WriteString("deterministic_finish", Time.Format(DeterministicFinish));
             w.WriteNumber("prob_meet_deterministic", ProbMeetDeterministic);
+            if (ProbMeetMustFinishBy is double pm)
+            {
+                w.WriteString("must_finish_by", Time.Format(MustFinishBy));
+                w.WriteNumber("prob_meet_must_finish_by", pm);
+            }
             w.WriteStartObject("finish");
             foreach (var kv in FinishPercentiles) w.WriteString($"P{kv.Key}", Time.Format(kv.Value));
             w.WriteString("min", Time.Format(FinishMin));

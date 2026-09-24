@@ -29,6 +29,16 @@
             <span class="v">@Pct(pre.ProbMeetDeterministic)</span>
             <span class="s">@AppState.Day(det)</span>
         </div>
+        @if (pre.ProbMeetMustFinishBy is double pm)
+        {
+            long mfb = pre.MustFinishBy;
+            double gap = Math.Round(WorkDays(mfb, qp));
+            <div class="kpi">
+                <span class="l">Chance of meeting the Must Finish By</span>
+                <span class="v">@Pct(pm)</span>
+                <span class="s">@AppState.Day(mfb) · P@(pct) @(gap > 0 ? $"+{Num(gap, 0)} days" : gap < 0 ? $"−{Num(-gap, 0)} days" : "on the day")</span>
+            </div>
+        }
         <div class="kpi">
             <span class="l">P50 finish</span>
             <span class="v">@Short(q50)</span>

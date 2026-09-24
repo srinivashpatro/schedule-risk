@@ -236,8 +236,8 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
 .scurve.hist rect.bar.on { fill: var(--color-neutral-500); }
 .scurve.hist rect.bar.in.on { fill: var(--color-accent-600); }
 .scurve.hist .scurve-dot { display: none; }
-.scurve text.dlabel, .scurve text.plabel, .scurve text.slabel { paint-order: stroke; stroke: var(--color-bg); stroke-width: 4px; stroke-linejoin: round; }
-.scurve text.dlabel { fill: var(--color-text); font-weight: 600; }
+.scurve text.dlabel, .scurve text.plabel, .scurve text.slabel, .scurve text.mlabel { paint-order: stroke; stroke: var(--color-bg); stroke-width: 4px; stroke-linejoin: round; }
+.scurve text.dlabel, .scurve text.mlabel { fill: var(--color-text); font-weight: 600; }
 .scurve text.plabel { fill: var(--color-accent-700); font-weight: 800; }
 .scurve text.slabel { fill: var(--color-text); font-weight: 600; font-size: 12px; }
 .scurve-x { stroke: var(--color-text); stroke-width: 1; opacity: .5; }

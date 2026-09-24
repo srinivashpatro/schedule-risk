@@ -1,8 +1,10 @@
+using System.Net;
 using System.Text.Json;
 using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
+using ScheduleRisk.Core.Reporting;
 using ScheduleRisk.Core.Risk;
 using ScheduleRisk.Core.Simulation;
 using ScheduleRisk.Core.Xer;
@@ -347,6 +349,80 @@ public class MustFinishByTests
         var det = new CpmEngine(s).Run();
         Assert.Equal(p6Critical, s.Activities.Count(a => det.IsCritical(s, a.Index))); // P6's float is unchanged
         Assert.Equal(path, new CpmEngine(s).CriticalToProjectFinish());
+    }
+
+    private static SimulationSummary Summarize(Schedule s)
+    {
+        var m = RiskModelLoader.LoadJson(s, File.ReadAllText(TestData.PathOf("synth_500.risk.json")), new CpmEngine(s).CriticalToProjectFinish());
+        var mc = new MonteCarloEngine(s, m);
+        return SimulationSummary.Build(mc, mc.Run(200, 5));
+    }
+
+    [Fact]
+    public void Summary_gives_the_chance_of_meeting_the_must_finish_by()
+    {
+        var sum = Summarize(Build("synth_500.xer", "SYN500", "2029-03-15 17:00"));
+        long mfb = Time.ParseP6("2029-03-15 17:00");
+        Assert.Equal(mfb, sum.MustFinishBy);
+        double expected = (double)sum.SortedFinish.Count(f => f <= mfb) / sum.Iterations;
+        Assert.Equal(expected, sum.ProbMeetMustFinishBy);
+        Assert.InRange(expected, 0.05, 0.95); // near the P50 finish
+        var json = JsonDocument.Parse(sum.ToJson()).RootElement;
+        Assert.Equal("2029-03-15 17:00", json.GetProperty("must_finish_by").GetString());
+        Assert.Equal(expected, json.GetProperty("prob_meet_must_finish_by").GetDouble());
+    }
+
+    [Fact]
+    public void Must_finish_by_at_midnight_counts_finishes_up_to_the_end_of_the_previous_day()
+    {
+        var none = Summarize(TestData.Load("synth_500.xer"));
+        long day = none.FinishPercentiles[50] / Time.MinutesPerDay * Time.MinutesPerDay; // midnight starting the P50 day
+        var atStart = Summarize(Build("synth_500.xer", "SYN500", Time.Format(day)));
+        var atEnd = Summarize(Build("synth_500.xer", "SYN500", Time.Format(day + Time.MinutesPerDay)));
+        int onTheDay = none.SortedFinish.Count(f => f >= day && f < day + Time.MinutesPerDay);
+        Assert.True(onTheDay > 0);
+        Assert.Equal((double)none.SortedFinish.Count(f => f < day) / none.Iterations, atStart.ProbMeetMustFinishBy);
+        Assert.Equal((double)onTheDay / none.Iterations, atEnd.ProbMeetMustFinishBy!.Value - atStart.ProbMeetMustFinishBy!.Value, 9);
+    }
+
+    [Fact]
+    public void Without_a_must_finish_by_the_summary_and_report_are_unchanged()
+    {
+        var s = TestData.Load("synth_500.xer");
+        var sum = Summarize(s);
+        Assert.Equal(Time.None, sum.MustFinishBy);
+        Assert.Null(sum.ProbMeetMustFinishBy);
+        Assert.DoesNotContain("must_finish_by", sum.ToJson());
+        Assert.DoesNotContain("Must Finish By", HtmlReport.Build(s, sum));
+        Assert.DoesNotContain("Must Finish By", HtmlReport.SCurve(sum, null, s, interactive: true, percentile: 80));
+    }
+
+    [Fact]
+    public void Report_and_chart_show_the_must_finish_by()
+    {
+        var s = Build("synth_500.xer", "SYN500", "2029-03-15 17:00");
+        var sum = Summarize(s);
+        string report = HtmlReport.Build(s, sum);
+        Assert.Contains($"{sum.ProbMeetMustFinishBy!.Value * 100:F0}%", report);
+        Assert.Contains("Chance of meeting the Must Finish By (15-Mar-2029)", report);
+        Assert.Contains("class=\"mline\"", report);                            // the static report draws the line
+        string chart = HtmlReport.SCurve(sum, null, s, interactive: true, percentile: 80);
+        Assert.Contains("class=\"mline\"", chart);
+        Assert.Contains(">Must Finish By 15-Mar-2029</text>", chart);
+        Assert.Contains($"\"mfb\":{sum.MustFinishBy}", WebUtility.HtmlDecode(chart)); // for the hover readout
+    }
+
+    [Fact]
+    public void A_must_finish_by_far_off_the_chart_is_labelled_at_its_edge()
+    {
+        // synth_500 finishes 2028-2030; a deadline in 2040 would squash the curve, so it is named at the edge.
+        var s = Build("synth_500.xer", "SYN500", "2040-06-29 17:00");
+        var sum = Summarize(s);
+        Assert.Equal(1.0, sum.ProbMeetMustFinishBy);
+        string chart = HtmlReport.SCurve(sum, null, s, interactive: true, percentile: 80);
+        Assert.DoesNotContain("class=\"mline\"", chart);
+        Assert.Contains(">Must Finish By 29-Jun-2040 →</text>", chart);
+        Assert.Contains("Must Finish By 29-Jun-2040, off the chart", HtmlReport.Build(s, sum));
     }
 
     [Fact]

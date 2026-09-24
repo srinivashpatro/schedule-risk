@@ -59,13 +59,17 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       30-Jun-2028 had given 0, 364 or 389 activities with any criticality, a `critical` filter of 0,
       0 or 315 activities, and P80 18-May-2029, 18-May-2029 or 27-Jul-2029; all three now give the
       no-deadline results: 49 activities, 6 in the filter, P80 14-Jun-2029.
-- [ ] Must Finish By in the results. A Must Finish By no longer changes the simulation, so show it
+- [x] Must Finish By in the results. A Must Finish By no longer changes the simulation, so show it
       where it belongs in a risk analysis: the deadline, the chance of finishing by it (share of
       iterations that finish on or before it) and how far the P80 finish is from it, next to the
-      deterministic date and its chance, in the web app's KPIs, the HTML report, the summary JSON,
-      the CSV exports and the CLI. A Must Finish By at 00:00 means by the end of the previous
-      working day, as in P6, so compare instants. Shown only when a Must Finish By is set; other
-      results unchanged. Not engine core.
+      deterministic date and its chance. A Must Finish By at 00:00 means by the end of the previous
+      working day, as in P6, so instants are compared. Shown only when a Must Finish By is set.
+      Done: a web KPI tile and HTML report tile, a dotted line and label on the finish chart (named
+      at the chart's edge when it lies far outside the finishes) plus a note in the hover readout,
+      `must_finish_by` and `prob_meet_must_finish_by` in the summary JSON (C# and Python), and the
+      figure on the CLI's simulate line. No CSV change: `iterations.csv` already has each finish.
+      synth_500 with a Must Finish By of 15-Mar-2029: 50% before mitigation, 83% after. Files
+      without one give the same results and JSON as before.
 - [ ] Critical by longest path. Criticality is float-based: an activity counts as critical when its
       total float is at or below the critical threshold. Two things still distort that in the
       Monte Carlo: activity constraints (for example finish on or before) give negative float in

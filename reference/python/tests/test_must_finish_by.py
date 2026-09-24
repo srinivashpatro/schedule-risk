@@ -4,9 +4,9 @@ import unittest
 from sra.xer import parse_xer_text, read_xer
 from sra.model import build_schedule
 from sra.cpm import CpmEngine
-from sra.calendar import parse_p6_date
+from sra.calendar import parse_p6_date, fmt_min
 from sra.risk import load_risk_model
-from sra.sim import Simulation
+from sra.sim import Simulation, summarize
 
 T = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "testdata")
 
@@ -46,6 +46,13 @@ def simulate(s):
     """synth_500 with the example risk model, whose "critical" filter comes from the engine as in the CLI."""
     m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=CpmEngine(s).critical_to_project_finish())
     return Simulation(s, m).run(iterations=100, seed=5)
+
+
+def run_and_summarize(s):
+    m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=CpmEngine(s).critical_to_project_finish())
+    sim = Simulation(s, m)
+    res = sim.run(iterations=100, seed=5)
+    return res, summarize(sim, res)
 
 
 class MustFinishBy(unittest.TestCase):
@@ -117,6 +124,30 @@ class MustFinishBy(unittest.TestCase):
                 det = CpmEngine(s).run()
                 self.assertEqual(p6_critical, sum(det.critical(s, j) for j in range(len(s.activities))))  # P6's float
                 self.assertEqual(path, CpmEngine(s).critical_to_project_finish())
+
+    def test_summary_gives_the_chance_of_meeting_the_must_finish_by(self):
+        res, out = run_and_summarize(with_must_finish_by("synth_500.xer", "SYN500", "2029-03-15 17:00"))
+        mfb = parse_p6_date("2029-03-15 17:00")
+        self.assertEqual("2029-03-15 17:00", out["must_finish_by"])
+        p = sum(1 for f in res.finish if f <= mfb) / res.iterations
+        self.assertEqual(p, out["prob_meet_must_finish_by"])
+        self.assertTrue(0.05 <= p <= 0.95)  # near the P50 finish
+
+    def test_must_finish_by_at_midnight_counts_finishes_up_to_the_end_of_the_previous_day(self):
+        res, _ = run_and_summarize(build_schedule(read_xer(os.path.join(T, "synth_500.xer"))))
+        day = sorted(res.finish)[len(res.finish) // 2] // 1440 * 1440  # midnight starting a mid-distribution day
+        _, at_start = run_and_summarize(with_must_finish_by("synth_500.xer", "SYN500", fmt_min(day)))
+        _, at_end = run_and_summarize(with_must_finish_by("synth_500.xer", "SYN500", fmt_min(day + 1440)))
+        on_the_day = sum(1 for f in res.finish if day <= f < day + 1440)
+        self.assertGreater(on_the_day, 0)
+        self.assertEqual(sum(1 for f in res.finish if f < day) / res.iterations, at_start["prob_meet_must_finish_by"])
+        self.assertAlmostEqual(on_the_day / res.iterations,
+                               at_end["prob_meet_must_finish_by"] - at_start["prob_meet_must_finish_by"], places=9)
+
+    def test_without_a_must_finish_by_the_summary_is_unchanged(self):
+        _, out = run_and_summarize(build_schedule(read_xer(os.path.join(T, "synth_500.xer"))))
+        self.assertNotIn("must_finish_by", out)
+        self.assertNotIn("prob_meet_must_finish_by", out)
 
     def test_results_do_not_depend_on_the_calendar_horizon(self):
         a = with_must_finish_by("synth_500.xer", "SYN500", "2027-06-30 17:00", horizon_years=30)
