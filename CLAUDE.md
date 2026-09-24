@@ -11,7 +11,7 @@ Schedule Risk: a P6 XER schedule risk analysis tool. It has an engine core and a
 <non_negotiables>
 
 * Never add a network call that sends schedule data anywhere. Any future LLM feature is opt-in, uses the user's own key, and sends only anonymised summaries.
-* The CPM engine must match P6. Any change to scheduling code must keep `sra verify` passing on every fixture in /tests/fixtures.
+* The CPM engine must match P6. Any change to scheduling code must keep `sra verify` passing on every fixture in testdata/.
 * Monte Carlo results must be reproducible for a given seed.
 * Engine code stays UI-agnostic. The CLI and the web app both call the same core library.
 
