@@ -74,7 +74,21 @@ Each is flagged by `sra validate` where relevant.
          C Wed 2026-01-21 17:00 (later than its natural finish), D Tue 2026-01-13 17:00 (earlier).
       4. `p6_expfin_1.xer`: "Use Expected Finish Dates" on; schedule (F9), export.
       5. `p6_expfin_2.xer`: the same with the option off; schedule, export.
-- [ ] "Make open-ended activities critical" project option
+- [ ] "Make open-ended activities critical" project option. With it on, P6 sets the late finish of an
+      activity without successors to its early finish, so it and the chain driving it get zero
+      float. The engine ignores the option and uses the project finish (or Must Finish By), so float
+      and criticality differ from P6's. Decision: follow P6 in every run, including each Monte Carlo
+      iteration (these activities then show near 100% criticality); `validate` lists the open ends
+      made critical by the setting. Still to confirm from P6: the column name (PROJECT
+      `sched_open_critical_flag`?), how it combines with a Must Finish By, what counts as open-ended
+      (only complete, LOE or WBS-summary successors?), and whether it applies to in-progress
+      activities. Waiting on two P6 exports of a toy project, which become verify fixtures in
+      testdata/ (toy data only):
+      1. Start from `testdata/hand_24h_lag.xer` (see the ALAP item for how to rebuild it) and add E:
+         1 day, FS from A, no successors.
+      2. `p6_opencrit_1.xer`: option on; schedule (F9), export.
+      3. `p6_opencrit_2.xer`: option on and project Must Finish By Fri 2026-01-16 17:00; schedule,
+         export.
 - [ ] P6 XML import
 - [ ] MS Project import
 - [ ] Resource levelling
