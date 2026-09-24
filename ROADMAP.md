@@ -15,6 +15,12 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       (`hand_*`, `parallel_*`) instead of "differences found", so every fixture in testdata/ can pass.
       The verifier now has three outcomes (matches / differences / nothing to compare, exit 0), and a
       test runs it over every fixture in testdata/.
+- [ ] `sra verify`: a stored P6 date outside the calendar horizon stops the whole check with an
+      error (C#: `outside calendar horizon`, exit 4; Python: traceback) instead of being reported.
+      The horizon (ScheduleBuilder, ~400 days before the earliest date to 30 years after the
+      latest) is built from start, constraint and data dates, not from the P6 finish and late dates
+      that verify compares. Seen with a hand-edited late date (2099); a real export with a distant
+      late date or constraint could hit it too.
 
 ## Scheduling features not yet supported
 
