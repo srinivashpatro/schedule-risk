@@ -133,7 +133,20 @@ not detected yet.
       4. One task with each constraint type (SNET, SNLT, FNET, FNLT, MSO, MFO, ALAP), a 50% lag, a
          2-elapsed-day lag ("2ed"), a deadline, and one manually scheduled task.
       5. Mark A in progress with a status date of Wed 2026-01-07; save as XML.
-- [ ] Resource levelling
+- [ ] Resource levelling: detect and explain, not model. Decision: the engine and the Monte Carlo
+      stay logic-only (common QSRA practice; P6's levelling heuristic cannot be verified exactly and
+      levelling inside iterations is disputed). Read resource assignments; recognise a levelled
+      file (P6's option flag, and stored dates later than the logic allows on activities with
+      resources); `validate` gets a `resource_levelled` check listing delayed activities and their
+      delay; `sra verify` marks those differences "levelling delay" instead of engine mismatches;
+      the web app, report and README say the risk analysis uses logic only. Still to confirm from
+      P6: which stored dates levelling changes (early, remaining early or both), the PROJECT column
+      for "level resources during scheduling", and the resource table columns. Waiting on two P6
+      exports, which become verify fixtures in testdata/ (toy data only):
+      1. Start from `testdata/hand_24h_lag.xer` (see the ALAP item for how to rebuild it).
+      2. Add one resource with a maximum of 1 unit, assigned to B and C (they overlap).
+      3. `p6_level_1.xer`: level resources (with "level resources during scheduling" on); export.
+      4. `p6_level_2.xer`: the same without levelling; schedule (F9), export.
 
 ## Shipped
 
