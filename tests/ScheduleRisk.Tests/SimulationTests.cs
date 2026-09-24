@@ -109,9 +109,7 @@ public class GoldenSimulationTests
     public void Matches_reference_simulation(Scenario sc, string tag)
     {
         var s = TestData.Load("synth_500.xer");
-        var det = new CpmEngine(s).Run();
-        var crit = Enumerable.Range(0, s.Activities.Count).Select(j => det.IsCritical(s, j)).ToArray();
-        var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), crit);
+        var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), new CpmEngine(s).CriticalToProjectFinish());
         var mc = new MonteCarloEngine(s, m, sc);
         var res = mc.Run();
         var sum = SimulationSummary.Build(mc, res);

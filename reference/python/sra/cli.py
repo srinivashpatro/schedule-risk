@@ -75,7 +75,7 @@ def main(argv=None):
     elif a.command == "simulate":
         if not a.risk:
             ap.error("simulate needs --risk model.json")
-        m = load_risk_model(s, a.risk, crit=[r.critical(s, j) for j in range(len(s.activities))])
+        m = load_risk_model(s, a.risk, crit=CpmEngine(s).critical_to_project_finish())
         for w in m.warnings:
             print("warning:", w, file=sys.stderr)
         sim = Simulation(s, m, a.scenario)

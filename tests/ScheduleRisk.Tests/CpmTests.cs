@@ -305,14 +305,48 @@ public class MustFinishByTests
     {
         // synth_500 finishes 2028-09-13 deterministically and later in most iterations.
         var s = Build("synth_500.xer", "SYN500", "2027-06-30 17:00");
-        var det = new CpmEngine(s).Run();
-        var crit = s.Activities.Select(a => det.IsCritical(s, a.Index)).ToArray();
-        var m = RiskModelLoader.LoadJson(s, File.ReadAllText(TestData.PathOf("synth_500.risk.json")), crit);
+        var m = RiskModelLoader.LoadJson(s, File.ReadAllText(TestData.PathOf("synth_500.risk.json")), new CpmEngine(s).CriticalToProjectFinish());
         var one = new MonteCarloEngine(s, m).Run(200, 5);
         var two = new MonteCarloEngine(s, m).Run(200, 5);
         Assert.Equal(200, one.Iterations);
         Assert.Equal(one.Finish, two.Finish);
         Assert.Equal(one.CriticalCount, two.CriticalCount);
+    }
+
+    /// <summary>synth_500 with the example risk model, whose "critical" filter comes from the engine as in the CLI and web app.</summary>
+    private static SimulationResult Simulate(Schedule s)
+    {
+        var crit = new CpmEngine(s).CriticalToProjectFinish();
+        var m = RiskModelLoader.LoadJson(s, File.ReadAllText(TestData.PathOf("synth_500.risk.json")), crit);
+        return new MonteCarloEngine(s, m).Run(200, 5);
+    }
+
+    [Theory]
+    [InlineData("2030-06-28 17:00")] // after every iteration's finish
+    [InlineData("2029-03-15 17:00")] // about the P50 finish
+    [InlineData("2028-06-30 17:00")] // before the deterministic finish (2028-09-13)
+    public void Must_finish_by_does_not_change_the_simulation(string date)
+    {
+        // A deadline changes P6's float, not when the project finishes or what drives the finish.
+        var none = Simulate(TestData.Load("synth_500.xer"));
+        var mfb = Simulate(Build("synth_500.xer", "SYN500", date));
+        Assert.Equal(none.Finish, mfb.Finish);
+        Assert.Equal(none.CriticalCount, mfb.CriticalCount);
+        Assert.Equal(none.Milestones.Count, mfb.Milestones.Count);
+        foreach (var (j, finishes) in none.Milestones) Assert.Equal(finishes, mfb.Milestones[j]);
+    }
+
+    [Theory]
+    [InlineData("2030-06-28 17:00", 0)]   // P6: every activity has positive float
+    [InlineData("2028-06-30 17:00", 315)] // P6: every path within the overrun has negative float
+    public void Critical_filter_does_not_depend_on_the_must_finish_by(string date, int p6Critical)
+    {
+        var path = new CpmEngine(TestData.Load("synth_500.xer")).CriticalToProjectFinish();
+        Assert.Equal(6, path.Count(c => c));
+        var s = Build("synth_500.xer", "SYN500", date);
+        var det = new CpmEngine(s).Run();
+        Assert.Equal(p6Critical, s.Activities.Count(a => det.IsCritical(s, a.Index))); // P6's float is unchanged
+        Assert.Equal(path, new CpmEngine(s).CriticalToProjectFinish());
     }
 
     [Fact]

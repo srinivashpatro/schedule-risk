@@ -219,7 +219,9 @@ class Simulation:
                     res.risk_occ[ri].append(0 if rimp[ri] is None else 1)
                 for di in range(len(self.m.drivers)):
                     res.driver_value[di].append(dval[di] if dval[di] is not None else 100.0)
-                r = self.engine.run(dur, backward=True)
+                # Criticality is measured to this iteration's own finish: a Must Finish By is a deadline, and
+                # must not change when the project finishes or what drives the finish.
+                r = self.engine.run(dur, backward=True, float_to_project_finish=True)
                 res.finish.append(r.project_finish)
                 for j in mile_idx:
                     res.milestones[j].append(r.ef[j])

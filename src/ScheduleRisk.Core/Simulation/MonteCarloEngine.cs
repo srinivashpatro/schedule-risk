@@ -245,7 +245,9 @@ public sealed class MonteCarloEngine
             void Iterate(int i, Worker w)
             {
                 IterationDurations(U, i, w);
-                _engine.Run(w.Dur, w.Res, backward: true);
+                // Criticality is measured to this iteration's own finish: a Must Finish By is a deadline, and
+                // must not change when the project finishes or what drives the finish.
+                _engine.Run(w.Dur, w.Res, backward: true, floatToProjectFinish: true);
                 bFinish[i] = w.Res.ProjectFinish;
                 for (int k = 0; k < mileIdx.Length; k++) bMile[k][i] = w.Res.EF[mileIdx[k]];
                 if (keepDur)

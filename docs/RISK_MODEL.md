@@ -33,7 +33,7 @@ A filter is an object; every key present must match (logical AND).
 | `wbs` | WBS path segment(s), e.g. `CIV` matches `PRJ.CIV` and `PRJ.CIV.FOUND` | `{ "wbs": ["CIV", "MECH"] }` |
 | `code` | activity code type → value(s) | `{ "code": { "Discipline": ["PIP", "INS"] } }` |
 | `namePattern` | regular expression on the activity name, case-insensitive | `{ "namePattern": "^Install" }` |
-| `critical` | on the deterministic critical path | `{ "critical": true }` |
+| `critical` | on the deterministic critical path, with float measured to the project's own finish (a Must Finish By does not change it) | `{ "critical": true }` |
 | `exclude` | removes listed IDs from the result | `{ "wbs": "CIV", "exclude": ["A1500"] }` |
 
 Milestones, LOE/WBS summaries and completed activities are skipped automatically

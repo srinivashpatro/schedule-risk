@@ -196,15 +196,32 @@ public sealed class CpmEngine
 
     public long[] BaseDurations() => _s.Activities.Select(a => a.RemainingDuration).ToArray();
 
-    public CpmResult Run(long[]? durations = null, bool backward = true)
+    public CpmResult Run(long[]? durations = null, bool backward = true, bool floatToProjectFinish = false)
     {
         var res = new CpmResult(_n);
-        Run(durations ?? BaseDurations(), res, backward);
+        Run(durations ?? BaseDurations(), res, backward, floatToProjectFinish);
         return res;
     }
 
-    /// <summary>Allocation-free run into a caller-owned result (used by the simulation).</summary>
-    public void Run(long[] dur, CpmResult res, bool backward)
+    /// <summary>
+    /// Activities on the deterministic critical path, with float measured to the project's own finish, so a
+    /// Must Finish By does not change the set (P6's float from <see cref="Run(long[], bool, bool)"/> does).
+    /// This is what the risk model's "critical" filter selects.
+    /// </summary>
+    public bool[] CriticalToProjectFinish()
+    {
+        var r = Run(floatToProjectFinish: true);
+        var crit = new bool[_n];
+        for (int j = 0; j < _n; j++) crit[j] = r.IsCritical(_s, j);
+        return crit;
+    }
+
+    /// <summary>
+    /// Allocation-free run into a caller-owned result (used by the simulation). With
+    /// <paramref name="floatToProjectFinish"/> the backward pass starts from this run's own project finish even
+    /// when the project has a Must Finish By, so float shows what drives the finish.
+    /// </summary>
+    public void Run(long[] dur, CpmResult res, bool backward, bool floatToProjectFinish = false)
     {
         var acts = _s.Activities;
         long dd = _s.Settings.DataDate;
@@ -316,7 +333,7 @@ public sealed class CpmEngine
         foreach (int j in _order) if (pf == Time.None || ef[j] > pf) pf = ef[j];
         res.ProjectFinish = pf;
         Summaries(res, dur);
-        if (backward) Backward(res, dur);
+        if (backward) Backward(res, dur, floatToProjectFinish);
         else
         {
             Array.Fill(res.LS, Time.None);
@@ -370,14 +387,15 @@ public sealed class CpmEngine
         }
     }
 
-    private void Backward(CpmResult res, long[] dur)
+    private void Backward(CpmResult res, long[] dur, bool floatToProjectFinish)
     {
         var acts = _s.Activities;
         long[] ls = res.LS, lf = res.LF, tf = res.TF;
         Array.Fill(ls, Time.None);
         Array.Fill(lf, Time.None);
         Array.Fill(tf, Time.None);
-        long plf = _s.Settings.MustFinishBy != Time.None ? _s.Settings.MustFinishBy : res.ProjectFinish;
+        long mfb = _s.Settings.MustFinishBy;
+        long plf = mfb != Time.None && !floatToProjectFinish ? mfb : res.ProjectFinish;
         res.ProjectLateFinish = plf;
         var ftype = _s.Settings.FloatType;
         for (int oi = _order.Length - 1; oi >= 0; oi--)

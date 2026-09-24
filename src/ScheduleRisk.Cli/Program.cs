@@ -149,8 +149,7 @@ simulate writes to --out (default: ./sra-output):
     private static int Simulate(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
     {
         if (!o.TryGetValue("risk", out var riskPath)) throw new ArgumentException("simulate needs --risk model.json");
-        var crit = Enumerable.Range(0, s.Activities.Count).Select(j => det.IsCritical(s, j)).ToArray();
-        var model = RiskModelLoader.Load(s, riskPath, crit);
+        var model = RiskModelLoader.Load(s, riskPath, engine.CriticalToProjectFinish());
         foreach (var w in model.Warnings) Console.Error.WriteLine("warning: " + w);
         int? iters = o.TryGetValue("iterations", out var it) ? int.Parse(it) : null;
         long? seed = o.TryGetValue("seed", out var sd) ? long.Parse(sd) : null;

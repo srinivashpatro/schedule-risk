@@ -15,8 +15,7 @@ public class WebSupportTests
     private static (ScheduleRisk.Core.Model.Schedule S, bool[] Crit) Synth500()
     {
         var s = TestData.Load("synth_500.xer");
-        var det = new CpmEngine(s).Run();
-        return (s, Enumerable.Range(0, s.Activities.Count).Select(j => det.IsCritical(s, j)).ToArray());
+        return (s, new CpmEngine(s).CriticalToProjectFinish());
     }
 
     [Fact]

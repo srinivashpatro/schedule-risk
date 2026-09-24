@@ -108,7 +108,7 @@ class CpmEngine:
         return order
 
     # ------------------------------------------------------------------ run
-    def run(self, durations=None, backward=True):
+    def run(self, durations=None, backward=True, float_to_project_finish=False):
         s = self.s
         acts = s.activities
         n = self.n
@@ -212,8 +212,14 @@ class CpmEngine:
         res.project_lf = None
         self._summaries(res, dur)
         if backward:
-            self._backward(res, dur)
+            self._backward(res, dur, float_to_project_finish)
         return res
+
+    def critical_to_project_finish(self):
+        """Activities on the deterministic critical path, with float measured to the project's own finish, so a
+        Must Finish By does not change the set (P6's float from run() does). The risk model's "critical" filter."""
+        r = self.run(float_to_project_finish=True)
+        return [r.critical(self.s, j) for j in range(self.n)]
 
     def _summaries(self, res, dur):
         """LOE / WBS summary: start from predecessors, finish from successors. Non-driving."""
@@ -264,14 +270,15 @@ class CpmEngine:
             fi = finishes.get(j)
             res.ef[j] = cal.snap_finish(fi) if fi is not None and fi > st else cal.add_work(st, dur[j])
 
-    def _backward(self, res, dur):
+    def _backward(self, res, dur, float_to_project_finish=False):
         s = self.s
         acts = s.activities
         n = self.n
         ls = [None] * n
         lf = [None] * n
         tf = [None] * n
-        plf = s.settings.must_finish_by if s.settings.must_finish_by is not None else res.project_finish
+        mfb = s.settings.must_finish_by
+        plf = mfb if mfb is not None and not float_to_project_finish else res.project_finish
         res.project_lf = plf
         ftype = s.settings.float_type
         for j in reversed(self.order):

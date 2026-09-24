@@ -42,8 +42,7 @@ def main():
                    "validation": {c.key: c.count for c in validate(s, r)}},
                   open(os.path.join(G, f + ".cpm.json"), "w"), indent=1)
     s = build_schedule(read_xer(os.path.join(T, "synth_500.xer")))
-    r = CpmEngine(s).run()
-    m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=[r.critical(s, j) for j in range(len(s.activities))])
+    m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=CpmEngine(s).critical_to_project_finish())
     for sc in ("pre", "post"):
         sim = Simulation(s, m, sc)
         out = summarize(sim, sim.run())

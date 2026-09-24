@@ -43,16 +43,22 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
 
 ## Risk analysis method
 
-- [ ] Criticality with a Must Finish By. Each Monte Carlo iteration measures float against the
-      project's Must Finish By when one is set, not against that iteration's own finish. In an
+- [x] Criticality with a Must Finish By. Each Monte Carlo iteration measured float against the
+      project's Must Finish By when one was set, not against that iteration's own finish. In an
       iteration that finishes early, even its longest path has positive float, so often nothing
-      counts as critical; in one that finishes late, the longest path and every path within the
-      overrun of it have negative float and all count. The criticality index (AACE RP 57R-09: how
-      often an activity is on the critical path) then reflects the deadline as much as the logic,
-      and cruciality inherits it. This matches P6's deterministic float, so it is a method choice,
-      not a P6 mismatch. To plan: measure criticality in each iteration against that iteration's
-      finish (keeping P6 float for the deterministic run and verify), or keep today's behaviour and
-      explain it in the report.
+      counted as critical; in one that finishes late, the longest path and every path within the
+      overrun of it have negative float and all counted. The criticality index (AACE RP 57R-09: how
+      often an activity is on the critical path) then reflected the deadline as much as the logic,
+      and cruciality inherited it. Worse, the risk model's `critical` filter used P6's float too, so
+      a risk filtered to critical activities (as in the example model) hit none or hundreds of them
+      and the finish forecast moved with the deadline.
+      Fixed: iterations measure float to their own finish, and the `critical` filter picks the
+      activities that drive the deterministic finish; the deterministic schedule (CPM dates, float,
+      verify, validate, the activity grid) keeps P6's float against the Must Finish By. On synth_500
+      with the example model (500 iterations, seed 1), a Must Finish By of 28-Jun-2030, 15-Mar-2029 or
+      30-Jun-2028 had given 0, 364 or 389 activities with any criticality, a `critical` filter of 0,
+      0 or 315 activities, and P80 18-May-2029, 18-May-2029 or 27-Jul-2029; all three now give the
+      no-deadline results: 49 activities, 6 in the filter, P80 14-Jun-2029.
 
 ## Scheduling features not yet supported
 

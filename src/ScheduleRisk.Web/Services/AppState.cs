@@ -33,9 +33,8 @@ public sealed class AppState
     public string BusyText { get; private set; } = "";
     public TimeSpan CpmTime { get; private set; }
 
-    public bool[] Critical => Schedule == null || Cpm == null
-        ? Array.Empty<bool>()
-        : Enumerable.Range(0, Schedule.Activities.Count).Select(j => Cpm.IsCritical(Schedule, j)).ToArray();
+    /// <summary>For the risk model's "critical" filter: float measured to the project's own finish (see CpmEngine).</summary>
+    public bool[] Critical => Engine == null ? Array.Empty<bool>() : Engine.CriticalToProjectFinish();
 
     public IEnumerable<string> CodeTypes =>
         Schedule == null ? Enumerable.Empty<string>()

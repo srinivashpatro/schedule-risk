@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from sra.xer import parse_xer_text
+from sra.xer import parse_xer_text, read_xer
 from sra.model import build_schedule
 from sra.cpm import CpmEngine
 from sra.calendar import parse_p6_date
@@ -40,6 +40,12 @@ def last_activity(s, r):
     """The first activity (no successors) that finishes the project."""
     return next(a for a in s.activities
                 if r.ef[a.idx] == r.project_finish and all(x.pred != a.idx for x in s.relationships))
+
+
+def simulate(s):
+    """synth_500 with the example risk model, whose "critical" filter comes from the engine as in the CLI."""
+    m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=CpmEngine(s).critical_to_project_finish())
+    return Simulation(s, m).run(iterations=100, seed=5)
 
 
 class MustFinishBy(unittest.TestCase):
@@ -85,13 +91,32 @@ class MustFinishBy(unittest.TestCase):
 
     def test_monte_carlo_runs_when_iterations_overrun_the_must_finish_by(self):
         s = with_must_finish_by("synth_500.xer", "SYN500", "2027-06-30 17:00")
-        det = CpmEngine(s).run()
-        m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=[det.critical(s, j) for j in range(len(s.activities))])
+        m = load_risk_model(s, os.path.join(T, "synth_500.risk.json"), crit=CpmEngine(s).critical_to_project_finish())
         one = Simulation(s, m).run(iterations=100, seed=5)
         two = Simulation(s, m).run(iterations=100, seed=5)
         self.assertEqual(100, one.iterations)
         self.assertEqual(one.finish, two.finish)
         self.assertEqual(one.crit_count, two.crit_count)
+
+    def test_must_finish_by_does_not_change_the_simulation(self):
+        # A deadline changes P6's float, not when the project finishes or what drives the finish.
+        none = simulate(build_schedule(read_xer(os.path.join(T, "synth_500.xer"))))
+        for date in ("2030-06-28 17:00", "2029-03-15 17:00", "2028-06-30 17:00"):
+            with self.subTest(date=date):
+                r = simulate(with_must_finish_by("synth_500.xer", "SYN500", date))
+                self.assertEqual(none.finish, r.finish)
+                self.assertEqual(none.crit_count, r.crit_count)
+                self.assertEqual(none.milestones, r.milestones)
+
+    def test_critical_filter_does_not_depend_on_the_must_finish_by(self):
+        path = CpmEngine(build_schedule(read_xer(os.path.join(T, "synth_500.xer")))).critical_to_project_finish()
+        self.assertEqual(6, sum(path))
+        for date, p6_critical in (("2030-06-28 17:00", 0), ("2028-06-30 17:00", 315)):
+            with self.subTest(date=date):
+                s = with_must_finish_by("synth_500.xer", "SYN500", date)
+                det = CpmEngine(s).run()
+                self.assertEqual(p6_critical, sum(det.critical(s, j) for j in range(len(s.activities))))  # P6's float
+                self.assertEqual(path, CpmEngine(s).critical_to_project_finish())
 
     def test_results_do_not_depend_on_the_calendar_horizon(self):
         a = with_must_finish_by("synth_500.xer", "SYN500", "2027-06-30 17:00", horizon_years=30)
