@@ -43,6 +43,21 @@ jobs:
           cp publish/wwwroot/index.html publish/wwwroot/404.html
           touch publish/wwwroot/.nojekyll
 
+      # The previous release stays online at /<repo>/v0.3/, built from its release branch.
+      - name: Check out release 0.3.0
+        uses: actions/checkout@v7
+        with:
+          ref: release/0.3
+          path: previous/v0.3
+
+      - name: Publish release 0.3.0 under v0.3/
+        run: |
+          REPO="${GITHUB_REPOSITORY#*/}"
+          dotnet publish previous/v0.3/src/ScheduleRisk.Web -c Release -o previous/publish-v0.3
+          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO}/v0.3/\" />|" previous/publish-v0.3/wwwroot/index.html
+          grep -q "<base href=\"/${REPO}/v0.3/\" />" previous/publish-v0.3/wwwroot/index.html
+          cp -r previous/publish-v0.3/wwwroot publish/wwwroot/v0.3
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: publish/wwwroot

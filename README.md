@@ -9,7 +9,8 @@ Status: **v0.4 - engine core, command line, and a browser app (Blazor WebAssembl
 Changes by release are in [CHANGELOG.md](CHANGELOG.md).
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
 and the site can be hosted as plain static files. Try it at
-<https://srinivashpatro.github.io/schedule-risk/>.
+<https://srinivashpatro.github.io/schedule-risk/>. The previous release, 0.3.0, stays online at
+<https://srinivashpatro.github.io/schedule-risk/v0.3/>, built from the `release/0.3` branch.
 
 ## Build and test (Windows)
 

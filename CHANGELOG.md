@@ -45,6 +45,8 @@
 
 ## 0.3.0
 
+Still online at <https://srinivashpatro.github.io/schedule-risk/v0.3/> (branch `release/0.3`).
+
 - Engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with Latin Hypercube
   sampling, seed-reproducible), the `sra` CLI, and the Blazor WebAssembly browser app on GitHub
   Pages.
