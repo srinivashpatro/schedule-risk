@@ -45,7 +45,19 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
 
 Each is flagged by `sra validate` where relevant.
 
-- [ ] ALAP (as late as possible) constraints
+- [ ] ALAP (as late as possible) constraints. P6 moves an ALAP activity later into its free float
+      without delaying its successors. Still to confirm from P6: whether a chain of ALAP activities
+      all move late, whether an open-ended one moves to the project early finish or the Must Finish
+      By, and whether total float falls by the delay. Waiting on two P6 exports of a toy project,
+      which become verify fixtures in testdata/ (toy data only; testdata/ is public):
+      1. Import `testdata/hand_24h_lag.xer` into P6, or rebuild it: 5x8 calendar (08-12, 13-17,
+         1 Jan 2026 holiday), data date Mon 2026-01-05 08:00; S start milestone, A 5d, B 3d, C 10d,
+         D 2d, M finish milestone; S->A FS, A->B FS +3d, A->C SS +2d, B->D FF +1d, C->M FS, D->M FS;
+         options: lag calendar 24-Hour, retained logic, total float = finish float, critical if
+         float <= 0.
+      2. Add E: 1 day, FS from A, no successors.
+      3. `p6_alap_1.xer`: primary constraint "As Late As Possible" on D and E; schedule (F9), export.
+      4. `p6_alap_2.xer`: also ALAP on B, project Must Finish By 2026-01-30 17:00; schedule, export.
 - [ ] Expected finish constraint
 - [ ] "Make open-ended activities critical" project option
 - [ ] P6 XML import
