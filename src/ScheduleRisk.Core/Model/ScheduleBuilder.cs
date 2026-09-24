@@ -82,9 +82,14 @@ public static class ScheduleBuilder
                 long v = Time.TryParseP6(t[k]);
                 if (v != Time.None) dates.Add(v);
             }
+        if (st.MustFinishBy != Time.None) dates.Add(st.MustFinishBy);
         long h0 = dates.Min() - 400L * 1440;
-        h0 = Time.ToMinutes(Time.FromMinutes(h0).Date);
         long h1 = dates.Max() + (long)(horizonYears * 365.25) * 1440;
+        // The backward pass starts from the must-finish-by. A finish after it (every finish lies before h1)
+        // pulls late dates back by as much as the overrun, so the calendars reach that far before it.
+        if (st.MustFinishBy != Time.None)
+            h0 = Math.Min(h0, st.MustFinishBy - (h1 - st.DataDate) - 400L * 1440);
+        h0 = Time.ToMinutes(Time.FromMinutes(h0).Date);
 
         // ---- calendars
         var calRows = doc.Rows("CALENDAR").ToList();

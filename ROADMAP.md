@@ -22,13 +22,21 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       that verify compares. Seen with a hand-edited late date (2099); a real export with a distant
       late date or constraint could hit it too. In the web app the file failed to open.
       Now reported as a difference in elapsed time, marked "outside the calendar range".
-- [ ] CPM: a project "must finish by" date (`scd_end_date`) outside the calendar horizon crashes
+- [x] CPM: a project "must finish by" date (`scd_end_date`) outside the calendar horizon crashes
       the scheduling itself (`outside calendar horizon`): the backward pass starts from it
       (CpmEngine.cs:380) but ScheduleBuilder does not include it when building the horizon. On
       synth_200 (data date 2026-05-04), must-finish-by 2100, 2020 or 2015 fails `sra cpm` and the
       web app cannot open the file; 2045 works. Adding the date to the horizon is not enough on its
       own: with large negative float, late dates computed backwards can reach further back than the
       fixed 400-day margin. Scheduling code, so it must keep `sra verify` passing on every fixture.
+      Fixed: the horizon now includes the must-finish-by and, when one is set, starts early enough
+      for any finish before the horizon end. This also fixed Monte Carlo runs whose iterations
+      overran an in-horizon must-finish-by (they failed with "work before calendar horizon").
+- [ ] Confirm which PROJECT column holds P6's "Must Finish By". The engine reads `scd_end_date`; it
+      may be `plan_end_date`, with `scd_end_date` being P6's calculated Scheduled Finish, which P6
+      writes into every scheduled export. If so, real files anchor every backward pass to P6's
+      deterministic finish, including each Monte Carlo iteration, which can inflate the criticality
+      index in iterations that finish later. Waiting on a real P6 export with Must Finish By set.
 
 ## Scheduling features not yet supported
 

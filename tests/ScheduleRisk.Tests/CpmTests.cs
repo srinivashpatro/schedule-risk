@@ -3,6 +3,8 @@ using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
+using ScheduleRisk.Core.Risk;
+using ScheduleRisk.Core.Simulation;
 using ScheduleRisk.Core.Xer;
 
 namespace ScheduleRisk.Tests;
@@ -148,18 +150,19 @@ public class GoldenCpmTests
         Assert.Equal(VerifyOutcome.Differences, rep.Outcome);
     }
 
-    /// <summary>Sets TASK fields of one activity in XER text, addressing columns by name.</summary>
-    private static string SetTaskFields(string xer, string code, params (string Field, string Value)[] values)
+    /// <summary>Sets fields of the rows of <paramref name="table"/> whose <paramref name="keyField"/> is
+    /// <paramref name="key"/>, in XER text, addressing columns by name.</summary>
+    internal static string SetFields(string xer, string table, string keyField, string key, params (string Field, string Value)[] values)
     {
         var lines = xer.Split('\n');
-        string? table = null;
+        string? current = null;
         string[]? fields = null;
         for (int i = 0; i < lines.Length; i++)
         {
             var cells = lines[i].TrimEnd('\r').Split('\t');
-            if (cells[0] == "%T") table = cells[1];
-            else if (cells[0] == "%F" && table == "TASK") fields = cells;
-            else if (cells[0] == "%R" && table == "TASK" && fields != null && cells[Array.IndexOf(fields, "task_code")] == code)
+            if (cells[0] == "%T") current = cells[1];
+            else if (cells[0] == "%F" && current == table) fields = cells;
+            else if (cells[0] == "%R" && current == table && fields != null && cells[Array.IndexOf(fields, keyField)] == key)
             {
                 foreach (var (f, v) in values) cells[Array.IndexOf(fields, f)] = v;
                 lines[i] = string.Join('\t', cells);
@@ -173,7 +176,7 @@ public class GoldenCpmTests
     {
         // P6 dates far outside the calendars we compile cannot be converted to working time;
         // they must be reported as differences (in elapsed time), not stop the check.
-        string xer = SetTaskFields(File.ReadAllText(TestData.PathOf("synth_200.xer")), "A00290",
+        string xer = SetFields(File.ReadAllText(TestData.PathOf("synth_200.xer")), "TASK", "task_code", "A00290",
             ("late_end_date", "2099-01-01 17:00"), ("late_start_date", "1990-01-02 08:00"));
         var s = ScheduleBuilder.Build(XerDocument.Parse(xer));
         var r = new CpmEngine(s).Run();
@@ -213,5 +216,71 @@ public class GoldenCpmTests
         var s = ScheduleBuilder.Build(XerDocument.Parse(text));
         var ex = Assert.Throws<ScheduleLoopException>(() => new CpmEngine(s));
         Assert.Contains("S", ex.Codes);
+    }
+}
+
+/// <summary>
+/// The backward pass starts from the project must-finish-by (PROJECT.scd_end_date), so the calendars
+/// must cover it, and the late dates it produces, wherever it lies.
+/// </summary>
+public class MustFinishByTests
+{
+    private static Schedule Build(string file, string project, string mustFinishBy, double horizonYears = 30)
+    {
+        string xer = GoldenCpmTests.SetFields(File.ReadAllText(TestData.PathOf(file)), "PROJECT", "proj_short_name", project,
+            ("scd_end_date", mustFinishBy));
+        return ScheduleBuilder.Build(XerDocument.Parse(xer), horizonYears: horizonYears);
+    }
+
+    [Theory]
+    [InlineData("2100-12-31 17:00")] // after the calendar horizon
+    [InlineData("2045-06-30 17:00")] // inside it, positive float
+    [InlineData("2025-12-05 17:00")] // inside it, but the project (finish 2027-06-04) overruns it by 18 months
+    [InlineData("2020-01-31 17:00")] // before the calendar horizon
+    [InlineData("2015-01-30 17:00")]
+    public void Backward_pass_runs_from_any_must_finish_by(string date)
+    {
+        var s = Build("synth_200.xer", "SYN200", date);
+        var r = new CpmEngine(s).Run();
+        long mfb = Time.ParseP6(date);
+        Assert.Equal(mfb, r.ProjectLateFinish);
+        // The activity that finishes the project has no successors: its late finish is the must-finish-by
+        // (snapped to working time) and its float is measured to it.
+        var last = s.Activities.First(a => r.EF[a.Index] == r.ProjectFinish && s.Relationships.All(x => x.Pred != a.Index));
+        var cal = last.Calendar;
+        Assert.Equal(cal.SnapFinish(mfb), r.LF[last.Index]);
+        Assert.Equal(cal.WorkAt(r.LF[last.Index]) - cal.WorkAt(r.EF[last.Index]), r.TF[last.Index]);
+        Assert.Equal(mfb >= r.ProjectFinish, r.TF[last.Index] >= 0);
+    }
+
+    [Fact]
+    public void Monte_carlo_runs_when_iterations_overrun_the_must_finish_by()
+    {
+        // synth_500 finishes 2028-09-13 deterministically and later in most iterations.
+        var s = Build("synth_500.xer", "SYN500", "2027-06-30 17:00");
+        var det = new CpmEngine(s).Run();
+        var crit = s.Activities.Select(a => det.IsCritical(s, a.Index)).ToArray();
+        var m = RiskModelLoader.LoadJson(s, File.ReadAllText(TestData.PathOf("synth_500.risk.json")), crit);
+        var one = new MonteCarloEngine(s, m).Run(200, 5);
+        var two = new MonteCarloEngine(s, m).Run(200, 5);
+        Assert.Equal(200, one.Iterations);
+        Assert.Equal(one.Finish, two.Finish);
+        Assert.Equal(one.CriticalCount, two.CriticalCount);
+    }
+
+    [Fact]
+    public void Results_do_not_depend_on_the_calendar_horizon()
+    {
+        // With a must-finish-by the horizon start depends on its end, so this moves both ends.
+        var a = Build("synth_500.xer", "SYN500", "2027-06-30 17:00", horizonYears: 30);
+        var b = Build("synth_500.xer", "SYN500", "2027-06-30 17:00", horizonYears: 60);
+        Assert.NotEqual(a.Cal24.HorizonStart, b.Cal24.HorizonStart);
+        var ra = new CpmEngine(a).Run();
+        var rb = new CpmEngine(b).Run();
+        Assert.Equal(ra.ES, rb.ES);
+        Assert.Equal(ra.EF, rb.EF);
+        Assert.Equal(ra.LS, rb.LS);
+        Assert.Equal(ra.LF, rb.LF);
+        Assert.Equal(ra.TF, rb.TF);
     }
 }

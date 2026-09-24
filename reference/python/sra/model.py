@@ -148,9 +148,15 @@ def build_schedule(doc, project=None, horizon_years=30):
                 v = None
             if v is not None:
                 dates.append(v)
+    if st.must_finish_by is not None:
+        dates.append(st.must_finish_by)
     h0 = min(dates) - 400 * 1440
-    h0 = to_min(from_min(h0).replace(hour=0, minute=0))
     h1 = max(dates) + int(horizon_years * 365.25) * 1440
+    # The backward pass starts from the must-finish-by. A finish after it (every finish lies before h1)
+    # pulls late dates back by as much as the overrun, so the calendars reach that far before it.
+    if st.must_finish_by is not None:
+        h0 = min(h0, st.must_finish_by - (h1 - st.data_date) - 400 * 1440)
+    h0 = to_min(from_min(h0).replace(hour=0, minute=0))
 
     # ---- calendars
     for c in doc.rows("CALENDAR"):
