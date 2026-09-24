@@ -6,6 +6,9 @@ namespace ScheduleRisk.Core.Analysis;
 
 public sealed record DateDiff(string Code, string Field, long P6, long Ours, long DeltaMinutes);
 
+/// <summary>NothingToCompare: no activity carries P6-calculated dates (e.g. the file was not scheduled before export).</summary>
+public enum VerifyOutcome { Matches, Differences, NothingToCompare }
+
 public sealed class VerifyReport
 {
     public int Compared { get; set; }
@@ -15,7 +18,10 @@ public sealed class VerifyReport
     public int SkippedNoP6 { get; set; }
     public List<DateDiff> Diffs { get; } = new();
 
-    public bool Passed => Compared > 0 && Diffs.Count == 0;
+    public VerifyOutcome Outcome =>
+        Compared == 0 ? VerifyOutcome.NothingToCompare : Diffs.Count == 0 ? VerifyOutcome.Matches : VerifyOutcome.Differences;
+
+    public bool Passed => Outcome == VerifyOutcome.Matches;
 
     public IEnumerable<DateDiff> Worst(int n = 50) => Diffs.OrderByDescending(d => Math.Abs(d.DeltaMinutes)).Take(n);
 }

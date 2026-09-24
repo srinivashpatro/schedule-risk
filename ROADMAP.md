@@ -11,8 +11,10 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       and printed float values as if they were dates. The engine was right: the fixture generator
       wrote total float to 6 significant digits. It now writes 4 decimals, the file is regenerated
       (seed 11, now in tools_make_golden.py), and the CLI prints float differences in hours.
-- [ ] `sra verify`: report "no P6 dates to compare" for files without P6-calculated dates
+- [x] `sra verify`: report "no P6 dates to compare" for files without P6-calculated dates
       (`hand_*`, `parallel_*`) instead of "differences found", so every fixture in testdata/ can pass.
+      The verifier now has three outcomes (matches / differences / nothing to compare, exit 0), and a
+      test runs it over every fixture in testdata/.
 
 ## Scheduling features not yet supported
 

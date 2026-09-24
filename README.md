@@ -66,7 +66,9 @@ The risk model format is described in [docs/RISK_MODEL.md](docs/RISK_MODEL.md).
 P6 writes its own early/late dates and total float into every XER it exports. `sra verify`
 recalculates the schedule and compares every date, in working time, with what P6 saved. A schedule
 that verifies cleanly is one whose risk results you can trust. Run it on your real XER files
-first; any differences point at a P6 rule the engine does not yet follow.
+first; any differences point at a P6 rule the engine does not yet follow. A file without
+P6-calculated dates (not scheduled before export) reports "nothing to compare" and exits 0;
+only differences give a non-zero exit code.
 
 ## Layout
 

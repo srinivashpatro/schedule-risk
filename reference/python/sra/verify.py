@@ -25,8 +25,15 @@ class VerifyReport:
         self.skipped_no_p6 = 0
 
     @property
+    def outcome(self):
+        """"matches", "differences", or "nothing" when no activity carries P6-calculated dates."""
+        if self.compared == 0:
+            return "nothing"
+        return "differences" if self.diffs else "matches"
+
+    @property
     def passed(self):
-        return self.compared > 0 and not self.diffs
+        return self.outcome == "matches"
 
     def worst(self, n=50):
         return sorted(self.diffs, key=lambda d: -abs(d.delta_min))[:n]

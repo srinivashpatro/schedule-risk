@@ -136,8 +136,13 @@ simulate writes to --out (default: ./sra-output):
         static string Show(DateDiff d, long m) => d.Field == "total_float" ? $"{m / 60.0:F2} h" : Time.Format(m);
         foreach (var d in rep.Worst(40))
             Console.WriteLine($"  {d.Code,-14} {d.Field,-16} P6 {Show(d, d.P6),-16} ours {Show(d, d.Ours),-16} delta {d.DeltaMinutes / 60.0:+0.00;-0.00}h");
-        Console.WriteLine(rep.Passed ? "RESULT: engine matches P6" : "RESULT: differences found (see above)");
-        return rep.Passed ? 0 : 1;
+        Console.WriteLine(rep.Outcome switch
+        {
+            VerifyOutcome.Matches => "RESULT: engine matches P6",
+            VerifyOutcome.Differences => "RESULT: differences found (see above)",
+            _ => "RESULT: nothing to compare - no P6-calculated dates in this file (it may not have been scheduled in P6 before export)",
+        });
+        return rep.Outcome == VerifyOutcome.Differences ? 1 : 0;
     }
 
     private static int Simulate(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)

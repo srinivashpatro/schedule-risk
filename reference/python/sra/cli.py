@@ -68,7 +68,9 @@ def main(argv=None):
               f"{rep.activities_matched} activities fully match")
         for d in rep.worst(30):
             print(f"  {d.code:12s} {d.field:16s} p6={d.p6} ours={d.ours} delta={d.delta_min / 60:+.1f}h")
-        return 0 if rep.passed else 1
+        if rep.outcome == "nothing":
+            print("nothing to compare - no P6-calculated dates in this file")
+        return 1 if rep.outcome == "differences" else 0
     elif a.command == "simulate":
         if not a.risk:
             ap.error("simulate needs --risk model.json")

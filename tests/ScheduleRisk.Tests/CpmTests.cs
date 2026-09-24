@@ -105,6 +105,33 @@ public class GoldenCpmTests
         var rep = P6Verifier.Verify(s, r);
         Assert.True(rep.Compared > 100);
         Assert.Empty(rep.Diffs);
+        Assert.Equal(VerifyOutcome.Matches, rep.Outcome);
+    }
+
+    [Fact]
+    public void Verifier_reports_nothing_to_compare_without_p6_dates()
+    {
+        var (s, r) = TestData.LoadAndRun("hand_basic.xer");
+        var rep = P6Verifier.Verify(s, r);
+        Assert.Equal(0, rep.Compared);
+        Assert.Equal(s.Activities.Count, rep.SkippedNoP6);
+        Assert.Empty(rep.Diffs);
+        Assert.Equal(VerifyOutcome.NothingToCompare, rep.Outcome);
+        Assert.False(rep.Passed);
+    }
+
+    public static IEnumerable<object[]> AllFixtures() =>
+        Directory.GetFiles(TestData.Dir, "*.xer").Select(p => new object[] { Path.GetFileName(p) }).OrderBy(x => (string)x[0]);
+
+    /// <summary>CLAUDE.md: `sra verify` must pass on every fixture in testdata/.</summary>
+    [Theory]
+    [MemberData(nameof(AllFixtures))]
+    public void Every_fixture_verifies_without_differences(string file)
+    {
+        var (s, r) = TestData.LoadAndRun(file);
+        var rep = P6Verifier.Verify(s, r);
+        Assert.Empty(rep.Diffs);
+        Assert.NotEqual(VerifyOutcome.Differences, rep.Outcome);
     }
 
     [Fact]
@@ -118,6 +145,7 @@ public class GoldenCpmTests
         c.P6Dates["early_end_date"] = Time.ParseP6("2026-01-21 17:00");
         var rep = P6Verifier.Verify(s, r);
         Assert.Contains(rep.Diffs, d => d.Code == "C" && d.Field == "early_finish" && d.DeltaMinutes == -480);
+        Assert.Equal(VerifyOutcome.Differences, rep.Outcome);
     }
 
     [Fact]
