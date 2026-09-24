@@ -98,7 +98,27 @@ Each is flagged by `sra validate` where relevant.
       1. Import `testdata/synth_200.xer` into P6 and schedule (F9).
       2. Export that project as P6 XML (`p6xml_synth_200.xml`) and as XER (`p6xml_synth_200.xer`).
       3. Optional: the same pair from `testdata/hand_holiday.xer`, for calendar holidays.
-- [ ] MS Project import
+- [ ] MS Project import. Decisions: MS Project XML (MSPDI, File > Save As > XML) only, no `.mpp`; and
+      MS Project data is scheduled with our P6 engine, not an emulation of MS Project's rules.
+      MSPDI is translated into the same XER tables ScheduleBuilder reads, reusing the P6 XML item's
+      format detection, safe XML settings and calendar writer, so it comes after that item. Mapping:
+      status date -> data date; outline -> WBS; summary tasks -> WBS nodes (their links passed to
+      subtasks and flagged); constraints SNET/SNLT/FNET/FNLT -> on-or-after/on-or-before, MSO/MFO ->
+      mandatory start/finish, ALAP -> CS_ALAP (flagged until the ALAP item lands); deadline -> finish
+      on or before; percentage lags -> hours of the predecessor's duration; total slack -> smallest
+      float. `validate` lists what has no exact P6 equivalent (summary-task links, elapsed lags,
+      manually scheduled tasks, scheduling from finish, constraint dates not honoured), and `sra
+      verify` compares with MS Project's own stored dates. Still to confirm from MS Project: the lag
+      calendar, how in-progress work is placed relative to the status date, and the units in the file.
+      Waiting on a toy MS Project file saved as XML (`msp_toy.xml`, toy data only; testdata/ is public):
+      1. Calendar 5 days x 8 hours (08-12, 13-17), 1 Jan 2026 holiday, plus one recurring holiday
+         (e.g. first Monday of each month).
+      2. Tasks and links as `hand_24h_lag` (see the ALAP item): S, A 5d, B 3d, C 10d, D 2d, M
+         milestone; S->A FS, A->B FS +3d, A->C SS +2d, B->D FF +1d, C->M FS, D->M FS.
+      3. Put A-D under a summary task and link another task to the summary.
+      4. One task with each constraint type (SNET, SNLT, FNET, FNLT, MSO, MFO, ALAP), a 50% lag, a
+         2-elapsed-day lag ("2ed"), a deadline, and one manually scheduled task.
+      5. Mark A in progress with a status date of Wed 2026-01-07; save as XML.
 - [ ] Resource levelling
 
 ## Shipped
