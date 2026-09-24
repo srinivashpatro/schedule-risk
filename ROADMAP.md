@@ -183,3 +183,5 @@ not detected yet.
       Latin Hypercube, seed-reproducible), `sra` CLI, Blazor WebAssembly app on GitHub Pages
 - [x] Interactive finish-date chart (hover and keyboard readout)
 - [x] Modernist redesign of the browser app, with a sample project
+- [x] v0.4: interactive chart and redesign above, the engine-accuracy and Must Finish By fixes in
+      this file, and the chance of meeting the Must Finish By (see CHANGELOG.md)
