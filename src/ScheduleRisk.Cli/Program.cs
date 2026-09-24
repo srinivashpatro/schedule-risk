@@ -132,8 +132,10 @@ simulate writes to --out (default: ./sra-output):
         var rep = P6Verifier.Verify(s, r, tol);
         Console.WriteLine($"compared {rep.Compared} activities: {rep.FieldsMatched}/{rep.FieldsCompared} fields match P6, " +
                           $"{rep.ActivitiesMatched} activities fully match ({rep.SkippedNoP6} without P6 dates skipped)");
+        // Total float is a duration in minutes; the other fields are dates.
+        static string Show(DateDiff d, long m) => d.Field == "total_float" ? $"{m / 60.0:F2} h" : Time.Format(m);
         foreach (var d in rep.Worst(40))
-            Console.WriteLine($"  {d.Code,-14} {d.Field,-16} P6 {Time.Format(d.P6),-16} ours {Time.Format(d.Ours),-16} delta {d.DeltaMinutes / 60.0:+0.0;-0.0}h");
+            Console.WriteLine($"  {d.Code,-14} {d.Field,-16} P6 {Show(d, d.P6),-16} ours {Show(d, d.Ours),-16} delta {d.DeltaMinutes / 60.0:+0.00;-0.00}h");
         Console.WriteLine(rep.Passed ? "RESULT: engine matches P6" : "RESULT: differences found (see above)");
         return rep.Passed ? 0 : 1;
     }

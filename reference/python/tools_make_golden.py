@@ -34,6 +34,7 @@ def main():
     b.save(os.path.join(T, "hand_holiday.xer"))
     generate(200, seed=3, name="SYN200").save(os.path.join(T, "synth_200.xer"))
     generate(500, seed=7, name="SYN500").save(os.path.join(T, "synth_500.xer"))
+    generate(5000, seed=11, name="SYN5000").save(os.path.join(T, "synth_5000.xer"))
     for f in ["hand_basic", "hand_24h_lag", "hand_constraint", "hand_holiday", "synth_200", "synth_500"]:
         s = build_schedule(read_xer(os.path.join(T, f + ".xer")))
         r = CpmEngine(s).run()

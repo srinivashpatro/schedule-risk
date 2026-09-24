@@ -7,9 +7,10 @@ when it is done and build-and-test passes. The order below is a draft: reorder a
 
 These come first because "the CPM engine must match P6" is a non-negotiable.
 
-- [ ] `synth_5000.xer`: `sra verify` finds 9 of 19,774 fields that differ from the stored values
-      (total float about 19 minutes off on 8 activities, a sub-minute rounding difference on one),
-      and prints float values as if they were dates.
+- [x] `synth_5000.xer`: `sra verify` found 9 of 19,774 fields that differ from the stored values
+      and printed float values as if they were dates. The engine was right: the fixture generator
+      wrote total float to 6 significant digits. It now writes 4 decimals, the file is regenerated
+      (seed 11, now in tools_make_golden.py), and the CLI prints float differences in hours.
 - [ ] `sra verify`: report "no P6 dates to compare" for files without P6-calculated dates
       (`hand_*`, `parallel_*`) instead of "differences found", so every fixture in testdata/ can pass.
 

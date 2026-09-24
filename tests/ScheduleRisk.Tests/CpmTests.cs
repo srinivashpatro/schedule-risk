@@ -98,6 +98,7 @@ public class GoldenCpmTests
     [Theory]
     [InlineData("synth_200")]
     [InlineData("synth_500")]
+    [InlineData("synth_5000")]
     public void Verifier_accepts_dates_written_by_engine(string name)
     {
         var (s, r) = TestData.LoadAndRun(name + ".xer");

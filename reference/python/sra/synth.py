@@ -17,6 +17,12 @@ from .calendar import fmt_min
 HOLIDAYS = [dt.date(y, m, d) for y in range(2025, 2031) for (m, d) in ((1, 1), (5, 1), (12, 25), (12, 26))]
 
 
+def float_hours(minutes):
+    """Total float for total_float_hr_cnt. Four decimals read back to the exact minute;
+    `:g` kept six significant digits, which rounded floats over 10,000 h to the hour."""
+    return f"{minutes / 60:.4f}".rstrip("0").rstrip(".")
+
+
 def generate(n=500, seed=7, start="2026-03-02 08:00", progress_fraction=0.2, name="SYN"):
     rng = Rng(seed)
     b = XerBuilder()
@@ -140,4 +146,4 @@ def write_engine_dates(b):
         row["late_end_date"] = fmt_min(r.lf[j]) if r.lf[j] is not None else ""
         row["restart_date"] = fmt_min(r.rs[j])
         row["reend_date"] = fmt_min(r.ef[j])
-        row["total_float_hr_cnt"] = f"{r.tf[j] / 60:g}" if r.tf[j] is not None else ""
+        row["total_float_hr_cnt"] = float_hours(r.tf[j]) if r.tf[j] is not None else ""
