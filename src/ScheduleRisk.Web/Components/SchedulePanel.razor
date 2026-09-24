@@ -94,7 +94,7 @@ else
                                 @foreach (var d in vr.Worst(40))
                                 {
                                     <tr><td>@d.Code</td><td>@d.Field.Replace('_', ' ')</td><td>@(d.Field == "total_float" ? Num(d.P6 / 60.0) + " h" : AppState.DayTime(d.P6))</td>
-                                        <td>@(d.Field == "total_float" ? Num(d.Ours / 60.0) + " h" : AppState.DayTime(d.Ours))</td><td class="n">@Num(d.DeltaMinutes / 60.0)</td></tr>
+                                        <td>@(d.Field == "total_float" ? Num(d.Ours / 60.0) + " h" : AppState.DayTime(d.Ours))</td><td class="n">@Num(d.DeltaMinutes / 60.0)@if (d.OutsideCalendar) {<br /><span class="hint">elapsed · outside calendar range</span>}</td></tr>
                                 }
                             </tbody>
                         </table>

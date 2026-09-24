@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from sra.xer import read_xer
+from sra.xer import read_xer, parse_xer_text
 from sra.model import build_schedule
 from sra.cpm import CpmEngine
 from sra.verify import verify_against_p6
@@ -29,6 +29,30 @@ class SyntheticFixturesVerify(unittest.TestCase):
         self.assertEqual([], rep.diffs)
         self.assertEqual("nothing", rep.outcome)
         self.assertFalse(rep.passed)
+
+    def test_p6_dates_outside_the_calendar_range(self):
+        """Far-off P6 dates are reported as differences in elapsed time, not a crash."""
+        lines = open(os.path.join(T, "synth_200.xer"), encoding="utf-8").read().split("\n")
+        table = fields = None
+        for i, ln in enumerate(lines):
+            cells = ln.rstrip("\r").split("\t")
+            if cells[0] == "%T":
+                table = cells[1]
+            elif cells[0] == "%F" and table == "TASK":
+                fields = cells
+            elif cells[0] == "%R" and table == "TASK" and cells[fields.index("task_code")] == "A00290":
+                cells[fields.index("late_end_date")] = "2099-01-01 17:00"
+                cells[fields.index("late_start_date")] = "1990-01-02 08:00"
+                lines[i] = "\t".join(cells)
+        s = build_schedule(parse_xer_text("\n".join(lines)))
+        rep = verify_against_p6(s, CpmEngine(s).run())
+        self.assertEqual("differences", rep.outcome)
+        self.assertEqual(["late_finish", "late_start"], sorted(d.field for d in rep.diffs))
+        for d in rep.diffs:
+            self.assertEqual("A00290", d.code)
+            self.assertTrue(d.outside)
+            self.assertEqual(d.ours - d.p6, d.delta_min)
+        self.assertEqual(rep.fields_compared - 2, rep.fields_matched)
 
     def test_every_fixture_verifies_without_differences(self):
         """CLAUDE.md: `sra verify` must pass on every fixture in testdata/."""

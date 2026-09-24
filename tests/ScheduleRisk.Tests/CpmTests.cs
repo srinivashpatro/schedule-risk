@@ -148,6 +148,47 @@ public class GoldenCpmTests
         Assert.Equal(VerifyOutcome.Differences, rep.Outcome);
     }
 
+    /// <summary>Sets TASK fields of one activity in XER text, addressing columns by name.</summary>
+    private static string SetTaskFields(string xer, string code, params (string Field, string Value)[] values)
+    {
+        var lines = xer.Split('\n');
+        string? table = null;
+        string[]? fields = null;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var cells = lines[i].TrimEnd('\r').Split('\t');
+            if (cells[0] == "%T") table = cells[1];
+            else if (cells[0] == "%F" && table == "TASK") fields = cells;
+            else if (cells[0] == "%R" && table == "TASK" && fields != null && cells[Array.IndexOf(fields, "task_code")] == code)
+            {
+                foreach (var (f, v) in values) cells[Array.IndexOf(fields, f)] = v;
+                lines[i] = string.Join('\t', cells);
+            }
+        }
+        return string.Join('\n', lines);
+    }
+
+    [Fact]
+    public void Verifier_reports_p6_dates_outside_the_calendar_range()
+    {
+        // P6 dates far outside the calendars we compile cannot be converted to working time;
+        // they must be reported as differences (in elapsed time), not stop the check.
+        string xer = SetTaskFields(File.ReadAllText(TestData.PathOf("synth_200.xer")), "A00290",
+            ("late_end_date", "2099-01-01 17:00"), ("late_start_date", "1990-01-02 08:00"));
+        var s = ScheduleBuilder.Build(XerDocument.Parse(xer));
+        var r = new CpmEngine(s).Run();
+        var rep = P6Verifier.Verify(s, r);
+        Assert.Equal(VerifyOutcome.Differences, rep.Outcome);
+        Assert.Equal(new[] { "late_finish", "late_start" }, rep.Diffs.Select(d => d.Field).OrderBy(f => f));
+        Assert.All(rep.Diffs, d =>
+        {
+            Assert.Equal("A00290", d.Code);
+            Assert.True(d.OutsideCalendar);
+            Assert.Equal(d.Ours - d.P6, d.DeltaMinutes);
+        });
+        Assert.Equal(rep.FieldsCompared - 2, rep.FieldsMatched);
+    }
+
     [Fact]
     public void Xer_round_trips()
     {

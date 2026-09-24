@@ -4,7 +4,11 @@ using ScheduleRisk.Core.Model;
 
 namespace ScheduleRisk.Core.Analysis;
 
-public sealed record DateDiff(string Code, string Field, long P6, long Ours, long DeltaMinutes);
+/// <summary>
+/// DeltaMinutes is working time on the activity calendar, or elapsed time when OutsideCalendar:
+/// P6's date lies outside the range our calendars cover, so it cannot equal our date.
+/// </summary>
+public sealed record DateDiff(string Code, string Field, long P6, long Ours, long DeltaMinutes, bool OutsideCalendar = false);
 
 /// <summary>NothingToCompare: no activity carries P6-calculated dates (e.g. the file was not scheduled before export).</summary>
 public enum VerifyOutcome { Matches, Differences, NothingToCompare }
@@ -74,7 +78,17 @@ public static class P6Verifier
             foreach (var (field, p6v, ours) in pairs)
             {
                 rep.FieldsCompared++;
-                long delta = cal.WorkAt(ours) - cal.WorkAt(p6v);
+                long delta;
+                try
+                {
+                    delta = cal.WorkAt(ours) - cal.WorkAt(p6v);
+                }
+                catch (CalendarHorizonException)
+                {
+                    ok = false;
+                    rep.Diffs.Add(new DateDiff(a.Code, field, p6v, ours, ours - p6v, OutsideCalendar: true));
+                    continue;
+                }
                 if (Math.Abs(delta) <= toleranceMinutes) rep.FieldsMatched++;
                 else
                 {

@@ -9,10 +9,13 @@ from .model import NOT_STARTED, IN_PROGRESS, COMPLETE, START_MILE, FINISH_MILE
 
 
 class Diff:
-    __slots__ = ("code", "field", "p6", "ours", "delta_min")
+    """delta_min is working time on the activity calendar, or elapsed time when `outside`:
+    P6's date lies outside the range our calendars cover, so it cannot equal our date."""
+    __slots__ = ("code", "field", "p6", "ours", "delta_min", "outside")
 
-    def __init__(self, code, field, p6, ours, delta):
+    def __init__(self, code, field, p6, ours, delta, outside=False):
         self.code, self.field, self.p6, self.ours, self.delta_min = code, field, p6, ours, delta
+        self.outside = outside
 
 
 class VerifyReport:
@@ -68,7 +71,12 @@ def verify_against_p6(s, res, tolerance_min=0):
         ok = True
         for field, p6v, ours in pairs:
             rep.fields_compared += 1
-            delta = cal.work_at(ours) - cal.work_at(p6v)
+            try:
+                delta = cal.work_at(ours) - cal.work_at(p6v)
+            except OverflowError:
+                ok = False
+                rep.diffs.append(Diff(a.code, field, p6v, ours, ours - p6v, outside=True))
+                continue
             if abs(delta) <= tolerance_min:
                 rep.fields_matched += 1
             else:
