@@ -5,7 +5,7 @@ calendars, data date, retained logic / progress override, constraints
 (start/finish on, on-or-after, on-or-before, mandatory start/finish),
 start & finish milestones, LOE / WBS summary (non-driving), external predecessors
 held at their P6 dates, must-finish-by date, finish/start/min float.
-Not yet supported (flagged by the validator): ALAP, resource levelling,
+Not yet supported: ALAP (flagged by the validator), resource levelling,
 expected finish, 'make open-ended activities critical'.
 """
 from .model import (FS, SS, FF, SF, NOT_STARTED, IN_PROGRESS, COMPLETE, START_MILE, FINISH_MILE,

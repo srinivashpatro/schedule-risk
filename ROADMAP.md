@@ -41,9 +41,23 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       `scd_end_date`. On synth_500 with `scd_end_date` at its deterministic finish (as in a real
       export), activities critical in at least half the iterations fell from 357 to 6.
 
+## Risk analysis method
+
+- [ ] Criticality with a Must Finish By. Each Monte Carlo iteration measures float against the
+      project's Must Finish By when one is set, not against that iteration's own finish. In an
+      iteration that finishes early, even its longest path has positive float, so often nothing
+      counts as critical; in one that finishes late, the longest path and every path within the
+      overrun of it have negative float and all count. The criticality index (AACE RP 57R-09: how
+      often an activity is on the critical path) then reflects the deadline as much as the logic,
+      and cruciality inherits it. This matches P6's deterministic float, so it is a method choice,
+      not a P6 mismatch. To plan: measure criticality in each iteration against that iteration's
+      finish (keeping P6 float for the deterministic run and verify), or keep today's behaviour and
+      explain it in the report.
+
 ## Scheduling features not yet supported
 
-Each is flagged by `sra validate` where relevant.
+Only ALAP is flagged by `sra validate` today (unsupported constraints); files using the others are
+not detected yet.
 
 - [ ] ALAP (as late as possible) constraints. P6 moves an ALAP activity later into its free float
       without delaying its successors. Still to confirm from P6: whether a chain of ALAP activities

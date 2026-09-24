@@ -92,7 +92,8 @@ their P6 dates; the project Must Finish By (`plan_end_date`; P6's calculated sch
 `scd_end_date`, is not treated as a constraint); finish, start or smallest float.
 
 **Not yet:** ALAP constraints, expected finish dates, resource levelling, "make open-ended activities
-critical", P6 XML / MS Project import (all flagged by `validate` where relevant).
+critical", P6 XML / MS Project import. Only ALAP is flagged by `validate` (under unsupported
+constraints); a file using the others is not detected yet.
 
 **Risk:** three-point uncertainty (triangle, Beta-PERT, uniform) in percent or days; risk register
 with probability, impact and mitigated values; risk drivers; correlation groups; Latin Hypercube
