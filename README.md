@@ -91,7 +91,7 @@ milestones; LOE and WBS summary activities (non-driving); predecessors in other 
 their P6 dates; the project Must Finish By (`plan_end_date`; P6's calculated scheduled finish,
 `scd_end_date`, is not treated as a constraint); finish, start or smallest float.
 
-**Not yet:** ALAP constraints, expected finish, resource levelling, "make open-ended activities
+**Not yet:** ALAP constraints, expected finish dates, resource levelling, "make open-ended activities
 critical", P6 XML / MS Project import (all flagged by `validate` where relevant).
 
 **Risk:** three-point uncertainty (triangle, Beta-PERT, uniform) in percent or days; risk register

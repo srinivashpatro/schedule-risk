@@ -58,7 +58,22 @@ Each is flagged by `sra validate` where relevant.
       2. Add E: 1 day, FS from A, no successors.
       3. `p6_alap_1.xer`: primary constraint "As Late As Possible" on D and E; schedule (F9), export.
       4. `p6_alap_2.xer`: also ALAP on B, project Must Finish By 2026-01-30 17:00; schedule, export.
-- [ ] Expected finish constraint
+- [ ] Expected finish dates. With the project option "Use Expected Finish Dates" on, P6 recalculates
+      an activity's remaining duration at each schedule so it finishes on its expected finish date.
+      The engine reads neither column and uses the stored remaining duration, so Monte Carlo
+      iterations let these activities finish late where P6 would hold the date. Decision: follow
+      P6 in every run, including each iteration; sampled uncertainty on these activities then has
+      no effect, and `validate` lists them. Still to confirm from P6: the column names (TASK
+      `expect_end_date`, PROJECT `sched_use_expect_end_flag`?), whether the duration is measured
+      from the data date (in progress) or early start (not started), what happens when the expected
+      finish is before the activity can start, and which activity types it applies to. Waiting on
+      two P6 exports of a toy project, which become verify fixtures in testdata/ (toy data only):
+      1. Start from `testdata/hand_24h_lag.xer` (see the ALAP item for how to rebuild it).
+      2. Data date Wed 2026-01-07 08:00; A in progress, actual start Mon 2026-01-05 08:00.
+      3. Expected finish dates: A Tue 2026-01-13 17:00, B Fri 2026-01-09 17:00 (before it can start),
+         C Wed 2026-01-21 17:00 (later than its natural finish), D Tue 2026-01-13 17:00 (earlier).
+      4. `p6_expfin_1.xer`: "Use Expected Finish Dates" on; schedule (F9), export.
+      5. `p6_expfin_2.xer`: the same with the option off; schedule, export.
 - [ ] "Make open-ended activities critical" project option
 - [ ] P6 XML import
 - [ ] MS Project import
