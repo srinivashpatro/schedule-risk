@@ -126,7 +126,8 @@ def build_schedule(doc, project=None, horizon_years=30):
     st.data_date = parse_p6_date(proj.get("last_recalc_date")) or parse_p6_date(proj.get("plan_start_date"))
     if st.data_date is None:
         raise ValueError("project has no data date (last_recalc_date) or planned start")
-    st.must_finish_by = parse_p6_date(proj.get("scd_end_date"))
+    # P6 "Must Finish By". scd_end_date is P6's calculated scheduled finish, not a constraint.
+    st.must_finish_by = parse_p6_date(proj.get("plan_end_date"))
     lagc = (proj.get("sched_calendar_on_relationship_lag") or "").lower()
     st.lag_calendar = LAG_SUCC if "succ" in lagc else LAG_24H if "24" in lagc else LAG_PROJ if "proj" in lagc else LAG_PRED
     st.retained_logic = (proj.get("sched_progress_override", "N") or "N").upper() != "Y"

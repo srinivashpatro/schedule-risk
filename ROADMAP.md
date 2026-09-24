@@ -32,11 +32,14 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       Fixed: the horizon now includes the must-finish-by and, when one is set, starts early enough
       for any finish before the horizon end. This also fixed Monte Carlo runs whose iterations
       overran an in-horizon must-finish-by (they failed with "work before calendar horizon").
-- [ ] Confirm which PROJECT column holds P6's "Must Finish By". The engine reads `scd_end_date`; it
+- [x] Confirm which PROJECT column holds P6's "Must Finish By". The engine reads `scd_end_date`; it
       may be `plan_end_date`, with `scd_end_date` being P6's calculated Scheduled Finish, which P6
       writes into every scheduled export. If so, real files anchor every backward pass to P6's
       deterministic finish, including each Monte Carlo iteration, which can inflate the criticality
       index in iterations that finish later. Waiting on a real P6 export with Must Finish By set.
+      Confirmed from a real export: `plan_end_date`. The engine now reads it and ignores
+      `scd_end_date`. On synth_500 with `scd_end_date` at its deterministic finish (as in a real
+      export), activities critical in at least half the iterations fell from 357 to 6.
 
 ## Scheduling features not yet supported
 

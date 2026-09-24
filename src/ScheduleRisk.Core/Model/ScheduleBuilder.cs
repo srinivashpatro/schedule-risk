@@ -55,7 +55,8 @@ public static class ScheduleBuilder
         st.DataDate = Time.ParseP6(proj["last_recalc_date"]);
         if (st.DataDate == Time.None) st.DataDate = Time.ParseP6(proj["plan_start_date"]);
         if (st.DataDate == Time.None) throw new InvalidDataException("project has no data date (last_recalc_date) or planned start");
-        st.MustFinishBy = Time.ParseP6(proj["scd_end_date"]);
+        // P6 "Must Finish By". scd_end_date is P6's calculated scheduled finish, not a constraint.
+        st.MustFinishBy = Time.ParseP6(proj["plan_end_date"]);
         string lagc = proj["sched_calendar_on_relationship_lag"].ToLowerInvariant();
         st.LagCalendar = lagc.Contains("succ") ? LagCalendarMode.Successor
             : lagc.Contains("24") ? LagCalendarMode.TwentyFourHour

@@ -151,7 +151,8 @@ public class GoldenCpmTests
     }
 
     /// <summary>Sets fields of the rows of <paramref name="table"/> whose <paramref name="keyField"/> is
-    /// <paramref name="key"/>, in XER text, addressing columns by name.</summary>
+    /// <paramref name="key"/>, in XER text, addressing columns by name. A column the table lacks is
+    /// added (empty in the other rows), as a real P6 export would carry it.</summary>
     internal static string SetFields(string xer, string table, string keyField, string key, params (string Field, string Value)[] values)
     {
         var lines = xer.Split('\n');
@@ -161,10 +162,16 @@ public class GoldenCpmTests
         {
             var cells = lines[i].TrimEnd('\r').Split('\t');
             if (cells[0] == "%T") current = cells[1];
-            else if (cells[0] == "%F" && current == table) fields = cells;
-            else if (cells[0] == "%R" && current == table && fields != null && cells[Array.IndexOf(fields, keyField)] == key)
+            else if (cells[0] == "%F" && current == table)
             {
-                foreach (var (f, v) in values) cells[Array.IndexOf(fields, f)] = v;
+                fields = cells.Concat(values.Select(v => v.Field).Where(f => !cells.Contains(f))).ToArray();
+                lines[i] = string.Join('\t', fields);
+            }
+            else if (cells[0] == "%R" && current == table && fields != null)
+            {
+                if (cells.Length < fields.Length) cells = cells.Concat(Enumerable.Repeat("", fields.Length - cells.Length)).ToArray();
+                if (cells[Array.IndexOf(fields, keyField)] == key)
+                    foreach (var (f, v) in values) cells[Array.IndexOf(fields, f)] = v;
                 lines[i] = string.Join('\t', cells);
             }
         }
@@ -220,16 +227,56 @@ public class GoldenCpmTests
 }
 
 /// <summary>
-/// The backward pass starts from the project must-finish-by (PROJECT.scd_end_date), so the calendars
-/// must cover it, and the late dates it produces, wherever it lies.
+/// The backward pass starts from the project must-finish-by, P6's "Must Finish By" (PROJECT.plan_end_date),
+/// so the calendars must cover it, and the late dates it produces, wherever it lies. PROJECT.scd_end_date is
+/// P6's calculated scheduled finish, not a constraint.
 /// </summary>
 public class MustFinishByTests
 {
-    private static Schedule Build(string file, string project, string mustFinishBy, double horizonYears = 30)
+    private static Schedule Build(string file, string project, (string Field, string Value)[] projectFields, double horizonYears = 30)
     {
-        string xer = GoldenCpmTests.SetFields(File.ReadAllText(TestData.PathOf(file)), "PROJECT", "proj_short_name", project,
-            ("scd_end_date", mustFinishBy));
+        string xer = GoldenCpmTests.SetFields(File.ReadAllText(TestData.PathOf(file)), "PROJECT", "proj_short_name", project, projectFields);
         return ScheduleBuilder.Build(XerDocument.Parse(xer), horizonYears: horizonYears);
+    }
+
+    private static Schedule Build(string file, string project, string mustFinishBy, double horizonYears = 30) =>
+        Build(file, project, new[] { ("plan_end_date", mustFinishBy) }, horizonYears);
+
+    /// <summary>The first activity (no successors) that finishes the project.</summary>
+    private static Activity Last(Schedule s, CpmResult r) =>
+        s.Activities.First(a => r.EF[a.Index] == r.ProjectFinish && s.Relationships.All(x => x.Pred != a.Index));
+
+    [Fact]
+    public void Scheduled_finish_is_not_a_constraint()
+    {
+        // synth_200 finishes 2027-06-04 17:00; P6's scheduled finish a month later must not create float.
+        var s = Build("synth_200.xer", "SYN200", new[] { ("scd_end_date", "2027-07-05 17:00") });
+        var r = new CpmEngine(s).Run();
+        Assert.Equal(Time.None, s.Settings.MustFinishBy);
+        Assert.Equal(r.ProjectFinish, r.ProjectLateFinish);
+        Assert.Equal(0, r.TF[Last(s, r).Index]);
+    }
+
+    [Fact]
+    public void Must_finish_by_is_read_from_plan_end_date()
+    {
+        var s = Build("synth_200.xer", "SYN200", new[] { ("scd_end_date", "2027-06-04 17:00"), ("plan_end_date", "2027-07-05 17:00") });
+        var r = new CpmEngine(s).Run();
+        Assert.Equal(Time.ParseP6("2027-07-05 17:00"), s.Settings.MustFinishBy);
+        Assert.Equal(s.Settings.MustFinishBy, r.ProjectLateFinish);
+        Assert.True(r.TF[Last(s, r).Index] > 0);
+    }
+
+    [Fact]
+    public void Must_finish_by_at_midnight_means_by_the_end_of_the_previous_working_day()
+    {
+        // P6: a Must Finish By of 04-Jun gives one day of negative float to a project finishing that day at 17:00.
+        var s = Build("synth_200.xer", "SYN200", "2027-06-04 00:00");
+        var r = new CpmEngine(s).Run();
+        var last = Last(s, r);
+        Assert.Equal(Time.ParseP6("2027-06-04 17:00"), r.ProjectFinish);
+        Assert.Equal(Time.ParseP6("2027-06-03 17:00"), r.LF[last.Index]);
+        Assert.Equal(-(long)last.Calendar.MinutesPerDay, r.TF[last.Index]);
     }
 
     [Theory]
@@ -246,7 +293,7 @@ public class MustFinishByTests
         Assert.Equal(mfb, r.ProjectLateFinish);
         // The activity that finishes the project has no successors: its late finish is the must-finish-by
         // (snapped to working time) and its float is measured to it.
-        var last = s.Activities.First(a => r.EF[a.Index] == r.ProjectFinish && s.Relationships.All(x => x.Pred != a.Index));
+        var last = Last(s, r);
         var cal = last.Calendar;
         Assert.Equal(cal.SnapFinish(mfb), r.LF[last.Index]);
         Assert.Equal(cal.WorkAt(r.LF[last.Index]) - cal.WorkAt(r.EF[last.Index]), r.TF[last.Index]);

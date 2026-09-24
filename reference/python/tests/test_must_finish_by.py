@@ -11,8 +11,8 @@ from sra.sim import Simulation
 T = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "testdata")
 
 
-def with_must_finish_by(file, project, date, horizon_years=30):
-    """Schedule from a fixture with PROJECT.scd_end_date (the must-finish-by) set to `date`."""
+def with_project_fields(file, project, values, horizon_years=30):
+    """Schedule from a fixture with PROJECT fields set; a column the fixture lacks is added."""
     lines = open(os.path.join(T, file), encoding="utf-8").read().split("\n")
     table = fields = None
     for i, ln in enumerate(lines):
@@ -20,16 +20,55 @@ def with_must_finish_by(file, project, date, horizon_years=30):
         if cells[0] == "%T":
             table = cells[1]
         elif cells[0] == "%F" and table == "PROJECT":
-            fields = cells
-        elif cells[0] == "%R" and table == "PROJECT" and cells[fields.index("proj_short_name")] == project:
-            cells[fields.index("scd_end_date")] = date
+            fields = cells + [f for f in values if f not in cells]
+            lines[i] = "\t".join(fields)
+        elif cells[0] == "%R" and table == "PROJECT":
+            cells += [""] * (len(fields) - len(cells))
+            if cells[fields.index("proj_short_name")] == project:
+                for f, v in values.items():
+                    cells[fields.index(f)] = v
             lines[i] = "\t".join(cells)
     return build_schedule(parse_xer_text("\n".join(lines)), horizon_years=horizon_years)
 
 
+def with_must_finish_by(file, project, date, horizon_years=30):
+    """P6's Must Finish By is PROJECT.plan_end_date."""
+    return with_project_fields(file, project, {"plan_end_date": date}, horizon_years)
+
+
+def last_activity(s, r):
+    """The first activity (no successors) that finishes the project."""
+    return next(a for a in s.activities
+                if r.ef[a.idx] == r.project_finish and all(x.pred != a.idx for x in s.relationships))
+
+
 class MustFinishBy(unittest.TestCase):
-    """The backward pass starts from the must-finish-by, so the calendars must cover it and the
-    late dates it produces, wherever it lies. Twin of MustFinishByTests in CpmTests.cs."""
+    """The backward pass starts from the must-finish-by (PROJECT.plan_end_date), so the calendars must
+    cover it and the late dates it produces, wherever it lies. PROJECT.scd_end_date is P6's calculated
+    scheduled finish, not a constraint. Twin of MustFinishByTests in CpmTests.cs."""
+
+    def test_scheduled_finish_is_not_a_constraint(self):
+        s = with_project_fields("synth_200.xer", "SYN200", {"scd_end_date": "2027-07-05 17:00"})
+        r = CpmEngine(s).run()
+        self.assertIsNone(s.settings.must_finish_by)
+        self.assertEqual(r.project_finish, r.project_lf)
+        self.assertEqual(0, r.tf[last_activity(s, r).idx])
+
+    def test_must_finish_by_is_read_from_plan_end_date(self):
+        s = with_project_fields("synth_200.xer", "SYN200",
+                                {"scd_end_date": "2027-06-04 17:00", "plan_end_date": "2027-07-05 17:00"})
+        r = CpmEngine(s).run()
+        self.assertEqual(parse_p6_date("2027-07-05 17:00"), s.settings.must_finish_by)
+        self.assertEqual(s.settings.must_finish_by, r.project_lf)
+        self.assertGreater(r.tf[last_activity(s, r).idx], 0)
+
+    def test_must_finish_by_at_midnight_means_by_the_end_of_the_previous_working_day(self):
+        s = with_must_finish_by("synth_200.xer", "SYN200", "2027-06-04 00:00")
+        r = CpmEngine(s).run()
+        last = last_activity(s, r)
+        self.assertEqual(parse_p6_date("2027-06-04 17:00"), r.project_finish)
+        self.assertEqual(parse_p6_date("2027-06-03 17:00"), r.lf[last.idx])
+        self.assertEqual(-last.cal.minutes_per_day(), r.tf[last.idx])
 
     def test_backward_pass_runs_from_any_must_finish_by(self):
         for date in ("2100-12-31 17:00", "2045-06-30 17:00", "2025-12-05 17:00", "2020-01-31 17:00", "2015-01-30 17:00"):
@@ -38,8 +77,7 @@ class MustFinishBy(unittest.TestCase):
                 r = CpmEngine(s).run()
                 mfb = parse_p6_date(date)
                 self.assertEqual(mfb, r.project_lf)
-                last = next(a for a in s.activities
-                            if r.ef[a.idx] == r.project_finish and all(x.pred != a.idx for x in s.relationships))
+                last = last_activity(s, r)
                 cal = last.cal
                 self.assertEqual(cal.snap_finish(mfb), r.lf[last.idx])
                 self.assertEqual(cal.work_at(r.lf[last.idx]) - cal.work_at(r.ef[last.idx]), r.tf[last.idx])

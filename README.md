@@ -88,7 +88,8 @@ only differences give a non-zero exit code.
 exceptions parsed from P6's `clndr_data`; data date; retained logic or progress override;
 constraints start/finish on, on-or-after, on-or-before, mandatory start/finish; start and finish
 milestones; LOE and WBS summary activities (non-driving); predecessors in other projects held at
-their P6 dates; must-finish-by; finish, start or smallest float.
+their P6 dates; the project Must Finish By (`plan_end_date`; P6's calculated scheduled finish,
+`scd_end_date`, is not treated as a constraint); finish, start or smallest float.
 
 **Not yet:** ALAP constraints, expected finish, resource levelling, "make open-ended activities
 critical", P6 XML / MS Project import (all flagged by `validate` where relevant).
