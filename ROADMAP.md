@@ -89,7 +89,15 @@ Each is flagged by `sra validate` where relevant.
       2. `p6_opencrit_1.xer`: option on; schedule (F9), export.
       3. `p6_opencrit_2.xer`: option on and project Must Finish By Fri 2026-01-16 17:00; schedule,
          export.
-- [ ] P6 XML import
+- [ ] P6 XML import. Read P6 XML ("PMXML", root `<APIBusinessObjects>`) as well as XER, in the CLI and
+      the web app. Plan: translate the XML into the same XER tables and columns ScheduleBuilder
+      already reads, so the engine, verify and simulation are unchanged and an XML and an XER of the
+      same project give identical results. DTDs and external entities are refused; still nothing is
+      uploaded. Enum strings, units and the calendar format are to be confirmed from a paired export,
+      which becomes verify and parity fixtures in testdata/ (toy/synthetic data only):
+      1. Import `testdata/synth_200.xer` into P6 and schedule (F9).
+      2. Export that project as P6 XML (`p6xml_synth_200.xml`) and as XER (`p6xml_synth_200.xer`).
+      3. Optional: the same pair from `testdata/hand_holiday.xer`, for calendar holidays.
 - [ ] MS Project import
 - [ ] Resource levelling
 
