@@ -26,6 +26,8 @@
 
 ## 0.4.0 - 2026-09-24
 
+Still online at <https://srinivashpatro.github.io/schedule-risk/v0.4/> (tag `v0.4.0`).
+
 ### Behaviour changes: re-run results for files with a Must Finish By
 
 - **Must Finish By read from the right column.** P6's Must Finish By is `PROJECT.plan_end_date`.
