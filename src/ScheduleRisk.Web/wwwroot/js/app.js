@@ -30,6 +30,39 @@ window.sraGanttScrollTo = function (frame, x) {
     if (frame) frame.scrollLeft = Math.max(0, x);
 };
 
+// Where an element is on screen: a right-click menu opened from the keyboard appears there.
+window.sraRect = function (el) {
+    if (!el) return [0, 0];
+    const r = el.getBoundingClientRect();
+    return [r.left, r.top];
+};
+
+// A right-click menu has just opened: keep it inside the window, let the arrow keys (and Home and End) move
+// between its items, and focus the first item that can be used, or the menu itself when none can.
+window.sraOpenMenu = function (menu) {
+    if (!menu) return;
+    const r = menu.getBoundingClientRect(), pad = 8;
+    if (r.right > innerWidth - pad) menu.style.left = Math.max(pad, innerWidth - pad - r.width) + "px";
+    if (r.bottom > innerHeight - pad) menu.style.top = Math.max(pad, innerHeight - pad - r.height) + "px";
+    const items = () => [...menu.querySelectorAll("[role=menuitem]:not(:disabled)")];
+    if (!menu.dataset.nav) {
+        menu.dataset.nav = "1";
+        menu.addEventListener("keydown", e => {
+            const list = items();
+            if (!list.length) return;
+            let i = list.indexOf(document.activeElement);
+            if (e.key === "ArrowDown") i = (i + 1) % list.length;
+            else if (e.key === "ArrowUp") i = (i - 1 + list.length) % list.length;
+            else if (e.key === "Home") i = 0;
+            else if (e.key === "End") i = list.length - 1;
+            else return;
+            e.preventDefault();
+            list[i].focus();
+        });
+    }
+    (items()[0] || menu).focus();
+};
+
 // Hover readout for the project-finish chart (HtmlReport.SCurve with interactive: true).
 // Its div.scurve carries per-day data in data-scurve: for every calendar day, how many
 // iterations finished by the end of that day. A crosshair snaps to the nearest day and one

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Expand all and Collapse all for the Gantt chart's WBS bands, from buttons in the Gantt toolbar and from
+  a right-click menu anywhere on the chart, including the timescale header. The menu also opens from the
+  keyboard (context-menu key or Shift+F10) and is used with the arrow keys, Enter and Escape.
+
 ## 0.5.0 - 2026-09-26
 
 ### Added
