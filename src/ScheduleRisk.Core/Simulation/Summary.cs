@@ -23,6 +23,65 @@ public static class Statistics
         if (idx >= n) idx = n - 1;
         return sorted[idx];
     }
+
+    /// <summary>Middle value, or the mean of the middle pair for an even count.</summary>
+    public static double Median(IReadOnlyList<double> values)
+    {
+        var v = values.ToArray();
+        Array.Sort(v);
+        int n = v.Length;
+        return n % 2 == 1 ? v[n / 2] : (v[n / 2 - 1] + v[n / 2]) / 2;
+    }
+
+    /// <summary>Sample skewness as Excel's SKEW (adjusted Fisher-Pearson); null below 3 values or with no spread.</summary>
+    public static double? Skewness(IReadOnlyList<double> x)
+    {
+        int n = x.Count;
+        if (n < 3) return null;
+        var (m, sd) = MeanSd(x);
+        if (sd == 0) return null;
+        double acc = 0;
+        foreach (double v in x) acc += Math.Pow((v - m) / sd, 3);
+        return (double)n / ((n - 1.0) * (n - 2)) * acc;
+    }
+
+    /// <summary>Sample excess kurtosis as Excel's KURT (0 for a normal distribution); null below 4 values or with no spread.</summary>
+    public static double? ExcessKurtosis(IReadOnlyList<double> x)
+    {
+        int n = x.Count;
+        if (n < 4) return null;
+        var (m, sd) = MeanSd(x);
+        if (sd == 0) return null;
+        double acc = 0;
+        foreach (double v in x) acc += Math.Pow((v - m) / sd, 4);
+        return n * (n + 1.0) / ((n - 1.0) * (n - 2) * (n - 3)) * acc - 3.0 * (n - 1.0) * (n - 1) / ((n - 2.0) * (n - 3));
+    }
+
+    private static (double Mean, double Sd) MeanSd(IReadOnlyList<double> x)
+    {
+        double sum = 0;
+        foreach (double v in x) sum += v;
+        double m = sum / x.Count;
+        double ss = 0;
+        foreach (double v in x) ss += (v - m) * (v - m);
+        return (m, Math.Sqrt(ss / (x.Count - 1)));
+    }
+}
+
+/// <summary>
+/// Project duration in working days of the project calendar, from the project start (the earliest start in the
+/// deterministic schedule, actual starts included) to the finish. Contingency is a P-level minus the deterministic
+/// duration, also as a percentage of it.
+/// </summary>
+public sealed record DurationStats(double Deterministic, double Min, double Max, double Mean, double Median, double Stdev,
+                                   double? Skewness, double? Kurtosis, SortedDictionary<int, double> Percentiles)
+{
+    public static readonly DurationStats Empty = new(0, 0, 0, 0, 0, 0, null, null, new SortedDictionary<int, double>());
+
+    public double ContingencyDays(int p) => Math.Round(Percentiles[p] - Deterministic, 6, MidpointRounding.ToEven);
+
+    public double? ContingencyPercent(int p) =>
+        Deterministic > 0 ? Math.Round((Percentiles[p] - Deterministic) / Deterministic * 100, 2, MidpointRounding.ToEven) : null;
 }
 
 public sealed record MilestoneStats(string Code, string Name, long Deterministic, long P10, long P50, long P80, long P90);
@@ -61,6 +120,25 @@ public sealed class SimulationSummary
     /// <summary>Sorted finish samples, for S-curves and histograms.</summary>
     public long[] SortedFinish { get; init; } = Array.Empty<long>();
     public TimeSpan Elapsed { get; init; }
+    /// <summary>When the run started (UTC). Shown in the app and report, kept out of the JSON so it stays reproducible.</summary>
+    public DateTime Started { get; init; }
+    public string ProjectCode { get; init; } = "";
+    public long DataDate { get; init; } = Time.None;
+    public int ActivityCount { get; init; }
+    public int RiskCount { get; init; }
+    /// <summary>Earliest start in the deterministic schedule (actual starts included); the same in every iteration.</summary>
+    public long ProjectStart { get; init; } = Time.None;
+    public DurationStats Duration { get; init; } = DurationStats.Empty;
+    /// <summary>Sorted durations (working days from <see cref="ProjectStart"/>), one per iteration.</summary>
+    public double[] SortedDuration { get; init; } = Array.Empty<double>();
+
+    /// <summary>Duration at any whole-percent confidence level (nearest rank, as the P-dates).</summary>
+    public double DurationAt(int p)
+    {
+        int n = SortedDuration.Length;
+        long idx = Math.Clamp(((long)p * n + 99) / 100 - 1, 0, n - 1);
+        return R(SortedDuration[idx], 6);
+    }
 
     private static double R(double x, int digits) => Math.Round(x, digits, MidpointRounding.ToEven);
 
@@ -92,6 +170,25 @@ public sealed class SimulationSummary
         int meetMfb = 0;
         if (mfb != Time.None) foreach (var f in fin) if (f <= mfb) meetMfb++;
 
+        var det = sim.Cpm.Run(backward: false);
+        long start = Time.None;
+        for (int j = 0; j < acts.Count; j++)
+            if (!acts[j].IsSummary && det.ES[j] != Time.None && (start == Time.None || det.ES[j] < start)) start = det.ES[j];
+        long w0 = pcal.WorkAt(start);
+        var days = new double[n];
+        for (int i = 0; i < n; i++) days[i] = (fw[i] - w0) / mpd;
+        var sortedDays = days.ToArray();
+        Array.Sort(sortedDays);
+        double sumDays = 0;
+        foreach (double d in days) sumDays += d;
+        var durPct = new SortedDictionary<int, double>();
+        double stdev = R(Math.Sqrt(variance) / mpd, 4);
+        // 6 decimals: durations are whole minutes over minutes-per-day, so 4 would often round a tie (786.73125)
+        var dur = new DurationStats(R((pcal.WorkAt(res.Deterministic) - w0) / mpd, 6), R(sortedDays[0], 6), R(sortedDays[^1], 6),
+            R(sumDays / n, 6), R(Statistics.Median(days), 6), stdev,
+            Statistics.Skewness(days) is double sk ? R(sk, 6) : null,
+            Statistics.ExcessKurtosis(days) is double ku ? R(ku, 6) : null, durPct);
+
         var sum = new SimulationSummary
         {
             Iterations = n, Batches = res.Batches, Converged = res.Converged, Scenario = res.Scenario, Seed = res.Seed,
@@ -101,13 +198,21 @@ public sealed class SimulationSummary
             ProbMeetMustFinishBy = mfb != Time.None ? (double)meetMfb / n : null,
             FinishMin = sorted[0], FinishMax = sorted[^1],
             FinishMean = pcal.TimeFinish(MathX.RoundHalfUp(meanW)),
-            StdevWorkingDays = R(Math.Sqrt(variance) / mpd, 4),
+            StdevWorkingDays = stdev,
             SortedFinish = sorted,
             Elapsed = res.Elapsed,
+            Started = res.Started,
+            ProjectCode = s.ProjectCode,
+            DataDate = s.Settings.DataDate,
+            ActivityCount = acts.Count,
+            RiskCount = sim.Model.Risks.Count,
+            ProjectStart = start,
+            Duration = dur,
+            SortedDuration = sortedDays,
         };
+        foreach (int p in Percentiles) durPct[p] = sum.DurationAt(p);
         foreach (int p in Percentiles) sum.FinishPercentiles[p] = Statistics.PercentileSorted(sorted, p);
 
-        var det = sim.Cpm.Run(backward: false);
         foreach (var kv in res.Milestones.OrderBy(k => k.Key))
         {
             var a = acts[kv.Key];
@@ -184,6 +289,12 @@ public sealed class SimulationSummary
             if (Converged.HasValue) w.WriteBoolean("converged", Converged.Value); else w.WriteNull("converged");
             w.WriteString("scenario", Scenario == Scenario.PostMitigation ? "post" : "pre");
             w.WriteNumber("seed", Seed);
+            w.WriteStartObject("model");
+            w.WriteString("project", ProjectCode);
+            w.WriteString("data_date", Time.Format(DataDate));
+            w.WriteNumber("activities", ActivityCount);
+            w.WriteNumber("risks", RiskCount);
+            w.WriteEndObject();
             w.WriteString("deterministic_finish", Time.Format(DeterministicFinish));
             w.WriteNumber("prob_meet_deterministic", ProbMeetDeterministic);
             if (ProbMeetMustFinishBy is double pm)
@@ -197,6 +308,29 @@ public sealed class SimulationSummary
             w.WriteString("max", Time.Format(FinishMax));
             w.WriteString("mean", Time.Format(FinishMean));
             w.WriteNumber("stdev_working_days", StdevWorkingDays);
+            w.WriteEndObject();
+            var du = Duration;
+            w.WriteStartObject("duration");
+            w.WriteString("unit", "working days");
+            w.WriteString("start", Time.Format(ProjectStart));
+            w.WriteNumber("deterministic", du.Deterministic);
+            foreach (var kv in du.Percentiles) w.WriteNumber($"P{kv.Key}", kv.Value);
+            w.WriteNumber("min", du.Min);
+            w.WriteNumber("max", du.Max);
+            w.WriteNumber("mean", du.Mean);
+            w.WriteNumber("median", du.Median);
+            w.WriteNumber("stdev", du.Stdev);
+            if (du.Skewness is double sk) w.WriteNumber("skewness", sk); else w.WriteNull("skewness");
+            if (du.Kurtosis is double ku) w.WriteNumber("kurtosis", ku); else w.WriteNull("kurtosis");
+            w.WriteStartObject("contingency");
+            foreach (int p in new[] { 50, 80 })
+            {
+                w.WriteStartObject($"P{p}");
+                w.WriteNumber("days", du.ContingencyDays(p));
+                if (du.ContingencyPercent(p) is double cp) w.WriteNumber("percent", cp); else w.WriteNull("percent");
+                w.WriteEndObject();
+            }
+            w.WriteEndObject();
             w.WriteEndObject();
             w.WriteStartArray("milestones");
             foreach (var m in Milestones)

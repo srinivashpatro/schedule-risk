@@ -6,7 +6,7 @@ from sra.xerbuild import XerBuilder, clndr_data, FIVE_BY_EIGHT
 from sra.xer import parse_xer_text
 from sra.model import build_schedule
 from sra.risk import load_risk_model, Dist
-from sra.sim import Simulation, summarize, percentile
+from sra.sim import Simulation, summarize, percentile, skewness, excess_kurtosis
 from sra.numerics import spearman, lhs_uniforms, beta_inc
 
 
@@ -141,6 +141,70 @@ class SimulationAnalytic(unittest.TestCase):
         # symmetric: each critical ~50% (ties count for both)
         self.assertAlmostEqual(ci1, 0.5, delta=0.05)
         self.assertAlmostEqual(ci2, 0.5, delta=0.05)
+
+
+class DurationStatistics(unittest.TestCase):
+    """Project duration in working days from the project start, with Excel's SKEW and KURT."""
+
+    def test_skewness_and_kurtosis_match_excel(self):
+        # Excel: SKEW(1,2,3,4,10) = 1.697056275, KURT(...) = 3.152
+        self.assertAlmostEqual(skewness([1, 2, 3, 4, 10]), 1.697056274847714, places=12)
+        self.assertAlmostEqual(excess_kurtosis([1, 2, 3, 4, 10]), 3.152, places=12)
+        # Excel: SKEW(2,4,4,4,5,5,7,9) = 0.818487553, KURT(...) = 0.940625
+        self.assertAlmostEqual(skewness([2, 4, 4, 4, 5, 5, 7, 9]), 0.8184875533567997, places=12)
+        self.assertAlmostEqual(excess_kurtosis([2, 4, 4, 4, 5, 5, 7, 9]), 0.940625, places=12)
+        self.assertAlmostEqual(skewness([1, 2, 3]), 0.0, places=12)
+
+    def test_undefined_for_too_few_values_or_no_spread(self):
+        self.assertIsNone(skewness([1, 2]))
+        self.assertIsNone(excess_kurtosis([1, 2, 3]))
+        self.assertIsNone(skewness([5, 5, 5, 5]))
+        self.assertIsNone(excess_kurtosis([5, 5, 5, 5]))
+
+    def test_discrete_risk_durations(self):
+        # P1 is 10 days; the risk adds 10 days in exactly 300 of 1000 iterations: durations are 10 (700x) or 20 (300x).
+        s = parallel_xer(1)
+        spec = {"risks": [{"id": "R1", "probability": 0.3, "activities": ["P1"],
+                           "impact": {"distribution": "uniform", "min": 10, "mostLikely": 10, "max": 10, "units": "days"}}]}
+        sim = Simulation(s, load_risk_model(s, spec))
+        out = summarize(sim, sim.run(iterations=1000, seed=5))
+        d = out["duration"]
+        self.assertEqual("2026-01-05 08:00", d["start"])  # the data date: nothing has started
+        self.assertEqual(10.0, d["deterministic"])
+        self.assertEqual(10.0, d["min"])
+        self.assertEqual(20.0, d["max"])
+        self.assertEqual(13.0, d["mean"])
+        self.assertEqual(10.0, d["median"])
+        self.assertEqual(10.0, d["P70"])
+        self.assertEqual(20.0, d["P80"])
+        self.assertEqual(round(math.sqrt(21000 / 999), 4), d["stdev"])
+        self.assertEqual(out["finish"]["stdev_working_days"], d["stdev"])
+        self.assertEqual(0.874183, d["skewness"])
+        self.assertEqual(-1.238284, d["kurtosis"])
+        self.assertEqual({"days": 0.0, "percent": 0.0}, d["contingency"]["P50"])
+        self.assertEqual({"days": 10.0, "percent": 100.0}, d["contingency"]["P80"])
+
+    def test_model_block(self):
+        s = parallel_xer(2)
+        spec = {"risks": [{"id": "R1", "probability": 0.3, "activities": ["P1"],
+                           "impact": {"distribution": "uniform", "min": 1, "mostLikely": 1, "max": 1, "units": "days"}}]}
+        sim = Simulation(s, load_risk_model(s, spec))
+        out = summarize(sim, sim.run(iterations=50, seed=1))
+        self.assertEqual({"project": "PAR", "data_date": "2026-01-05 08:00", "activities": 4, "risks": 1}, out["model"])
+
+    def test_duration_is_measured_from_the_actual_start_of_started_work(self):
+        b = parallel_builder(1)
+        b.rows["PROJECT"][0]["last_recalc_date"] = "2026-01-12 08:00"
+        for row in b.rows["TASK"]:
+            if row["task_code"] == "START":
+                row.update(status_code="TK_Complete", act_start_date="2026-01-05 08:00", act_end_date="2026-01-05 08:00")
+            if row["task_code"] == "P1":
+                row.update(status_code="TK_Active", act_start_date="2026-01-05 08:00", remain_drtn_hr_cnt="40")
+        s = build_schedule(parse_xer_text(b.text()))
+        sim = Simulation(s, load_risk_model(s, {}))
+        d = summarize(sim, sim.run(iterations=20, seed=1))["duration"]
+        self.assertEqual("2026-01-05 08:00", d["start"])
+        self.assertEqual(10.0, d["deterministic"])  # 5 days done + 5 remaining
 
 
 if __name__ == "__main__":

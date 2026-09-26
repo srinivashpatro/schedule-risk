@@ -174,6 +174,10 @@ simulate writes to --out (default: ./sra-output):
                               $"deterministic {Time.Format(sum.DeterministicFinish)} ({sum.ProbMeetDeterministic:P0})  " +
                               (sum.ProbMeetMustFinishBy is double pm ? $"must finish by {Time.Format(sum.MustFinishBy)} ({pm:P0})  " : "") +
                               $"P50 {Time.Format(sum.FinishPercentiles[50])}  P80 {Time.Format(sum.FinishPercentiles[80])}  P90 {Time.Format(sum.FinishPercentiles[90])}");
+            var du = sum.Duration;
+            Console.WriteLine($"  duration in working days from {Time.Format(sum.ProjectStart)}: deterministic {du.Deterministic:F1}  " +
+                              $"P50 {du.Percentiles[50]:F1}, {StatisticsTable.Contingency(sum, 50)}  P80 {du.Percentiles[80]:F1}, {StatisticsTable.Contingency(sum, 80)}  " +
+                              $"mean {du.Mean:F1}  sd {du.Stdev:F1}  skewness {du.Skewness:F2}  kurtosis {du.Kurtosis:F2}");
             if (sc == Scenario.PreMitigation) { pre = sum; preRes = res; } else post = sum;
         }
         var main = pre ?? post!;

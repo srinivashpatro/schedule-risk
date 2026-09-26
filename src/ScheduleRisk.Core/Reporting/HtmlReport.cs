@@ -36,7 +36,7 @@ main{max-width:1060px;margin:0 auto;padding:28px 16px 64px}h1{font-size:26px;mar
 th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.wrap{overflow-x:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}
-.legend span{display:inline-block;margin-right:14px;font-size:13px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
+.legend span{display:inline-block;margin-right:14px;font-size:13px}table.stats{max-width:560px}table.stats tr.grp th{background:var(--bg);color:var(--fg)}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
         sb.Append("</style></head><body><main>");
         sb.Append("<h1>Schedule risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
         sb.Append("<div class=\"muted\">Data date ").Append(D(s.Settings.DataDate)).Append(" &middot; ")
@@ -87,6 +87,30 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
             {
                 long pv = post.FinishPercentiles[kv.Key];
                 sb.Append("<td class=\"n\">").Append(D(pv)).Append("</td><td class=\"n\">").Append(F(WorkDaysBetween(pv, kv.Value), 1)).Append("</td>");
+            }
+            sb.Append("</tr>");
+        }
+        sb.Append("</table></div>");
+
+        sb.Append("<h2>Duration statistics</h2><p class=\"muted\">Project duration in working days of the project calendar, from the project start. ")
+          .Append("Skewness above 0 means a longer tail to the late side; kurtosis is relative to a normal distribution (0).</p>");
+        sb.Append("<div class=\"wrap\"><table class=\"stats\"><tr><th></th><th>").Append(post != null ? "Pre-mitigation" : "Value").Append("</th>");
+        if (post != null) sb.Append("<th>Post-mitigation</th>");
+        sb.Append("</tr>");
+        string? group = null;
+        foreach (var r in StatisticsTable.Build(pre, post))
+        {
+            if (r.Group != group)
+            {
+                group = r.Group;
+                sb.Append("<tr class=\"grp\"><th colspan=\"").Append(post != null ? 3 : 2).Append("\">").Append(E(group)).Append("</th></tr>");
+            }
+            sb.Append("<tr><td>").Append(E(r.Label)).Append("</td>");
+            if (r.Shared && post != null) sb.Append("<td class=\"n\" colspan=\"2\">").Append(E(r.Pre)).Append("</td>");
+            else
+            {
+                sb.Append("<td class=\"n\">").Append(E(r.Pre)).Append("</td>");
+                if (post != null) sb.Append("<td class=\"n\">").Append(E(r.Post)).Append("</td>");
             }
             sb.Append("</tr>");
         }

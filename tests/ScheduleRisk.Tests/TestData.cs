@@ -27,6 +27,8 @@ internal static class TestData
 
     public static Schedule Load(string xerName) => ScheduleBuilder.Build(XerDocument.Load(PathOf(xerName)));
 
+    public static Schedule LoadText(string xerText) => ScheduleBuilder.Build(XerDocument.Parse(xerText));
+
     public static (Schedule S, CpmResult R) LoadAndRun(string xerName)
     {
         var s = Load(xerName);

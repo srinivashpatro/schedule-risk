@@ -27,6 +27,8 @@ public sealed class SimulationResult
     public bool? Converged { get; set; }
     public long Deterministic { get; set; } = Time.None;
     public TimeSpan Elapsed { get; set; }
+    /// <summary>When the run started (UTC).</summary>
+    public DateTime Started { get; set; }
     public List<string> Warnings { get; } = new();
 }
 
@@ -176,7 +178,7 @@ public sealed class MonteCarloEngine
         var acts = _s.Activities;
         int n = acts.Count;
         var pcal = _s.Settings.ProjectCalendar;
-        var res = new SimulationResult { Scenario = Scenario, Seed = sd };
+        var res = new SimulationResult { Scenario = Scenario, Seed = sd, Started = DateTime.UtcNow };
         var det = _engine.Run();
         res.Deterministic = det.ProjectFinish;
         res.CriticalCount = new long[n];

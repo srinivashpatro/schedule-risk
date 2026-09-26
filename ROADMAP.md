@@ -70,6 +70,18 @@ These come first because "the CPM engine must match P6" is a non-negotiable.
       figure on the CLI's simulate line. No CSV change: `iterations.csv` already has each finish.
       synth_500 with a Must Finish By of 15-Mar-2029: 50% before mitigation, 83% after. Files
       without one give the same results and JSON as before.
+- [x] Duration statistics in the results (for 0.5.0), after the summary table of a commercial QSRA tool:
+      the project duration in working days of the project calendar from the project start (earliest
+      start in the deterministic schedule, actual starts included; the same in every iteration),
+      deterministic and at each P-level; contingency at P50 and P80 (minus deterministic, in days and as
+      a percentage of it); minimum, maximum, mean, median, standard deviation, skewness and excess
+      kurtosis (sample formulas, as Excel's SKEW and KURT); the run's start time, run time, iterations
+      and seed; project, data date, activity and risk counts. Done: a "Duration statistics" section in
+      the web app (Pre and Post columns, plus the chosen P-level) and the HTML report, `duration` and
+      `model` blocks in the summary JSON (C# and Python, identical on synth_500), and a duration line in
+      the CLI's `simulate` output. Durations are rounded to 6 decimals because, as whole minutes over
+      minutes-per-day, they often end in a 5 at the fifth decimal, where C# and Python round differently.
+      The start time stays out of the JSON so that a seed still gives an identical file.
 - [ ] Critical by longest path. Criticality is float-based: an activity counts as critical when its
       total float is at or below the critical threshold. Two things still distort that in the
       Monte Carlo: activity constraints (for example finish on or before) give negative float in
