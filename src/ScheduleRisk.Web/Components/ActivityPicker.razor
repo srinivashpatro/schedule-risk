@@ -1,0 +1,231 @@
+@* Picks the activities a risk-model row applies to: the schedule's activities with ID and name, grouped by WBS in the
+   Gantt's order, filtered by typing part of either. Several can be picked. The choice stays the comma-separated IDs the
+   model file already uses, so saved models and the command-line tool are unchanged. The list floats over the page
+   (sraPicker in js/app.js) because the tables around it scroll. *@
+@implements IAsyncDisposable
+@inject AppState State
+@inject IJSRuntime JS
+
+<div class="pk" @ref="root">
+    <div class="pk-field input sm" @onclick="FocusInput">
+        @foreach (var id in Selected)
+        {
+            var a = Find(id);
+            <span class="pk-chip @(a == null ? "unknown" : "")" title="@(a == null ? $"{id} is not in this schedule" : $"{id} · {a.Name}")">
+                <b>@id</b>
+                @if (a != null)
+                {
+                    <span class="pk-chip-name">@a.Name</span>
+                }
+                <button type="button" class="pk-x" aria-label="@($"Remove {id}")" @onclick="@(() => Remove(id))" @onclick:stopPropagation="true">✕</button>
+            </span>
+        }
+        <input @ref="input" class="pk-input" role="combobox" aria-expanded="@(open ? "true" : "false")" aria-controls="@listId"
+               aria-autocomplete="list" aria-activedescendant="@(open && active >= 0 ? $"{listId}-{active}" : null)"
+               aria-label="Activities: search by ID or name" autocomplete="off" spellcheck="false"
+               placeholder="@(Selected.Count == 0 ? "Search ID or name…" : "Add…")" value="@query"
+               @oninput="OnInput" @onfocus="Open" @onclick="Open" @onkeydown="OnKey" />
+    </div>
+    @if (open)
+    {
+        <div class="pk-panel" @ref="panel">
+            <div class="pk-list" @ref="list" id="@listId" role="listbox" aria-multiselectable="true" aria-label="Activities">
+                @if (shown.Count == 0)
+                {
+                    <div class="pk-empty">No activity has “@query.Trim()” in its ID or name. Press Enter to add it as an ID.</div>
+                }
+                <Virtualize Items="shown" ItemSize="30" OverscanCount="12" Context="item">
+                    @if (item.Row.Kind == GanttRowKind.Wbs)
+                    {
+                        <div class="pk-band d@(Math.Min(item.Row.Depth, 3))" role="presentation" style="padding-left:@(10 + item.Row.Depth * 12)px">
+                            <span class="pk-id">@item.Row.Id</span><span class="pk-name">@item.Row.Name</span>
+                        </div>
+                    }
+                    else
+                    {
+                        var a = State.Schedule!.Activities[item.Row.Activity];
+                        bool picked = IsSelected(a.Code);
+                        <div id="@($"{listId}-{item.Index}")" class="pk-opt @(picked ? "sel" : "") @(item.Index == active ? "active" : "")"
+                             role="option" aria-selected="@(picked ? "true" : "false")" style="padding-left:@(10 + item.Row.Depth * 12)px"
+                             @onmousedown:preventDefault="true" @onclick="@(() => Pick(item.Index))">
+                            <span class="pk-box" aria-hidden="true"></span>
+                            <span class="pk-id">@a.Code</span>
+                            <span class="pk-name">@a.Name</span>
+                            @if (Note(a) is string note)
+                            {
+                                <span class="pk-tag">@note</span>
+                            }
+                        </div>
+                    }
+                </Virtualize>
+            </div>
+            <div class="pk-foot">@Selected.Count selected · ↑↓ move · Enter picks · Esc closes</div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The picked activity IDs, comma separated (<see cref="ScheduleRisk.Core.Risk.FilterSpec.Value"/>).</summary>
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private readonly record struct Item(int Index, GanttRow Row);
+
+    private readonly string listId = "pk-" + Guid.NewGuid().ToString("N")[..8];
+    private ElementReference root, input, panel, list;
+    private DotNetObjectReference<ActivityPicker>? self;
+    private bool open, placePending;
+    private string query = "";
+    private List<Item> shown = new();
+    private int active = -1;   // index in shown of the option the arrow keys are on, or -1
+
+    // One layout of the schedule, shared by every picker on the page, filtered as the user types.
+    private static (Schedule? S, CpmResult? R, List<GanttRow> Rows) layout = (null, null, new());
+
+    private List<GanttRow> AllRows()
+    {
+        var s = State.Schedule;
+        var r = State.Cpm;
+        if (s == null || r == null) return new List<GanttRow>();
+        if (!ReferenceEquals(layout.S, s) || !ReferenceEquals(layout.R, r)) layout = (s, r, GanttLayout.Build(s, r).Rows);
+        return layout.Rows;
+    }
+
+    // Same separators as FilterSpec reads (comma, semicolon, new line).
+    private List<string> Selected => Value.Split(new[] { ',', ';', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.Ordinal).ToList();
+
+    private bool IsSelected(string id) => Selected.Contains(id, StringComparer.Ordinal);
+
+    private Activity? Find(string id) =>
+        State.Schedule is { } s && s.ByCode.TryGetValue(id, out int j) ? s.Activities[j] : null;
+
+    private static string? Note(Activity a) =>
+        a.Status == ActivityStatus.Complete ? "complete" : a.IsMilestone ? "milestone" : a.IsSummary ? "summary" : null;
+
+    private Task SetSelected(List<string> ids) => ValueChanged.InvokeAsync(string.Join(", ", ids));
+
+    private void Refilter()
+    {
+        var rows = GanttLayout.Filter(AllRows(), query);
+        shown = rows.Select((row, i) => new Item(i, row)).ToList();
+        active = shown.FindIndex(x => x.Row.Kind == GanttRowKind.Activity);
+    }
+
+    private void Open()
+    {
+        if (open) return;
+        open = true;
+        placePending = true;
+        Refilter();
+    }
+
+    private async Task Close()
+    {
+        if (!open) return;
+        open = false;
+        active = -1;
+        await JS.InvokeVoidAsync("sraPicker.close", root);
+    }
+
+    [JSInvokable]
+    public async Task CloseFromOutside()
+    {
+        await Close();
+        StateHasChanged();
+    }
+
+    private async Task FocusInput() => await input.FocusAsync();
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        query = e.Value?.ToString() ?? "";
+        if (!open) Open();
+        else Refilter();
+    }
+
+    private async Task Pick(int index)
+    {
+        if (index < 0 || index >= shown.Count || shown[index].Row.Kind != GanttRowKind.Activity) return;
+        active = index;
+        string id = State.Schedule!.Activities[shown[index].Row.Activity].Code;
+        var ids = Selected;
+        if (!ids.Remove(id)) ids.Add(id);
+        await SetSelected(ids);
+    }
+
+    private async Task Remove(string id)
+    {
+        var ids = Selected;
+        ids.Remove(id);
+        await SetSelected(ids);
+    }
+
+    /// <summary>Enter with nothing highlighted adds what was typed as IDs, as the old text box allowed.</summary>
+    private async Task AddTyped()
+    {
+        var typed = query.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (typed.Length == 0) return;
+        var ids = Selected;
+        foreach (var t in typed)
+        {
+            string id = Find(t)?.Code ?? t;
+            if (!ids.Contains(id, StringComparer.Ordinal)) ids.Add(id);
+        }
+        query = "";
+        Refilter();
+        await SetSelected(ids);
+    }
+
+    private async Task Move(int step)
+    {
+        if (!open) { Open(); return; }
+        int i = active;
+        for (int n = 0; n < shown.Count; n++)
+        {
+            i = i < 0 ? (step > 0 ? 0 : shown.Count - 1) : (i + step + shown.Count) % shown.Count;
+            if (shown[i].Row.Kind == GanttRowKind.Activity) { active = i; break; }
+        }
+        if (active >= 0) await JS.InvokeVoidAsync("sraPicker.show", list, active * 30, active * 30 + 30);
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown": await Move(1); break;
+            case "ArrowUp": await Move(-1); break;
+            case "Enter":
+                if (open && active >= 0 && shown.Count > 0) await Pick(active);
+                else await AddTyped();
+                break;
+            case "Escape": await Close(); break;
+            case "Tab": await Close(); break;
+            case "Backspace" when query.Length == 0 && Selected.Count > 0:
+                var ids = Selected;
+                ids.RemoveAt(ids.Count - 1);
+                await SetSelected(ids);
+                break;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (open && placePending)
+        {
+            placePending = false;
+            self ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("sraPicker.open", root, panel, self);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (open) await JS.InvokeVoidAsync("sraPicker.close", root);
+        }
+        catch (JSDisconnectedException) { }
+        self?.Dispose();
+    }
+}

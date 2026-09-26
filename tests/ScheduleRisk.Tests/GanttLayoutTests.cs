@@ -303,6 +303,19 @@ public class GanttLayoutTests
     }
 
     [Fact]
+    public void Filtering_a_built_layout_gives_the_same_rows_as_building_it_with_the_search()
+    {
+        // the risk model's activity picker filters one layout as you type instead of laying out the schedule again
+        var (s, r) = TestData.LoadAndRun("synth_500.xer");
+        var all = GanttLayout.Build(s, r).Rows;
+        foreach (string q in new[] { "a00020", "eng ACTIVITY 1", "PROC", "activity 49", "  comm  ", "zzz", "" })
+            Assert.Equal(GanttLayout.Build(s, r, new GanttOptions { Search = q }).Rows.Select(x => x.Key),
+                         GanttLayout.Filter(all, q).Select(x => x.Key));
+        var one = GanttLayout.Filter(all, "A00020");
+        Assert.Equal(new[] { "SYN500", "ENG", "A00020" }, one.Select(x => x.Id)); // the bands above the match come with it
+    }
+
+    [Fact]
     public void Without_grouping_rows_are_flat_and_sorted_by_start_then_id()
     {
         var (s, r) = TestData.LoadAndRun("synth_500.xer");

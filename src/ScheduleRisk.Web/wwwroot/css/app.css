@@ -229,6 +229,37 @@ h1, h2, h4 { margin: 0; }
   font-size: 12px; font-weight: 400; background: var(--color-text); color: var(--color-bg); }
 .g-tip.flip { transform: translateX(-100%); }
 .g-row:hover .g-tip, .g-row:focus-within .g-tip { display: block; }
+/* searchable activity picker (ActivityPicker): chips in a field, a floating list grouped by WBS like the Gantt */
+.pk { flex: 1 1 260px; min-width: 0; }
+.pk-field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 32px; padding: 3px 6px; cursor: text; }
+.pk-field:focus-within { border-color: var(--color-accent); }
+.pk-input { flex: 1 1 120px; min-width: 0; padding: 2px; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13.5px; color: inherit; }
+.pk-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 240px; padding: 1px 2px 1px 6px; font-size: 12.5px; background: var(--color-neutral-200); }
+.pk-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-neutral-700); }
+.pk-chip.unknown { background: var(--color-accent-100); color: var(--color-accent-800); }
+.pk-x { all: unset; cursor: pointer; padding: 0 4px; line-height: 1.4; }
+.pk-x:hover { color: var(--color-accent-700); }
+.pk-x:focus-visible { outline: 2px solid var(--color-accent); }
+.pk-panel { position: fixed; z-index: 45; display: flex; flex-direction: column; background: var(--color-bg);
+  border: 2px solid var(--color-text); box-shadow: var(--shadow-md); }
+.pk-list { flex: 1; min-height: 60px; overflow: auto; overscroll-behavior: contain; }
+.pk-band, .pk-opt { display: flex; align-items: center; gap: var(--space-2); height: 30px; padding-right: 10px; overflow: hidden; white-space: nowrap; font-size: 13px; }
+.pk-band { font-weight: 700; background: var(--color-neutral-100); }
+.pk-band.d0 { background: var(--color-neutral-300); }
+.pk-band.d1 { background: var(--color-neutral-200); }
+.pk-opt { cursor: pointer; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 6%, transparent); }
+.pk-opt:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.pk-opt.active { background: var(--color-accent-100); box-shadow: inset 3px 0 0 var(--color-accent); }
+.pk-box { position: relative; flex: none; width: 14px; height: 14px; border: 2px solid var(--color-text); }
+.pk-opt.sel .pk-box { background: var(--color-accent); border-color: var(--color-accent); }
+.pk-opt.sel .pk-box::after { content: ""; position: absolute; left: 3px; top: 0; width: 4px; height: 8px;
+  border: solid var(--color-bg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.pk-id { flex: none; min-width: 64px; font-weight: 700; }
+.pk-name { overflow: hidden; text-overflow: ellipsis; }
+.pk-tag { margin-left: auto; padding-left: var(--space-2); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--color-neutral-700); }
+.pk-empty { padding: var(--space-3); font-size: 13px; color: var(--color-neutral-700); }
+.pk-foot { padding: 6px 10px; font-size: 12px; color: var(--color-neutral-700); border-top: 1px solid var(--color-divider); }
+
 /* right-click menu on the Gantt (GanttView): flat, a 2px ink rule, the accent for the item in hand */
 .ctx-backdrop { position: fixed; inset: 0; z-index: 40; }
 .ctx-menu { position: fixed; z-index: 41; min-width: 200px; display: flex; flex-direction: column; padding: var(--space-1) 0;
