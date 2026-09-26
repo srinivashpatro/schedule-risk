@@ -35,7 +35,9 @@ statistics, risk ranking, criticality, milestones; export the HTML report or CSV
 
 The look follows the Modernist design system from `design/redesign/` (vendored as
 `wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
-so the app still loads nothing from other sites.
+so the app still loads nothing from other sites. The landing page's industrial line drawings (a plant
+in elevation with its schedule under the ground line) are inline SVG coloured by the design system's
+tokens, and `WebAssetsTests` fails if any page, style or script in the web app refers to another site.
 
 The first load downloads the .NET runtime (~10-15 MB, cached afterwards). Simulations run on
 one CPU core in the browser, so they are much slower than the command line (speed not yet

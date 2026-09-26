@@ -11,6 +11,12 @@
   run's start time, run time, iterations and seed, and the project, data date and activity and risk counts. They
   appear in a "Duration statistics" section in the web app's Results and in the HTML report, as `duration` and
   `model` blocks in the summary JSON, and on the CLI's `simulate` output. Existing JSON fields are unchanged.
+- A new landing page for the browser app, themed on industrial project planning: a plant drawn in
+  elevation with its schedule under the ground line, the three steps as cards with small previews, and a
+  closing band for the privacy promise. Once a file is open the page shows a slim file strip instead. The
+  loading screen draws a small schedule while the engine downloads. Everything is inline SVG and the
+  design system's colours, in light and dark mode; nothing is loaded from other sites, and a test now
+  checks that.
 
 ## 0.4.0 - 2026-09-24
 
