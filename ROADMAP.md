@@ -200,12 +200,21 @@ not detected yet.
       SVG and CSS from the design system's tokens (light and dark), no image files, motion off with
       prefers-reduced-motion; `WebAssetsTests` fails if any page, style or script refers to another
       site.
-- [ ] P6-style Gantt chart in step 01 after a file loads: activity table (ID, name, original and
-      remaining duration, start, finish, total float) beside the bars, two-tier timescale with zoom,
-      grouped by WBS in P6's order (`PROJWBS.seq_num`) with band rows, summary bars and collapse,
-      activities by start then ID; P6's bar colours (actual blue, remaining green, critical red),
-      milestones, float lines and the data date. Layout logic in Core (`GanttLayout`), unit-tested;
-      a Gantt | Table switch keeps the current table. Relationship lines are a follow-up.
+- [x] P6-style Gantt chart in step 01 after a file loads, the default view beside the activity table
+      (a Gantt | Table switch). Activity table (ID, name, original and remaining duration, start and
+      finish as P6 shows them with "A" for actual dates, total float) beside bars on a two-tier timescale
+      (Week / Day to Decade / Year) with zoom about the middle of the view and fit; grouped by WBS in P6's
+      order (`PROJWBS.seq_num`, now read by ScheduleBuilder, then file order) with bands shaded by
+      level, summary bars and collapse, or flat; activities by start then ID; search and critical-only
+      filters shared with the table; P6's bar colours (actual blue, remaining green, critical red, as
+      chart tokens in light and dark), milestones as diamonds, float lines from early to late finish
+      (none for negative float, shown red in the table), the data date, a CSS tooltip on hover or
+      focus, and click or Enter to scroll a row's bar into view. Layout in Core (`GanttLayout`, 20
+      tests); the view renders only the rows in view: synth_5000's Gantt appears 350-410 ms after the
+      schedule is calculated in the browser. To confirm from P6: whether a WBS element's own activities
+      come before its child WBS bands (they do here) and the week start day (Monday here). Follow-ups:
+      relationship lines (need an overlay across virtualised rows), baselines, the Gantt in the HTML
+      report.
 
 ## Shipped
 

@@ -1,0 +1,241 @@
+@* P6-style Gantt chart of the deterministic schedule. GanttLayout (Core) decides the rows, bars and timescale in time units;
+   this component turns them into pixels. One scroll area scrolls both ways: the activity columns stick on the left and
+   the timescale on top, and Virtualize keeps only the visible rows on the page. The tooltip is CSS (hover or focus). *@
+@inject IJSRuntime JS
+
+<div class="gantt-tools">
+    <label class="check"><input type="checkbox" checked="@group" @onchange="ToggleGroup" /> Group by WBS</label>
+    <div class="zoom" role="group" aria-label="Zoom">
+        <button class="btn btn-secondary zoom-btn" @onclick="ZoomOut" disabled="@(ppd <= GanttLayout.MinPixelsPerDay)" aria-label="Zoom out" title="Zoom out">−</button>
+        <button class="btn btn-secondary zoom-btn" @onclick="ZoomIn" disabled="@(ppd >= GanttLayout.MaxPixelsPerDay)" aria-label="Zoom in" title="Zoom in">+</button>
+        <button class="btn btn-ghost" @onclick="Fit">Fit</button>
+        <span class="sub">@scale?.Name</span>
+    </div>
+    <div class="gantt-legend" aria-label="Legend">
+        <span><i class="lg actual"></i>Actual work</span>
+        <span><i class="lg remaining"></i>Remaining work</span>
+        <span><i class="lg critical"></i>Critical remaining work</span>
+        <span><i class="lg float"></i>Total float</span>
+        <span><i class="lg ms"></i>Milestone</span>
+        <span><i class="lg summary"></i>WBS summary</span>
+        <span><i class="lg dd"></i>Data date</span>
+    </div>
+</div>
+
+@if (model != null && scale != null)
+{
+    var m = model;
+    double w = LaneWidth;
+    string dd = m.DataDate != Time.None ? Px(X(m.DataDate)) : "";
+    <div class="gantt" @ref="frame" role="region" aria-label="Gantt chart" style="--lane:@Px(w)">
+        <div class="g-head">
+            <div class="g-cols">
+                <span class="c-id">Activity ID</span><span class="c-name">Activity Name</span><span class="c-n c-dur">Orig. dur</span>
+                <span class="c-n c-dur">Rem. dur</span><span class="c-d">Start</span><span class="c-d">Finish</span><span class="c-n c-tf">Total float</span>
+            </div>
+            <div class="g-scale">
+                <div class="g-tier">
+                    @foreach (var t in scale.Top)
+                    {
+                        <span style="left:@Px(X(t.From));width:@Px(X(t.To) - X(t.From))">@t.Label</span>
+                    }
+                </div>
+                <div class="g-tier low">
+                    @foreach (var t in scale.Bottom)
+                    {
+                        <span style="left:@Px(X(t.From));width:@Px(X(t.To) - X(t.From))">@t.Label</span>
+                    }
+                </div>
+                @if (dd != "")
+                {
+                    <span class="g-dd" style="left:@dd"></span>
+                }
+            </div>
+        </div>
+        <Virtualize Items="m.Rows" ItemSize="26" OverscanCount="20" Context="row">
+            <div @key="row.Key" class="g-row @RowClass(row)" tabindex="0" aria-label="@Tip(row)"
+                 @onclick="@(() => ShowBar(row))" @onkeydown="@(e => e.Key == "Enter" ? ShowBar(row) : Task.CompletedTask)">
+                <div class="g-cols">
+                    <span class="c-id" style="padding-left:@(row.Depth * 12 + 6)px">
+                        @if (row.Kind == GanttRowKind.Wbs)
+                        {
+                            <button class="g-tog" aria-expanded="@(row.Collapsed ? "false" : "true")" aria-label="@((row.Collapsed ? "Expand " : "Collapse ") + row.Id)"
+                                    @onclick="@(() => Toggle(row.Key))" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">@(row.Collapsed ? "▸" : "▾")</button>
+                        }
+                        @row.Id
+                    </span>
+                    <span class="c-name" title="@row.Name">@row.Name</span>
+                    <span class="c-n c-dur">@row.OriginalDuration</span>
+                    <span class="c-n c-dur">@row.RemainingDuration</span>
+                    <span class="c-d">@row.Start</span>
+                    <span class="c-d">@row.Finish</span>
+                    <span class="c-n c-tf @(row.NegativeFloat ? "neg" : "")">@row.TotalFloat</span>
+                </div>
+                <div class="g-lane">
+                    @if (dd != "")
+                    {
+                        <span class="g-dd" style="left:@dd"></span>
+                    }
+                    @foreach (var b in row.Bars)
+                    {
+                        double x0 = X(b.From), x1 = X(b.To);
+                        <span class="g-bar @Kind(b.Kind)" style="left:@Px(x0);width:@Px(Math.Max(x1 - x0, 1.5))"></span>
+                    }
+                    @if (row.Milestone != Time.None)
+                    {
+                        <span class="g-ms @Kind(row.MilestoneKind)" style="left:@Px(X(row.Milestone))"></span>
+                    }
+                    @{ double end = X(row.To), begin = X(row.From); bool flip = end + 340 > w && begin > 340; }
+                    <span class="g-tip @(flip ? "flip" : "")" style="left:@Px(flip ? begin - 10 : end + 12)">@Tip(row)</span>
+                </div>
+            </div>
+        </Virtualize>
+    </div>
+    <p class="sub">Click a row, or press Enter on it, to bring its bar into view. Dates are the engine's CPM dates (they match P6's when the engine check passes); dates marked A are actual. Durations and float are in working days of each activity's calendar.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public Schedule Schedule { get; set; } = null!;
+    [Parameter, EditorRequired] public CpmResult Cpm { get; set; } = null!;
+    [Parameter] public string Search { get; set; } = "";
+    [Parameter] public bool CriticalOnly { get; set; }
+
+    private ElementReference frame;
+    private GanttModel? model;
+    private GanttTimescale? scale;
+    private bool group = true;
+    private double ppd;            // pixels per day; 0 until fitted to the frame
+    private bool fitPending = true;
+    private readonly HashSet<string> collapsed = new(StringComparer.Ordinal);
+
+    private Schedule? builtFor;
+    private CpmResult? builtCpm;
+    private string builtSearch = "";
+    private bool builtCritical;
+
+    /// <summary>Space kept clear at each end of the timeline, so a diamond or cap on its first or last day stays whole.</summary>
+    private const double Inset = 12;
+
+    private double X(long t) => Inset + model!.X(t, ppd);
+
+    private double LaneWidth => model == null ? 0 : Math.Ceiling(model.X(model.End, ppd) + 2 * Inset);
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(builtFor, Schedule) || !ReferenceEquals(builtCpm, Cpm))
+        {
+            collapsed.Clear();
+            fitPending = true;
+            Rebuild();
+        }
+        else if (builtSearch != Search || builtCritical != CriticalOnly) Rebuild();
+    }
+
+    private void Rebuild()
+    {
+        var o = new GanttOptions { GroupByWbs = group, CriticalOnly = CriticalOnly, Search = Search ?? "" };
+        foreach (var k in collapsed) o.Collapsed.Add(k);
+        model = GanttLayout.Build(Schedule, Cpm, o);
+        builtFor = Schedule;
+        builtCpm = Cpm;
+        builtSearch = Search ?? "";
+        builtCritical = CriticalOnly;
+        if (ppd <= 0) ppd = GanttLayout.FitPixelsPerDay(model, 700); // until the frame has been measured
+        scale = GanttLayout.Timescale(model.Start, model.End, ppd);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (model == null) return;
+        if (fitPending)
+        {
+            fitPending = false;
+            var v = await JS.InvokeAsync<double[]>("sraGanttView", frame);
+            if (v.Length == 2 && v[1] > 2 * Inset)
+            {
+                SetZoom(GanttLayout.FitPixelsPerDay(model, v[1] - 2 * Inset));
+                await JS.InvokeVoidAsync("sraGanttScrollTo", frame, 0);
+            }
+        }
+        else if (anchor is long t)
+        {
+            anchor = null;
+            await JS.InvokeVoidAsync("sraGanttScrollTo", frame, X(t) - anchorWidth / 2);
+        }
+    }
+
+    private void SetZoom(double value)
+    {
+        ppd = Math.Clamp(value, GanttLayout.MinPixelsPerDay, GanttLayout.MaxPixelsPerDay);
+        if (model != null) scale = GanttLayout.Timescale(model.Start, model.End, ppd);
+        StateHasChanged();
+    }
+
+    private long? anchor;          // the date to bring back to the middle of the view after a zoom
+    private double anchorWidth;
+
+    /// <summary>Zooms about the date in the middle of the view, so it stays in place.</summary>
+    private async Task Zoom(double factor)
+    {
+        var v = await JS.InvokeAsync<double[]>("sraGanttView", frame);
+        if (model != null && v.Length == 2 && v[1] > 0)
+        {
+            anchor = model.Start + (long)((v[0] + v[1] / 2 - Inset) / ppd * Time.MinutesPerDay);
+            anchorWidth = v[1];
+        }
+        SetZoom(ppd * factor);
+    }
+
+    /// <summary>Scrolls the bars to a row's work when it is out of view, like P6's "scroll to bar".</summary>
+    private async Task ShowBar(GanttRow row)
+    {
+        if (model == null) return;
+        var v = await JS.InvokeAsync<double[]>("sraGanttView", frame);
+        double a = X(row.From), z = X(row.To);
+        if (v.Length == 2 && (z < v[0] || a > v[0] + v[1])) await JS.InvokeVoidAsync("sraGanttScrollTo", frame, a - 40);
+    }
+
+    private Task ZoomIn() => Zoom(2);
+    private Task ZoomOut() => Zoom(0.5);
+
+    private void Fit()
+    {
+        fitPending = true;
+        StateHasChanged();
+    }
+
+    private void ToggleGroup(ChangeEventArgs e)
+    {
+        group = e.Value is true;
+        Rebuild();
+    }
+
+    private void Toggle(string key)
+    {
+        if (!collapsed.Remove(key)) collapsed.Add(key);
+        Rebuild();
+    }
+
+    private static string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
+
+    private static string Kind(GanttBarKind k) => k switch
+    {
+        GanttBarKind.Actual => "actual",
+        GanttBarKind.Critical => "critical",
+        GanttBarKind.Float => "float",
+        GanttBarKind.Summary => "summary",
+        _ => "remaining",
+    };
+
+    private static string RowClass(GanttRow r) =>
+        r.Kind == GanttRowKind.Wbs ? "g-wbs d" + Math.Min(r.Depth, 3).ToString(CultureInfo.InvariantCulture) : r.Critical ? "g-act crit" : "g-act";
+
+    private static string Tip(GanttRow r)
+    {
+        string when = r.Start != "" && r.Finish != "" ? r.Start + " – " + r.Finish : r.Start + r.Finish;
+        string text = $"{r.Id} · {r.Name} · {when}";
+        if (r.TotalFloat != "") text += $" · total float {r.TotalFloat} d";
+        if (r.Critical) text += " · critical";
+        return text;
+    }
+}

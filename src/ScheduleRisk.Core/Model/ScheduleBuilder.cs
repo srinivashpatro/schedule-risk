@@ -124,9 +124,11 @@ public static class ScheduleBuilder
         st.ProjectCalendar = s.Calendars[defaultCal];
 
         // ---- WBS
+        int wbsOrder = 0;
         foreach (var w in doc.Rows("PROJWBS"))
             if (w["proj_id"] == pid)
-                s.Wbs[w["wbs_id"]] = new WbsNode(w["parent_wbs_id"], w["wbs_short_name"], w["wbs_name"]);
+                s.Wbs[w["wbs_id"]] = new WbsNode(w["parent_wbs_id"], w["wbs_short_name"], w["wbs_name"],
+                    int.TryParse(w["seq_num"], NumberStyles.Integer, CultureInfo.InvariantCulture, out int seq) ? seq : 0, wbsOrder++);
 
         // ---- activity codes
         var codeTypes = new Dictionary<string, string>(StringComparer.Ordinal);
