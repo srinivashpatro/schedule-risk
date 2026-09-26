@@ -143,6 +143,52 @@
         </div>
     </section>
 
+    <section class="pad rule-b stack">
+        <div><h4>Duration statistics</h4><span class="sub">Project duration in working days of the project calendar, from the project start. Skewness above 0: a longer tail to the late side. Kurtosis is relative to a normal distribution (0).</span></div>
+        <div class="stat-groups">
+            @foreach (var g in StatisticsTable.Build(pre, post, pct).GroupBy(r => r.Group))
+            {
+                <div class="wrap">
+                <table class="table stat-table">
+                    <thead>
+                        <tr>
+                            <th>@g.Key</th>
+                            @if (post != null && g.Any(r => !r.Shared))
+                            {
+                                <th class="n">Pre</th><th class="n">Post</th>
+                            }
+                            else
+                            {
+                                <th colspan="@(post != null ? 2 : 1)"></th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in g)
+                        {
+                            <tr>
+                                <td>@r.Label</td>
+                                @if (post != null && r.Shared)
+                                {
+                                    <td class="n" colspan="2">@r.Pre</td>
+                                }
+                                else
+                                {
+                                    <td class="n">@r.Pre</td>
+                                    @if (post != null)
+                                    {
+                                        <td class="n">@r.Post</td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    </section>
+
     <section class="two-col rule-b">
         @if (pre.Risks.Count > 0)
         {

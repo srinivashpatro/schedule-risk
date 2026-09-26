@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0 - unreleased
+
+### Added
+
+- Duration statistics for each run: the project duration in working days of the project calendar, measured
+  from the project start (actual starts included). Shown for the deterministic schedule, P50, P80 and the chosen
+  confidence level, with the contingency at each (days and percent of the deterministic duration), and the
+  minimum, maximum, mean, median, standard deviation, skewness and kurtosis (as Excel's SKEW and KURT). Also the
+  run's start time, run time, iterations and seed, and the project, data date and activity and risk counts. They
+  appear in a "Duration statistics" section in the web app's Results and in the HTML report, as `duration` and
+  `model` blocks in the summary JSON, and on the CLI's `simulate` output. Existing JSON fields are unchanged.
+
 ## 0.4.0 - 2026-09-24
 
 ### Behaviour changes: re-run results for files with a Must Finish By

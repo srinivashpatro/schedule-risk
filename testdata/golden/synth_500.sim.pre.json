@@ -3,6 +3,12 @@
  "batches": 1,
  "converged": null,
  "scenario": "pre",
+ "model": {
+  "project": "SYN500",
+  "data_date": "2027-01-26 08:00",
+  "activities": 500,
+  "risks": 4
+ },
  "deterministic_finish": "2028-09-13 17:00",
  "prob_meet_deterministic": 0.0,
  "finish": {
@@ -21,6 +27,39 @@
   "max": "2030-02-12 10:53",
   "mean": "2029-04-04 08:54",
   "stdev_working_days": 63.8561
+ },
+ "duration": {
+  "unit": "working days",
+  "start": "2026-03-02 08:00",
+  "deterministic": 659.0,
+  "P5": 716.195833,
+  "P10": 724.04375,
+  "P20": 741.658333,
+  "P30": 756.6,
+  "P40": 772.535417,
+  "P50": 786.73125,
+  "P60": 805.014583,
+  "P70": 833.08125,
+  "P80": 861.1625,
+  "P90": 894.335417,
+  "P95": 915.602083,
+  "min": 677.158333,
+  "max": 1020.360417,
+  "mean": 800.111479,
+  "median": 786.753125,
+  "stdev": 63.8561,
+  "skewness": 0.58104,
+  "kurtosis": -0.482357,
+  "contingency": {
+   "P50": {
+    "days": 127.73125,
+    "percent": 19.38
+   },
+   "P80": {
+    "days": 202.1625,
+    "percent": 30.68
+   }
+  }
  },
  "milestones": [
   {

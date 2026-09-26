@@ -212,6 +212,9 @@ td > select.input { width: auto; }
 .fill { height: 100%; background: var(--color-neutral-700); }
 .fill.top { background: var(--color-accent); }
 .fill.ink { background: var(--color-text); }
+.stat-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: var(--space-6) var(--space-8); align-items: start; }
+.stat-groups > .wrap { min-width: 0; overflow-x: auto; }
+.stat-table td:first-child { color: var(--color-neutral-700); }
 .runfoot { border-top: 0; }
 
 /* dialogs and overlays */

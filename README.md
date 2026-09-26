@@ -30,8 +30,8 @@ GitHub Actions runs the same build and tests, plus the Python reference tests, o
 Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
 health checks, activity grid) -> **Risk model** (uncertainty, risk register with mitigation,
 drivers, correlation, simulation settings; open/save model JSON; run) -> **Results** (P-dates at
-any confidence level, finish distribution as histogram or S-curve, confidence table, risk ranking,
-criticality, milestones; export the HTML report or CSVs).
+any confidence level, finish distribution as histogram or S-curve, confidence table, duration
+statistics, risk ranking, criticality, milestones; export the HTML report or CSVs).
 
 The look follows the Modernist design system from `design/redesign/` (vendored as
 `wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
@@ -59,7 +59,9 @@ sra simulate  project.xer --risk model.json --out results   # pre + post mitigat
 From source: `dotnet run --project src\ScheduleRisk.Cli -c Release -- <command> ...`
 
 `simulate` writes `report.html` (self-contained, open in any browser), `summary.pre.json`,
-`summary.post.json`, `activities.csv`, `risks.csv` and `iterations.csv`.
+`summary.post.json`, `activities.csv`, `risks.csv` and `iterations.csv`. The summary JSON has a
+`duration` block (working days from the project start) and a `model` block; the run's start time and
+run time are left out of it, so the same seed always gives the same file.
 
 The risk model format is described in [docs/RISK_MODEL.md](docs/RISK_MODEL.md).
 
@@ -103,7 +105,12 @@ sampling; seed-reproducible results independent of CPU count; batch convergence.
 
 **Outputs:** P5-P95 finish dates, probability of meeting the deterministic date and the project's Must
 Finish By (when it has one), milestone P-dates, criticality index, duration sensitivity (Spearman),
-cruciality, risk and driver tornado data, pre/post-mitigation comparison. A project Must Finish By sets P6's float in the deterministic
+cruciality, risk and driver tornado data, pre/post-mitigation comparison. Duration statistics: the
+project duration in working days of the project calendar from the project start (the earliest start,
+actual starts included), deterministic and at P5-P95, contingency (P50 and P80 minus deterministic, in
+days and percent), minimum, maximum, mean, median, standard deviation, skewness and excess kurtosis
+(as Excel's SKEW and KURT), with the run's start time, run time, iterations, seed, project, data date
+and activity and risk counts. A project Must Finish By sets P6's float in the deterministic
 schedule but does not change the simulation: each iteration measures criticality to its own finish,
 and the risk model's `critical` filter picks the activities that drive the deterministic finish.
 

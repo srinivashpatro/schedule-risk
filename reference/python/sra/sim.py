@@ -263,6 +263,71 @@ def percentile(values, p):
     return v[idx]
 
 
+def skewness(xs):
+    """Sample skewness as Excel's SKEW (adjusted Fisher-Pearson); None below 3 values or with no spread."""
+    n = len(xs)
+    if n < 3:
+        return None
+    m = sum(xs) / n
+    sd = math.sqrt(sum((x - m) ** 2 for x in xs) / (n - 1))
+    if sd == 0:
+        return None
+    return n / ((n - 1) * (n - 2)) * sum(((x - m) / sd) ** 3 for x in xs)
+
+
+def excess_kurtosis(xs):
+    """Sample excess kurtosis as Excel's KURT (0 for a normal distribution); None below 4 values or with no spread."""
+    n = len(xs)
+    if n < 4:
+        return None
+    m = sum(xs) / n
+    sd = math.sqrt(sum((x - m) ** 2 for x in xs) / (n - 1))
+    if sd == 0:
+        return None
+    return (n * (n + 1) / ((n - 1) * (n - 2) * (n - 3)) * sum(((x - m) / sd) ** 4 for x in xs)
+            - 3 * (n - 1) ** 2 / ((n - 2) * (n - 3)))
+
+
+def median(xs):
+    v = sorted(xs)
+    n = len(v)
+    return v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2
+
+
+def project_start(sim):
+    """Earliest start in the deterministic schedule (actual starts included); the same in every iteration."""
+    det = sim.engine.run(backward=False)
+    acts = sim.s.activities
+    return min(det.es[j] for j in range(len(acts)) if not acts[j].is_summary and det.es[j] is not None)
+
+
+def duration_stats(sim, res, fw, stdev):
+    """Project duration in working days of the project calendar, from the project start to each finish.
+    The standard deviation is the finish's (`stdev_working_days`): a fixed start does not change it."""
+    pcal = sim.s.settings.project_calendar
+    mpd = pcal.minutes_per_day()
+    start = project_start(sim)
+    w0 = pcal.work_at(start)
+    days = [(w - w0) / mpd for w in fw]
+    n = len(days)
+    mean = sum(days) / n
+    det = (pcal.work_at(res.deterministic) - w0) / mpd
+    sk, ku = skewness(days), excess_kurtosis(days)
+    # 6 decimals: durations are whole minutes over minutes-per-day, so 4 would often round a tie (786.73125)
+    out = {"unit": "working days", "start": fmt_min(start), "deterministic": round(det, 6)}
+    for p in PERCENTILES:
+        out[f"P{p}"] = round(percentile(days, p), 6)
+    out.update({"min": round(min(days), 6), "max": round(max(days), 6), "mean": round(mean, 6),
+                "median": round(median(days), 6), "stdev": stdev,
+                "skewness": None if sk is None else round(sk, 6), "kurtosis": None if ku is None else round(ku, 6)})
+    cont = {}
+    for p in (50, 80):
+        d0, c = out["deterministic"], out[f"P{p}"] - out["deterministic"]
+        cont[f"P{p}"] = {"days": round(c, 6), "percent": round(c / d0 * 100, 2) if d0 > 0 else None}
+    out["contingency"] = cont
+    return out
+
+
 def summarize(sim, res, top=None):
     s = sim.s
     acts = s.activities
@@ -271,6 +336,8 @@ def summarize(sim, res, top=None):
     n = res.iterations
     fin = res.finish
     out = {"iterations": n, "batches": res.batches, "converged": res.converged, "scenario": sim.scenario,
+           "model": {"project": s.project_name, "data_date": fmt_min(s.settings.data_date),
+                     "activities": len(acts), "risks": len(sim.m.risks)},
            "deterministic_finish": fmt_min(res.deterministic)}
     out["prob_meet_deterministic"] = sum(1 for f in fin if f <= res.deterministic) / n
     # A Must Finish By at 00:00 means by the end of the previous day, as in P6, so compare instants.
@@ -287,6 +354,7 @@ def summarize(sim, res, top=None):
     fstats["mean"] = fmt_min(pcal.time_finish(round_half_up(mean_w)))
     fstats["stdev_working_days"] = round(math.sqrt(var) / mpd, 4)
     out["finish"] = fstats
+    out["duration"] = duration_stats(sim, res, fw, fstats["stdev_working_days"])
     ms = []
     for j, vals in sorted(res.milestones.items()):
         a = acts[j]
