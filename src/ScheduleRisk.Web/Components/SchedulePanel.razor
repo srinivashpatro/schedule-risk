@@ -1,53 +1,61 @@
 @inherits StateComponent
 @inject HttpClient Http
 
-<section class="hero rule-b">
-    <div class="hero-text">
-        <span class="kicker">Step 01</span>
-        <h1>Import a schedule</h1>
-        <p class="lede">Open a Primavera P6 export. It is recalculated with P6's rules and checked here in your browser; nothing is uploaded.</p>
-        @if (State.Projects.Count > 1)
-        {
-            <div class="field">
-                <label for="project">Project in this file</label>
-                <select id="project" class="input" value="@State.ProjectId" @onchange="OnProject">
-                    @foreach (var p in State.Projects)
-                    {
-                        <option value="@p.Id">@p.ShortName</option>
-                    }
-                </select>
-            </div>
-        }
-    </div>
-    <div class="hero-drop">
-        <div class="dropzone @(dragging ? "over" : "")">
-            <InputFile id="xer-file" class="drop-input" accept=".xer" OnChange="OnFile" title="Drop an .xer file or click to browse"
-                       @ondragenter="@(() => dragging = true)" @ondragleave="@(() => dragging = false)" @ondrop="@(() => dragging = false)" />
-            <span class="drop-title">@(State.Schedule == null ? "Drop file here" : "Drop another file here")</span>
-            <span class="sub">.xer · Primavera P6 export</span>
-            <div class="drop-actions">
-                <label for="xer-file" class="btn btn-secondary">Browse files</label>
-                <button class="btn btn-ghost" @onclick="LoadSample">Use sample project</button>
-            </div>
-        </div>
-    </div>
-</section>
-
 @if (State.Schedule == null)
 {
-    <section class="pad">
-        <h4>What happens next</h4>
-        <ol class="steps-list">
-            <li>The schedule is recalculated with P6's rules and compared with the dates P6 saved in the file.</li>
-            <li>You describe the uncertainty and risks, or open a saved risk model.</li>
-            <li>A Monte Carlo simulation gives P50/P80 dates, the activities that drive them and a risk ranking.</li>
-        </ol>
+    <section class="landing blueprint rule-b">
+        <div class="landing-text">
+            <span class="kicker">Step 01 · Schedule</span>
+            <h1>Schedule risk analysis for Primavera&nbsp;P6</h1>
+            <p class="lede">Open a P6 export (.xer). It is recalculated with P6's rules, checked and simulated in this browser. Nothing is uploaded.</p>
+            @ProjectPicker
+        </div>
+        <div class="landing-drop">
+            @DropZone(slim: false)
+        </div>
+        <div class="landing-art">
+            <LandingArt Kind="hero" />
+        </div>
+    </section>
+
+    <section class="step-cards rule-b" aria-label="How it works">
+        <div class="step-card">
+            <span class="num">01</span>
+            <h4>Schedule</h4>
+            <div class="card-art"><LandingArt Kind="schedule" /></div>
+            <p class="body">Recalculated with P6's rules (calendars, constraints, lags and progress) and checked against the dates P6 saved in the file, with DCMA-style health checks.</p>
+        </div>
+        <div class="step-card">
+            <span class="num">02</span>
+            <h4>Risk model</h4>
+            <div class="card-art"><LandingArt Kind="risk" /></div>
+            <p class="body">Three-point uncertainty, a risk register with mitigation, risk drivers and correlation. Open or save the model as JSON.</p>
+        </div>
+        <div class="step-card">
+            <span class="num">03</span>
+            <h4>Results</h4>
+            <div class="card-art"><LandingArt Kind="results" /></div>
+            <p class="body">Monte Carlo simulation with Latin Hypercube sampling, reproducible by seed: P-dates, criticality, sensitivity and a risk ranking. Export an HTML report or CSVs.</p>
+        </div>
+    </section>
+
+    <section class="poster">
+        <p class="poster-text">Your schedule never leaves this browser.</p>
+        <p class="poster-sub">The analysis engine runs here, in WebAssembly. XER files are read on this device and never uploaded.</p>
     </section>
 }
 else
 {
     var s = State.Schedule;
     var r = State.Cpm;
+    <section class="file-strip blueprint rule-b">
+        <div class="fs-file">
+            <span class="kicker">Step 01 · Schedule</span>
+            <span class="fs-name" title="@State.FileName">@State.FileName</span>
+        </div>
+        @ProjectPicker
+        @DropZone(slim: true)
+    </section>
     <section class="stats rule-b">
         <div class="stat"><span class="eyebrow">Project</span><span class="v">@s.ProjectCode</span></div>
         <div class="stat"><span class="eyebrow">Activities</span><span class="v">@s.Activities.Count.ToString("N0")</span></div>
@@ -201,6 +209,40 @@ else
     private string search = "";
     private bool criticalOnly;
     private bool dragging;
+
+    private RenderFragment ProjectPicker => @<text>
+        @if (State.Projects.Count > 1)
+        {
+            <div class="field">
+                <label for="project">Project in this file</label>
+                <select id="project" class="input" value="@State.ProjectId" @onchange="OnProject">
+                    @foreach (var p in State.Projects)
+                    {
+                        <option value="@p.Id">@p.ShortName</option>
+                    }
+                </select>
+            </div>
+        }
+    </text>;
+
+    /// <summary>The file drop zone: large on the landing page, one line once a schedule is open.</summary>
+    private RenderFragment DropZone(bool slim) => @<div class="dropzone @(slim ? "slim" : "") @(dragging ? "over" : "")">
+        <InputFile id="xer-file" class="drop-input" accept=".xer" OnChange="OnFile" title="Drop an .xer file or click to browse"
+                   @ondragenter="@(() => dragging = true)" @ondragleave="@(() => dragging = false)" @ondrop="@(() => dragging = false)" />
+        @if (slim)
+        {
+            <span class="drop-title">Drop another .xer here</span>
+        }
+        else
+        {
+            <div class="drop-head"><LandingArt Kind="doc" /><span class="drop-title">Drop an .xer file here</span></div>
+            <span class="sub">Primavera P6 export · read on this device</span>
+        }
+        <div class="drop-actions">
+            <label for="xer-file" class="btn btn-secondary">Browse files</label>
+            <button class="btn btn-ghost" @onclick="LoadSample">Use sample project</button>
+        </div>
+    </div>;
 
     private int CriticalCount => State.Schedule == null || State.Cpm == null ? 0
         : State.Schedule.Activities.Count(a => State.Cpm.IsCritical(State.Schedule, a.Index));

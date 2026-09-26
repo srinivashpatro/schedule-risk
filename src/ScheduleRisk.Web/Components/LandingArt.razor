@@ -1,0 +1,169 @@
+@* Decorative line art for step 01: an industrial site in elevation with its schedule drawn under the ground line, small
+   previews for the three step cards, and the file icon in the drop zone. Plain inline SVG; colours come from the
+   .art rules in app.css, so the drawings follow the light and dark themes. Hidden from assistive technology. *@
+@((MarkupString)(Kind switch
+{
+    "hero" => Hero,
+    "schedule" => SchedulePreview,
+    "risk" => RiskPreview,
+    "results" => ResultsPreview,
+    "doc" => Doc,
+    _ => "",
+}))
+
+@code {
+    /// <summary>What to draw: hero, schedule, risk, results or doc.</summary>
+    [Parameter] public string Kind { get; set; } = "hero";
+
+    private const string Hidden = "aria-hidden=\"true\" focusable=\"false\"";
+
+    private static readonly string Hero = BuildHero();
+    private static readonly string SchedulePreview = BuildSchedulePreview();
+    private static readonly string RiskPreview = BuildRiskPreview();
+    private static readonly string ResultsPreview = BuildResultsPreview();
+
+    private static readonly string Doc =
+        $"<svg class=\"art art-doc\" viewBox=\"0 0 36 44\" {Hidden}>" +
+        "<path class=\"ln\" d=\"M1 1H24L35 12V43H1ZM24 1V12H35\"/>" +
+        "<rect class=\"accent\" x=\"5\" y=\"27\" width=\"26\" height=\"12\"/>" +
+        "<text class=\"doc-t\" x=\"18\" y=\"36\" text-anchor=\"middle\">XER</text></svg>";
+
+    /// <summary>A lattice between two parallel chords: a zigzag from (x0, a) to x1, alternating between a and b every half step.</summary>
+    private static string Zigzag(int x0, int x1, int a, int b, int step)
+    {
+        var sb = new System.Text.StringBuilder($"M{x0} {a}");
+        bool toB = true;
+        for (int x = x0 + step / 2; x <= x1; x += step / 2, toB = !toB) sb.Append($"L{x} {(toB ? b : a)}");
+        return sb.ToString();
+    }
+
+    /// <summary>The same for a vertical member: alternating between x = a and x = b while climbing from y0 to y1.</summary>
+    private static string VerticalZigzag(int y0, int y1, int a, int b, int step)
+    {
+        var sb = new System.Text.StringBuilder($"M{a} {y0}");
+        bool toB = true;
+        for (int y = y0 - step; y >= y1; y -= step, toB = !toB) sb.Append($"L{(toB ? b : a)} {y}");
+        return sb.ToString();
+    }
+
+    private static string Bar(int x0, int x1, int y, string kind, int order, int h = 6) =>
+        $"<rect class=\"bar {kind}\" x=\"{x0}\" y=\"{y}\" width=\"{x1 - x0}\" height=\"{h}\" style=\"--d:{order * 60}ms\"/>";
+
+    private static string BuildHero()
+    {
+        var s = new System.Text.StringBuilder();
+        s.Append($"<svg class=\"art art-hero\" viewBox=\"0 0 1200 240\" preserveAspectRatio=\"xMinYMax slice\" {Hidden}>");
+        s.Append("<g class=\"ln\">");
+
+        // tower crane: mast, jib and counter-jib, tower head with ties, counterweight, cab, trolley and hook
+        s.Append("<path d=\"M118 150V34M132 150V34\"/>");
+        s.Append($"<path class=\"thin\" d=\"{VerticalZigzag(150, 40, 118, 132, 11)}\"/>");
+        s.Append("<path d=\"M56 30H392M56 38H380L392 30\"/>");
+        s.Append($"<path class=\"thin\" d=\"{Zigzag(132, 380, 38, 30, 16)}{Zigzag(56, 118, 38, 30, 16)}\"/>");
+        s.Append("<path d=\"M118 30L125 4L132 30M125 4L310 30M125 4L58 30\"/>");
+        s.Append("<rect class=\"soft\" x=\"60\" y=\"38\" width=\"28\" height=\"18\"/>");
+        s.Append("<rect x=\"132\" y=\"38\" width=\"14\" height=\"11\"/>");
+        s.Append("<rect x=\"296\" y=\"38\" width=\"12\" height=\"5\"/><path d=\"M302 43V90M302 96L282 102M302 96L322 102\"/>");
+        s.Append("<rect x=\"298\" y=\"90\" width=\"8\" height=\"6\"/>");
+        s.Append("<rect x=\"108\" y=\"144\" width=\"34\" height=\"6\"/>");
+
+        // steel frame going up: columns, floor beams, one braced bay
+        s.Append("<path d=\"M420 150V46M460 150V46M500 150V46M540 150V72M580 150V72M420 72H580M420 99H580M420 126H580M420 46H500\"/>");
+        s.Append("<path class=\"thin\" d=\"M540 72L580 126M580 72L540 126M460 46L500 72\"/>");
+
+        // process columns with platforms and a ladder
+        s.Append("<rect x=\"626\" y=\"34\" width=\"22\" height=\"116\"/><path d=\"M626 34L637 25L648 34\"/>");
+        s.Append("<rect x=\"676\" y=\"58\" width=\"16\" height=\"92\"/><path d=\"M676 58L684 51L692 58\"/>");
+        s.Append("<path d=\"M616 62H660M616 92H660M616 122H660M670 86H700\"/>");
+        var rungs = new System.Text.StringBuilder("M654 40V150M660 40V150");
+        for (int y = 46; y < 150; y += 8) rungs.Append($"M654 {y}H660");
+        s.Append($"<path class=\"thin\" d=\"{rungs}\"/>");
+
+        // pipe rack: bents, beams, two pipe levels, an expansion loop, and the runs into the columns and the tank
+        s.Append("<path d=\"M730 150V86M790 150V86M850 150V86M910 150V86M970 150V86M730 86H970M730 112H970\"/>");
+        s.Append("<path d=\"M648 80H1000M700 74H860V56H900V74H1000M692 106H1000M1000 74H1030V104\"/>");
+
+        // storage tanks with a stair, and a flare stack on guy wires
+        s.Append("<rect x=\"1016\" y=\"104\" width=\"66\" height=\"46\"/><path d=\"M1016 104Q1049 92 1082 104\"/>");
+        s.Append("<path class=\"thin\" d=\"M1022 150L1074 108M1026 150L1078 111\"/>");
+        s.Append("<rect x=\"1092\" y=\"116\" width=\"50\" height=\"34\"/><path d=\"M1092 116Q1117 107 1142 116\"/>");
+        s.Append("<path d=\"M1172 150V22M1168 22H1176\"/><path class=\"thin\" d=\"M1172 44L1152 150M1172 44L1192 150\"/>");
+        s.Append("</g>");
+
+        // the crane's load is the one accent above ground
+        s.Append("<rect class=\"accent\" x=\"278\" y=\"102\" width=\"48\" height=\"6\"/>");
+
+        // ground line with hatching below it, as on a drawing
+        var hatch = new System.Text.StringBuilder();
+        for (int x = 8; x <= 1200; x += 10) hatch.Append($"M{x} 152l-6 6");
+        s.Append($"<path class=\"ground\" d=\"M0 150H1200\"/><path class=\"hatch\" d=\"{hatch}\"/>");
+
+        // the schedule for it: done work in ink up to the data date, the critical chain in the accent
+        int o = 0;
+        s.Append(Bar(30, 200, 164, "done", o++));
+        s.Append(Bar(60, 250, 174, "done", o++));
+        s.Append(Bar(200, 400, 184, "done", o++));
+        s.Append(Bar(260, 470, 194, "done", o++)).Append(Bar(470, 520, 194, "rem", o++));
+        s.Append(Bar(400, 470, 204, "done", o++)).Append(Bar(470, 640, 204, "crit", o++));
+        s.Append(Bar(560, 880, 214, "rem", o++));
+        s.Append(Bar(640, 1000, 224, "crit", o++));
+        s.Append("<path class=\"link\" d=\"M200 170V184M400 190V204M640 210V224M1000 227H1052M520 197H600M880 217H960\"/>");
+        s.Append("<path class=\"accent\" d=\"M1060 221L1066 227L1060 233L1054 227Z\"/>");
+        s.Append("<path class=\"dd\" d=\"M470 158V238\"/><text x=\"477\" y=\"238\">DATA DATE</text>");
+        s.Append("</svg>");
+        return s.ToString();
+    }
+
+    private static string BuildSchedulePreview()
+    {
+        var s = new System.Text.StringBuilder();
+        s.Append($"<svg class=\"art art-card\" viewBox=\"0 0 280 100\" {Hidden}>");
+        s.Append("<rect class=\"bar done\" x=\"8\" y=\"9\" width=\"244\" height=\"4\"/><path class=\"ln\" d=\"M8 6V16M252 6V16\"/>");
+        int o = 0;
+        s.Append(Bar(8, 70, 22, "done", o++, 8));
+        s.Append(Bar(70, 120, 36, "done", o++, 8)).Append(Bar(120, 170, 36, "crit", o++, 8));
+        s.Append(Bar(100, 120, 50, "done", o++, 8)).Append(Bar(120, 160, 50, "rem", o++, 8));
+        s.Append(Bar(170, 240, 64, "crit", o++, 8));
+        s.Append("<path class=\"link\" d=\"M160 54H210M170 44V64M240 68V82H244\"/>");
+        s.Append("<path class=\"accent\" d=\"M252 77L257 82L252 87L247 82Z\"/>");
+        s.Append("<path class=\"dd\" d=\"M120 4V96\"/></svg>");
+        return s.ToString();
+    }
+
+    private static string BuildRiskPreview()
+    {
+        var s = new System.Text.StringBuilder();
+        s.Append($"<svg class=\"art art-card\" viewBox=\"0 0 280 100\" {Hidden}>");
+        // register rows: ID, title, probability, and a severity square (the top risk in the accent)
+        string[] sev = { "accent", "sev-mid", "sev-low" };
+        for (int i = 0; i < 3; i++)
+        {
+            int y = 12 + i * 28;
+            s.Append($"<rect class=\"ln\" x=\"8\" y=\"{y}\" width=\"20\" height=\"16\"/>");
+            s.Append($"<rect class=\"soft-strong\" x=\"34\" y=\"{y + 4}\" width=\"{70 - i * 12}\" height=\"8\"/>");
+            s.Append($"<rect class=\"soft\" x=\"110\" y=\"{y + 4}\" width=\"22\" height=\"8\"/>");
+            s.Append($"<rect class=\"{sev[i]}\" x=\"138\" y=\"{y + 3}\" width=\"10\" height=\"10\"/>");
+        }
+        s.Append("<path class=\"ln thin\" d=\"M160 8V92\"/>");
+        // a three-point estimate: min, most likely, max
+        s.Append("<path class=\"soft ln\" d=\"M176 86L206 22L268 86Z\"/>");
+        s.Append("<path class=\"ln\" d=\"M170 86H274M176 86V91M268 86V91\"/><path class=\"dd\" d=\"M206 22V91\"/>");
+        s.Append("</svg>");
+        return s.ToString();
+    }
+
+    private static string BuildResultsPreview()
+    {
+        var s = new System.Text.StringBuilder();
+        s.Append($"<svg class=\"art art-card\" viewBox=\"0 0 280 100\" {Hidden}>");
+        int[] h = { 5, 12, 24, 38, 48, 46, 37, 27, 18, 11, 6, 3 };
+        for (int i = 0; i < h.Length; i++)
+            s.Append($"<rect class=\"soft-strong\" x=\"{22 + i * 20}\" y=\"{86 - h[i]}\" width=\"15\" height=\"{h[i]}\"/>");
+        s.Append("<path class=\"ln\" d=\"M8 86H274\"/>");
+        s.Append("<path class=\"curve\" d=\"M18 86C80 86 100 74 130 50S190 14 272 10\"/>");
+        s.Append("<path class=\"dd\" d=\"M52 8V86\"/>");
+        s.Append("<path class=\"p-line\" d=\"M176 8V86\"/><circle class=\"accent\" cx=\"176\" cy=\"26\" r=\"3.5\"/>");
+        s.Append("</svg>");
+        return s.ToString();
+    }
+}

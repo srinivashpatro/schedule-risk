@@ -189,6 +189,24 @@ not detected yet.
       3. `p6_level_1.xer`: level resources (with "level resources during scheduling" on); export.
       4. `p6_level_2.xer`: the same without levelling; schedule (F9), export.
 
+## Browser app
+
+- [x] Landing page themed on industrial project planning. Step 01 before a file is open: a blueprint
+      grid behind the hero, a plant drawn in elevation (tower crane, steel frame, process columns, pipe
+      rack, tanks) with its schedule under the ground line (done work in ink up to a data date, the
+      critical chain in the accent), three step cards with small previews, and a closing poster band
+      for the privacy promise. Once a file is open the hero shrinks to a slim strip, so the schedule
+      gets the room. The loading screen draws a small schedule while the engine downloads. All inline
+      SVG and CSS from the design system's tokens (light and dark), no image files, motion off with
+      prefers-reduced-motion; `WebAssetsTests` fails if any page, style or script refers to another
+      site.
+- [ ] P6-style Gantt chart in step 01 after a file loads: activity table (ID, name, original and
+      remaining duration, start, finish, total float) beside the bars, two-tier timescale with zoom,
+      grouped by WBS in P6's order (`PROJWBS.seq_num`) with band rows, summary bars and collapse,
+      activities by start then ID; P6's bar colours (actual blue, remaining green, critical red),
+      milestones, float lines and the data date. Layout logic in Core (`GanttLayout`), unit-tested;
+      a Gantt | Table switch keeps the current table. Relationship lines are a follow-up.
+
 ## Shipped
 
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with

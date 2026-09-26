@@ -124,6 +124,70 @@ h1, h2, h4 { margin: 0; }
 .grid-wrap thead th { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
 .grid-wrap .table th { border-bottom-width: 2px; }
 
+/* step 01 landing: an engineering-drawing feel. A fine blueprint grid behind the hero, the site drawn in ink
+   in elevation with its schedule under the ground line, then the three steps and a closing poster band. */
+.blueprint {
+  --bp-minor: color-mix(in srgb, var(--color-text) 5%, transparent);
+  --bp-major: color-mix(in srgb, var(--color-text) 9%, transparent);
+  background-color: var(--color-bg);
+  background-image:
+    linear-gradient(var(--bp-major) 1px, transparent 1px), linear-gradient(90deg, var(--bp-major) 1px, transparent 1px),
+    linear-gradient(var(--bp-minor) 1px, transparent 1px), linear-gradient(90deg, var(--bp-minor) 1px, transparent 1px);
+  background-size: 96px 96px, 96px 96px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+}
+.landing { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.landing-text { grid-column: span 5; padding: var(--space-8) var(--space-6); border-right: 2px solid var(--color-divider);
+  display: flex; flex-direction: column; gap: var(--space-4); }
+.landing-text h1 { font-size: clamp(34px, 4vw, 54px); line-height: 1.02; letter-spacing: -0.03em; text-wrap: balance; }
+.landing-drop { grid-column: span 7; padding: var(--space-8) var(--space-6); display: flex; }
+.landing-drop .dropzone { flex: 1; min-height: 220px; }
+.landing-art { grid-column: 1 / -1; border-top: 2px solid var(--color-divider); padding: var(--space-4) 0 0; overflow: hidden; }
+.drop-head { display: flex; align-items: center; gap: var(--space-4); }
+.step-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.step-card { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3); border-right: 2px solid var(--color-divider); min-width: 0; }
+.step-card:last-child { border-right: 0; }
+.step-card .num { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--color-accent-700); }
+.step-card .body { color: var(--color-neutral-700); }
+.card-art { background: var(--color-surface); padding: var(--space-3); }
+.poster { background: var(--color-accent); color: var(--color-bg); padding: var(--space-8) var(--space-6);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3) var(--space-8); }
+.poster p { margin: 0; }
+.poster-text { font-family: var(--font-heading); font-weight: 800; font-size: clamp(28px, 3.6vw, 46px); line-height: 1.05;
+  letter-spacing: -0.02em; max-width: 20ch; text-wrap: balance; }
+.poster-sub { font-size: 15px; max-width: 54ch; }
+.file-strip { display: flex; align-items: center; gap: var(--space-4) var(--space-6); flex-wrap: wrap; padding: var(--space-4) var(--space-6); }
+.fs-file { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin-right: auto; }
+.fs-name { font-family: var(--font-heading); font-weight: 800; font-size: 20px; overflow-wrap: anywhere; }
+.file-strip .field { display: flex; flex-direction: column; gap: var(--space-1); }
+.file-strip .field > label { margin: 0; font-size: 12px; }
+.dropzone.slim { flex-direction: row; align-items: center; flex-wrap: wrap; height: auto; min-height: 0; padding: var(--space-3) var(--space-4); gap: var(--space-4); }
+.dropzone.slim .drop-title { font-size: 15px; }
+
+/* line art (LandingArt.razor, the loading screen) */
+.art { display: block; width: 100%; height: auto; overflow: visible; }
+.art-hero { aspect-ratio: 5 / 1; min-height: 150px; }
+.art-doc { width: 36px; height: 44px; flex: none; }
+.art .ln { fill: none; stroke: var(--color-text); stroke-width: 1.4; stroke-linejoin: miter; vector-effect: non-scaling-stroke; }
+.art .thin, .art .ln .thin { stroke: var(--color-neutral-600); stroke-width: 1; }
+.art .soft { fill: color-mix(in srgb, var(--color-text) 8%, transparent); }
+.art .soft-strong { fill: var(--color-neutral-400); }
+.art .ground { fill: none; stroke: var(--color-text); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.art .hatch { fill: none; stroke: var(--color-neutral-500); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.art .link { fill: none; stroke: var(--color-neutral-600); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.art .dd { fill: none; stroke: var(--color-text); stroke-width: 1.2; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
+.art .curve { fill: none; stroke: var(--color-text); stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+.art .p-line { fill: none; stroke: var(--color-accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.art .accent, .art .bar.crit { fill: var(--color-accent); }
+.art .sev-mid { fill: var(--color-neutral-600); }
+.art .sev-low { fill: var(--color-neutral-300); }
+.art .bar.done { fill: var(--color-text); }
+.art .bar.rem { fill: var(--color-neutral-500); }
+.art text { fill: var(--color-neutral-700); font-size: 9px; font-weight: 600; letter-spacing: .1em; }
+.art .doc-t { fill: var(--color-bg); font-size: 8.5px; font-weight: 800; letter-spacing: .06em; }
+.art .bar { transform-box: fill-box; transform-origin: 0 50%; animation: art-grow .7s cubic-bezier(.2, .7, .2, 1) both; animation-delay: var(--d, 0ms); }
+@keyframes art-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 /* tables (on top of the design system's .table) */
 .wrap { overflow-x: auto; }
 .table { font-size: 13.5px; }
@@ -258,6 +322,16 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
 /* ---------------------------------------------------------------- boot and errors */
 .boot { max-width: 520px; margin: 18vh auto 0; padding: 0 var(--space-6); display: flex; flex-direction: column; gap: var(--space-2); }
 .boot-title { font-family: var(--font-heading); font-weight: 800; font-size: 32px; display: flex; align-items: center; gap: var(--space-3); }
+/* a small schedule that keeps drawing itself while the engine downloads */
+.boot-gantt { width: 240px; height: 64px; margin: var(--space-2) 0; }
+.boot-gantt rect { fill: var(--color-neutral-500); transform-box: fill-box; transform-origin: 0 50%;
+  animation: boot-bar 2.4s cubic-bezier(.2, .7, .2, 1) infinite both; animation-delay: var(--d, 0ms); }
+.boot-gantt rect.crit { fill: var(--color-accent); }
+.boot-gantt path { fill: none; stroke: var(--color-neutral-600); stroke-width: 1; }
+@keyframes boot-bar { 0% { transform: scaleX(0); } 45%, 100% { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .art .bar, .boot-gantt rect { animation: none; }
+}
 #blazor-error-ui { display: none; position: fixed; bottom: 0; left: 0; right: 0; padding: var(--space-3) var(--space-6); z-index: 40;
   background: var(--color-accent-100); color: var(--color-accent-800); border-top: 2px solid var(--color-accent); }
 #blazor-error-ui .reload { margin-left: var(--space-2); }
@@ -266,6 +340,12 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
 @media (max-width: 900px) {
   .hero-text, .hero-drop { grid-column: 1 / -1; }
   .hero-text { border-right: 0; border-bottom: 2px solid var(--color-divider); padding: var(--space-6); }
+  .landing-text, .landing-drop { grid-column: 1 / -1; }
+  .landing-text { border-right: 0; padding-bottom: 0; }
+  .landing-drop .dropzone { min-height: 0; }
+  .step-cards { grid-template-columns: minmax(0, 1fr); }
+  .step-card { border-right: 0; border-bottom: 2px solid var(--color-divider); }
+  .step-card:last-child { border-bottom: 0; }
   .side { max-width: none; border-bottom: 2px solid var(--color-divider); }
   .main-col { border-left: 0; margin-left: 0; }
   .chart-col { border-right: 0; border-bottom: 2px solid var(--color-divider); }
@@ -280,6 +360,9 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
   .navactions { padding-left: var(--space-2); }
   .navactions .btn { min-width: 0; }
   .pad, .main-col, .side, .chart-col, .conf-col, .two-col > div, .hero-drop { padding: var(--space-4); }
+  .landing-text, .landing-drop, .step-card, .poster, .file-strip { padding: var(--space-4); }
+  .landing-text { padding-top: var(--space-6); padding-bottom: 0; }
+  .dropzone.slim { flex: 1 1 100%; }
   .kpi { padding: var(--space-4); }
   .kpi .v { font-size: 28px; }
   .barrow { grid-template-columns: 40px minmax(70px, 120px) minmax(0, 1fr) 44px; gap: var(--space-2); }
