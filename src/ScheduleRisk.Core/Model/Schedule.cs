@@ -76,7 +76,9 @@ public sealed class ScheduleSettings
     public WorkCalendar ProjectCalendar { get; set; } = null!;
 }
 
-public sealed record WbsNode(string ParentId, string ShortName, string Name);
+/// <summary>A WBS element. <see cref="Seq"/> is P6's display order (PROJWBS.seq_num, 0 when absent) and <see cref="FileOrder"/>
+/// its position in the file, which breaks ties; neither affects scheduling.</summary>
+public sealed record WbsNode(string ParentId, string ShortName, string Name, int Seq = 0, int FileOrder = 0);
 
 public sealed class Schedule
 {

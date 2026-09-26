@@ -19,6 +19,17 @@ window.sraWatchNav = function () {
     new ResizeObserver(() => document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px")).observe(nav);
 };
 
+// The Gantt's horizontal view (GanttView): how far the bars are scrolled, and the width of the bars' part of the
+// frame (the frame minus its sticky activity columns). Zooming uses it to keep the date in the middle in view.
+window.sraGanttView = function (frame) {
+    if (!frame) return [0, 0];
+    const cols = frame.querySelector(".g-head .g-cols");
+    return [frame.scrollLeft, Math.max(0, frame.clientWidth - (cols ? cols.offsetWidth : 0) - 4)];
+};
+window.sraGanttScrollTo = function (frame, x) {
+    if (frame) frame.scrollLeft = Math.max(0, x);
+};
+
 // Hover readout for the project-finish chart (HtmlReport.SCurve with interactive: true).
 // Its div.scurve carries per-day data in data-scurve: for every calendar day, how many
 // iterations finished by the end of that day. A crosshair snaps to the nearest day and one

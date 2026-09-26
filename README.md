@@ -28,16 +28,22 @@ GitHub Actions runs the same build and tests, plus the Python reference tests, o
     publish-web.cmd    # static site in publish\wwwroot - copy to any web host
 
 Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
-health checks, activity grid) -> **Risk model** (uncertainty, risk register with mitigation,
-drivers, correlation, simulation settings; open/save model JSON; run) -> **Results** (P-dates at
-any confidence level, finish distribution as histogram or S-curve, confidence table, duration
-statistics, risk ranking, criticality, milestones; export the HTML report or CSVs).
+health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (uncertainty, risk
+register with mitigation, drivers, correlation, simulation settings; open/save model JSON; run) ->
+**Results** (P-dates at any confidence level, finish distribution as histogram or S-curve,
+confidence table, duration statistics, risk ranking, criticality, milestones; export the HTML
+report or CSVs).
 
 The look follows the Modernist design system from `design/redesign/` (vendored as
 `wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
 so the app still loads nothing from other sites. The landing page's industrial line drawings (a plant
 in elevation with its schedule under the ground line) are inline SVG coloured by the design system's
 tokens, and `WebAssetsTests` fails if any page, style or script in the web app refers to another site.
+
+The Gantt chart follows P6's Activities view: the activity table beside bars on a two-tier timescale,
+grouped by WBS in P6's order (`PROJWBS.seq_num`), with P6's bar colours (actual blue, remaining green,
+critical red), milestones, float lines and the data date. Only the rows in view are rendered, so a
+5,000-activity schedule stays quick. Not yet in the Gantt: relationship lines, baselines, printing.
 
 The first load downloads the .NET runtime (~10-15 MB, cached afterwards). Simulations run on
 one CPU core in the browser, so they are much slower than the command line (speed not yet

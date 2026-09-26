@@ -169,9 +169,19 @@ else
                 <span class="tag tag-neutral">@State.FileName · @Rows.Count.ToString("N0") shown</span>
             </div>
             <div class="toolbar">
+                <div class="seg" role="radiogroup" aria-label="Activity view">
+                    <label class="seg-opt"><input type="radio" name="actview" checked="@gantt" @onchange="@(() => gantt = true)" />Gantt</label>
+                    <label class="seg-opt"><input type="radio" name="actview" checked="@(!gantt)" @onchange="@(() => gantt = false)" />Table</label>
+                </div>
                 <input class="input" type="search" placeholder="Search ID or name" aria-label="Search activities" @bind="search" @bind:event="oninput" />
                 <label class="check"><input type="checkbox" @bind="criticalOnly" /> Critical only</label>
             </div>
+            @if (gantt)
+            {
+                <GanttView Schedule="s" Cpm="r" Search="@search" CriticalOnly="@criticalOnly" />
+            }
+            else
+            {
             <div class="grid-wrap">
                 <table class="table">
                     <thead>
@@ -195,6 +205,7 @@ else
                 </table>
             </div>
             <p class="sub">Red edge = critical. Durations and float are in working days of each activity's calendar. Calculated in @State.CpmTime.TotalMilliseconds.ToString("F0") ms.</p>
+            }
             <div class="actions-end">
                 <button class="btn btn-secondary" @onclick="ExportCsv">Download dates (CSV)</button>
                 <button class="btn btn-primary btn-wide" @onclick="() => OnNext.InvokeAsync()">Set up risk model →</button>
@@ -209,6 +220,7 @@ else
     private string search = "";
     private bool criticalOnly;
     private bool dragging;
+    private bool gantt = true;
 
     private RenderFragment ProjectPicker => @<text>
         @if (State.Projects.Count > 1)

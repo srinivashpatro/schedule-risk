@@ -17,6 +17,12 @@
   loading screen draws a small schedule while the engine downloads. Everything is inline SVG and the
   design system's colours, in light and dark mode; nothing is loaded from other sites, and a test now
   checks that.
+- A Gantt chart of the schedule, laid out like Primavera P6's: an activity table (ID, name, original and
+  remaining duration, start, finish with "A" for actual dates, total float) beside bars on a two-tier
+  timescale with zoom, grouped by WBS in P6's order with collapsible bands and summary bars. Bars use P6's
+  colours: actual work blue, remaining work green, critical work red, with milestones, float lines and the
+  data date. It is the default view of the parsed activities; the table is one click away, and both share
+  the search and critical-only filters. The WBS order comes from `PROJWBS.seq_num`, which is now read.
 
 ## 0.4.0 - 2026-09-24
 

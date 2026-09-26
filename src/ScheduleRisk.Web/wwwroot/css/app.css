@@ -15,6 +15,11 @@
   --line: color-mix(in srgb, var(--color-text) 14%, transparent);
   --card: var(--color-bg);
   --muted: var(--color-neutral-700);
+  /* Gantt bars (GanttView): P6's default colours, used by that chart only. The rest of the app keeps the
+     design system's ink and single accent; critical work shares the accent. */
+  --g-actual: #2c5db0;
+  --g-remaining: #3b8f45;
+  --g-critical: var(--color-accent);
 }
 
 /* Dark theme. The design system ships light only; this keeps its structure and derives the dark
@@ -40,6 +45,8 @@
     --shadow-sm: 0 0 0 1px color-mix(in srgb, #f3f2f2 10%, transparent);
     --shadow-md: 0 0 0 1px color-mix(in srgb, #f3f2f2 12%, transparent), 0 6px 18px rgba(0,0,0,.45);
     --shadow-lg: 0 0 0 1px color-mix(in srgb, #f3f2f2 14%, transparent), 0 16px 40px rgba(0,0,0,.55);
+    --g-actual: #6d9df0;
+    --g-remaining: #63bd71;
   }
 }
 
@@ -163,6 +170,73 @@ h1, h2, h4 { margin: 0; }
 .file-strip .field > label { margin: 0; font-size: 12px; }
 .dropzone.slim { flex-direction: row; align-items: center; flex-wrap: wrap; height: auto; min-height: 0; padding: var(--space-3) var(--space-4); gap: var(--space-4); }
 .dropzone.slim .drop-title { font-size: 15px; }
+
+/* P6-style Gantt (GanttView.razor): an activity table that sticks on the left, bars on a two-tier timescale that
+   sticks on top, WBS bands shaded by level. Only the rows in view are on the page (Virtualize, 26px rows). */
+.gantt-tools { display: flex; align-items: center; gap: var(--space-2) var(--space-6); flex-wrap: wrap; }
+.zoom { display: inline-flex; align-items: center; gap: var(--space-2); }
+.zoom-btn { min-width: 36px; padding: 4px 10px; font-size: 16px; }
+.gantt-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 12.5px; color: var(--color-neutral-700); }
+.gantt-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lg { display: inline-block; width: 18px; height: 8px; }
+.lg.actual { background: var(--g-actual); }
+.lg.remaining { background: var(--g-remaining); }
+.lg.critical { background: var(--g-critical); }
+.lg.float { height: 2px; background: var(--color-text); }
+.lg.ms { width: 8px; height: 8px; margin: 0 5px; background: var(--g-remaining); transform: rotate(45deg); }
+.lg.summary { height: 4px; background: var(--color-text); }
+.lg.dd { width: 0; height: 12px; margin: 0 8px; border-left: 2px dashed var(--color-accent-700); }
+.gantt { --colw: 118px 230px 58px 58px 96px 96px 58px;
+  max-height: 560px; overflow: auto; position: relative; border-top: 2px solid var(--color-divider); font-size: 12.5px; overscroll-behavior: contain; }
+.gantt .g-head, .gantt .g-row { display: flex; width: max-content; }
+.g-head { position: sticky; top: 0; z-index: 3; height: 46px; background: var(--color-bg); border-bottom: 2px solid var(--color-divider); }
+.g-cols { position: sticky; left: 0; z-index: 2; flex: none; display: grid; grid-template-columns: var(--colw);
+  background: var(--color-bg); border-right: 2px solid var(--color-divider); }
+.g-cols > span { padding: 0 6px; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-cols .c-n { text-align: right; }
+.g-cols .c-tf.neg { color: var(--color-accent-700); font-weight: 600; }
+.g-head .g-cols { z-index: 4; }
+.g-head .g-cols > span { align-self: end; padding-bottom: 5px; font-size: 11px; line-height: 1.2; letter-spacing: .06em; text-transform: uppercase;
+  white-space: normal; text-overflow: clip; color: var(--color-neutral-700); }
+.g-scale, .g-lane { position: relative; flex: none; width: var(--lane); }
+.g-tier { position: relative; height: 22px; }
+.g-tier span { position: absolute; top: 0; bottom: 0; padding: 4px 4px 0; overflow: hidden; white-space: nowrap;
+  border-left: 1px solid color-mix(in srgb, var(--color-text) 22%, transparent); font-size: 11.5px; font-weight: 600; }
+.g-tier.low span { font-weight: 400; color: var(--color-neutral-700); border-top: 1px solid color-mix(in srgb, var(--color-text) 14%, transparent); }
+.g-row { height: 26px; cursor: default; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); }
+.g-row:hover, .g-row:hover .g-cols { background: color-mix(in srgb, var(--color-text) 5%, var(--color-bg)); }
+.g-row:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.g-wbs { font-weight: 700; }
+.g-wbs.d0, .g-wbs.d0 .g-cols { background: var(--color-neutral-300); }
+.g-wbs.d1, .g-wbs.d1 .g-cols { background: var(--color-neutral-200); }
+.g-wbs.d2, .g-wbs.d2 .g-cols, .g-wbs.d3, .g-wbs.d3 .g-cols { background: var(--color-neutral-100); }
+.g-tog { all: unset; cursor: pointer; display: inline-block; width: 14px; margin-right: 2px; text-align: center; }
+.g-tog:focus-visible { outline: 2px solid var(--color-accent); }
+.g-bar { position: absolute; top: 8px; height: 10px; }
+.g-bar.actual { background: var(--g-actual); }
+.g-bar.remaining { background: var(--g-remaining); }
+.g-bar.critical { background: var(--g-critical); }
+.g-bar.float { top: 12px; height: 2px; background: var(--color-text); }
+.g-bar.summary { top: 9px; height: 5px; background: var(--color-text); }
+.g-bar.summary::before, .g-bar.summary::after { content: ""; position: absolute; top: 5px; border: 4px solid transparent; border-top: 5px solid var(--color-text); }
+.g-bar.summary::before { left: -4px; }
+.g-bar.summary::after { right: -4px; }
+.g-ms { position: absolute; top: 8px; width: 10px; height: 10px; margin-left: -5px; transform: rotate(45deg); background: var(--g-remaining); }
+.g-ms.critical { background: var(--g-critical); }
+.g-ms.actual { background: var(--g-actual); }
+.g-dd { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--color-accent-700); pointer-events: none; }
+.g-tip { display: none; position: absolute; top: 3px; z-index: 1; padding: 2px 8px; white-space: nowrap; pointer-events: none;
+  font-size: 12px; font-weight: 400; background: var(--color-text); color: var(--color-bg); }
+.g-tip.flip { transform: translateX(-100%); }
+.g-row:hover .g-tip, .g-row:focus-within .g-tip { display: block; }
+@media (max-width: 1100px) {
+  .gantt { --colw: 110px 200px 88px 88px 52px; }
+  .gantt .c-dur { display: none; }
+}
+@media (max-width: 700px) {
+  .gantt { --colw: 88px 124px; max-height: 460px; }
+  .gantt .c-d, .gantt .c-tf { display: none; }
+}
 
 /* line art (LandingArt.razor, the loading screen) */
 .art { display: block; width: 100%; height: auto; overflow: visible; }
