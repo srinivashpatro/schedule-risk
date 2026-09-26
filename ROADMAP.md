@@ -216,6 +216,20 @@ not detected yet.
       relationship lines (need an overlay across virtualised rows), baselines, the Gantt in the HTML
       report.
 
+- [x] Expand all / Collapse all for the Gantt's WBS bands, from buttons in the Gantt toolbar and from
+      a right-click menu anywhere on the chart (table, bars and the timescale header), which replaces
+      the browser's own menu there. The menu works from the keyboard (context-menu key or Shift+F10,
+      arrow keys, Enter, Escape) and its items are disabled while grouping by WBS is off. Collapse all
+      collapses every band, as P6 does, so only the top bands remain.
+- [ ] Risk model: a searchable activity picker where a row applies to "Activity IDs" (uncertainty,
+      risks, drivers, correlation), listing ID and name grouped by WBS and filtering on either as you
+      type. Several activities can be picked; the model file keeps its list of IDs.
+- [ ] Results: one summary panel with the key outputs of a run (mean, median, P-values, top risk
+      drivers, critical and near-critical activities), replacing values that are now shown twice.
+- [ ] Report exports as PDF, PowerPoint and Word, in the app's theme, with the charts and tables shown
+      on screen.
+- [ ] Rename the app to "Project Risk Analysis" (landing page, tab title, header, footer, reports).
+
 ## Shipped
 
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with

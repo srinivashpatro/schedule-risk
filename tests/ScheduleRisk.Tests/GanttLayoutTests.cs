@@ -260,6 +260,23 @@ public class GanttLayoutTests
     }
 
     [Fact]
+    public void Collapsing_every_band_leaves_only_the_top_bands()
+    {
+        // what the Gantt's "Collapse all" does: collapse every band the grouped layout shows
+        var (s, r) = TestData.LoadAndRun("synth_500.xer");
+        var open = GanttLayout.Build(s, r);
+        var options = new GanttOptions();
+        foreach (var band in open.Rows.Where(x => x.Kind == GanttRowKind.Wbs)) options.Collapsed.Add(band.Key);
+        var shut = GanttLayout.Build(s, r, options);
+        var only = Assert.Single(shut.Rows);
+        Assert.Equal("SYN500", only.Id);
+        Assert.True(only.Collapsed);
+        Assert.Equal(open.Rows[0].Bars, only.Bars);                 // the project bar still spans everything
+        Assert.Equal(open.ActivitiesMatched, shut.ActivitiesMatched);
+        Assert.Equal(open.Rows.Count, GanttLayout.Build(s, r, new GanttOptions()).Rows.Count); // "Expand all": nothing collapsed
+    }
+
+    [Fact]
     public void Critical_only_keeps_critical_activities_and_their_bands()
     {
         var (s, r) = TestData.LoadAndRun("synth_500.xer");

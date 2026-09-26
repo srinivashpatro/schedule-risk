@@ -43,7 +43,8 @@ tokens, and `WebAssetsTests` fails if any page, style or script in the web app r
 
 The Gantt chart follows P6's Activities view: the activity table beside bars on a two-tier timescale,
 grouped by WBS in P6's order (`PROJWBS.seq_num`), with P6's bar colours (actual blue, remaining green,
-critical red), milestones, float lines and the data date. Only the rows in view are rendered, so a
+critical red), milestones, float lines and the data date. Expand all and Collapse all (toolbar, or
+right-click the chart) open or close every WBS band. Only the rows in view are rendered, so a
 5,000-activity schedule stays quick. Not yet in the Gantt: relationship lines, baselines, printing.
 
 The first load downloads the .NET runtime (~10-15 MB, cached afterwards). Simulations run on

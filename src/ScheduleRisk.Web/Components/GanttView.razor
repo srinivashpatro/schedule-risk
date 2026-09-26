@@ -5,6 +5,10 @@
 
 <div class="gantt-tools">
     <label class="check"><input type="checkbox" checked="@group" @onchange="ToggleGroup" /> Group by WBS</label>
+    <div class="tool-group" role="group" aria-label="WBS bands">
+        <button class="btn btn-secondary" @onclick="ExpandAll" disabled="@(!group)" title="Show every activity">Expand all</button>
+        <button class="btn btn-secondary" @onclick="CollapseAll" disabled="@(!group)" title="Show only the top WBS bands">Collapse all</button>
+    </div>
     <div class="zoom" role="group" aria-label="Zoom">
         <button class="btn btn-secondary zoom-btn" @onclick="ZoomOut" disabled="@(ppd <= GanttLayout.MinPixelsPerDay)" aria-label="Zoom out" title="Zoom out">−</button>
         <button class="btn btn-secondary zoom-btn" @onclick="ZoomIn" disabled="@(ppd >= GanttLayout.MaxPixelsPerDay)" aria-label="Zoom in" title="Zoom in">+</button>
@@ -27,7 +31,8 @@
     var m = model;
     double w = LaneWidth;
     string dd = m.DataDate != Time.None ? Px(X(m.DataDate)) : "";
-    <div class="gantt" @ref="frame" role="region" aria-label="Gantt chart" style="--lane:@Px(w)">
+    <div class="gantt" @ref="frame" role="region" aria-label="Gantt chart" tabindex="-1" style="--lane:@Px(w)"
+         @oncontextmenu="OpenMenu" @oncontextmenu:preventDefault="true">
         <div class="g-head">
             <div class="g-cols">
                 <span class="c-id">Activity ID</span><span class="c-name">Activity Name</span><span class="c-n c-dur">Orig. dur</span>
@@ -91,7 +96,20 @@
             </div>
         </Virtualize>
     </div>
-    <p class="sub">Click a row, or press Enter on it, to bring its bar into view. Dates are the engine's CPM dates (they match P6's when the engine check passes); dates marked A are actual. Durations and float are in working days of each activity's calendar.</p>
+    @if (menu is (double mx, double my))
+    {
+        <div class="ctx-backdrop" @onclick="@(() => CloseMenu(false))" @onwheel="@(() => CloseMenu(false))"
+             @oncontextmenu="@(() => CloseMenu(false))" @oncontextmenu:preventDefault="true"></div>
+        <div class="ctx-menu" role="menu" aria-label="Gantt chart" tabindex="-1" @ref="menuRef" style="left:@Px(mx);top:@Px(my)" @onkeydown="MenuKey">
+            <button role="menuitem" disabled="@(!group)" @onclick="@(() => FromMenu(ExpandAll))"><span class="ctx-glyph" aria-hidden="true">▾</span>Expand all</button>
+            <button role="menuitem" disabled="@(!group)" @onclick="@(() => FromMenu(CollapseAll))"><span class="ctx-glyph" aria-hidden="true">▸</span>Collapse all</button>
+            @if (!group)
+            {
+                <span class="ctx-note">Turn on Group by WBS to expand or collapse bands.</span>
+            }
+        </div>
+    }
+    <p class="sub">Click a row, or press Enter on it, to bring its bar into view. Right-click the chart to expand or collapse every WBS band. Dates are the engine's CPM dates (they match P6's when the engine check passes); dates marked A are actual. Durations and float are in working days of each activity's calendar.</p>
 }
 
 @code {
@@ -100,7 +118,9 @@
     [Parameter] public string Search { get; set; } = "";
     [Parameter] public bool CriticalOnly { get; set; }
 
-    private ElementReference frame;
+    private ElementReference frame, menuRef;
+    private (double X, double Y)? menu;   // where the right-click menu is open, in window coordinates
+    private bool menuJustOpened;
     private GanttModel? model;
     private GanttTimescale? scale;
     private bool group = true;
@@ -146,6 +166,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (menuJustOpened)
+        {
+            menuJustOpened = false;
+            await JS.InvokeVoidAsync("sraOpenMenu", menuRef); // keep it inside the window, arrow keys, focus the first item
+        }
         if (model == null) return;
         if (fitPending)
         {
@@ -214,6 +239,55 @@
     {
         if (!collapsed.Remove(key)) collapsed.Add(key);
         Rebuild();
+    }
+
+    private void ExpandAll()
+    {
+        collapsed.Clear();
+        Rebuild();
+    }
+
+    /// <summary>Collapses every WBS band, whatever the filters show now, so only the top bands remain (as P6's Collapse All).</summary>
+    private void CollapseAll()
+    {
+        var all = GanttLayout.Build(Schedule, Cpm, new GanttOptions { GroupByWbs = true });
+        foreach (var row in all.Rows)
+            if (row.Kind == GanttRowKind.Wbs) collapsed.Add(row.Key);
+        Rebuild();
+    }
+
+    /// <summary>
+    /// Opens the right-click menu at the pointer. The context-menu key and Shift+F10 report no pointer position, so the
+    /// menu then opens at the top left of the chart.
+    /// </summary>
+    private async Task OpenMenu(MouseEventArgs e)
+    {
+        double x = e.ClientX, y = e.ClientY;
+        if (x == 0 && y == 0)
+        {
+            var at = await JS.InvokeAsync<double[]>("sraRect", frame);
+            if (at.Length == 2) { x = at[0] + 16; y = at[1] + 48; }
+        }
+        menu = (x, y);
+        menuJustOpened = true;
+    }
+
+    private async Task CloseMenu(bool returnFocus)
+    {
+        menu = null;
+        if (returnFocus) await frame.FocusAsync();
+    }
+
+    private async Task FromMenu(Action action)
+    {
+        action();
+        await CloseMenu(true);
+    }
+
+    private async Task MenuKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CloseMenu(true);
+        else if (e.Key == "Tab") await CloseMenu(false);
     }
 
     private static string Px(double v) => v.ToString("0.#", CultureInfo.InvariantCulture) + "px";
