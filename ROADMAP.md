@@ -224,3 +224,5 @@ not detected yet.
 - [x] Modernist redesign of the browser app, with a sample project
 - [x] v0.4: interactive chart and redesign above, the engine-accuracy and Must Finish By fixes in
       this file, and the chance of meeting the Must Finish By (see CHANGELOG.md)
+- [x] v0.5: duration statistics in the results, the landing page themed on industrial project
+      planning, and the P6-style Gantt chart (see CHANGELOG.md)
