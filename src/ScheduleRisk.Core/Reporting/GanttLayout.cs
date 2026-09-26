@@ -201,6 +201,37 @@ public static class GanttLayout
         return m;
     }
 
+    /// <summary>
+    /// The rows of a built layout whose activity ID or name contains <paramref name="search"/> (ignoring case), each with
+    /// the WBS bands above it: the rows <see cref="Build"/> gives for that search, without laying the schedule out again.
+    /// The bands keep their bars for the whole group. Lets a picker filter thousands of activities as the user types.
+    /// </summary>
+    public static List<GanttRow> Filter(IReadOnlyList<GanttRow> rows, string search)
+    {
+        string q = search.Trim();
+        if (q.Length == 0) return rows.ToList();
+        var result = new List<GanttRow>();
+        var bands = new List<(GanttRow Row, bool Shown)>(); // the bands above the current row, outermost first
+        foreach (var row in rows)
+        {
+            while (bands.Count > 0 && bands[^1].Row.Depth >= row.Depth) bands.RemoveAt(bands.Count - 1);
+            if (row.Kind == GanttRowKind.Wbs)
+            {
+                bands.Add((row, false));
+                continue;
+            }
+            if (!row.Id.Contains(q, StringComparison.OrdinalIgnoreCase) && !row.Name.Contains(q, StringComparison.OrdinalIgnoreCase)) continue;
+            for (int k = 0; k < bands.Count; k++)
+                if (!bands[k].Shown)
+                {
+                    result.Add(bands[k].Row);
+                    bands[k] = (bands[k].Row, true);
+                }
+            result.Add(row);
+        }
+        return result;
+    }
+
     private sealed class Rollup
     {
         public int Count;

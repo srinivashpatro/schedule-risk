@@ -30,7 +30,8 @@ GitHub Actions runs the same build and tests, plus the Python reference tests, o
 
 Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
 health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (uncertainty, risk
-register with mitigation, drivers, correlation, simulation settings; open/save model JSON; run) ->
+register with mitigation, drivers, correlation, each applied to activities picked from a searchable
+list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
 **Results** (P-dates at any confidence level, finish distribution as histogram or S-curve,
 confidence table, duration statistics, risk ranking, criticality, milestones; export the HTML
 report or CSVs).

@@ -63,6 +63,56 @@ window.sraOpenMenu = function (menu) {
     (items()[0] || menu).focus();
 };
 
+// The risk model's activity picker (ActivityPicker): its list floats over the page, because the tables around the
+// field scroll and would clip it. It sits under the field (or above it when there is more room there), follows the
+// field while anything scrolls, and a click or focus outside the field and the list closes it.
+window.sraPicker = {
+    open(root, panel, dotnet) {
+        if (!root || !panel) return;
+        window.sraPicker.close(root);
+        const place = () => {
+            const r = root.getBoundingClientRect(), pad = 8;
+            const width = Math.min(Math.max(r.width, 400), innerWidth - 2 * pad);
+            panel.style.width = width + "px";
+            panel.style.left = Math.min(Math.max(pad, r.left), innerWidth - width - pad) + "px";
+            const below = innerHeight - r.bottom - pad, above = r.top - pad;
+            if (below >= 240 || below >= above) {
+                panel.style.top = (r.bottom + 4) + "px";
+                panel.style.bottom = "";
+                panel.style.maxHeight = Math.max(140, Math.min(380, below - 4)) + "px";
+            } else {
+                panel.style.top = "";
+                panel.style.bottom = (innerHeight - r.top + 4) + "px";
+                panel.style.maxHeight = Math.max(140, Math.min(380, above - 4)) + "px";
+            }
+        };
+        const outside = e => {
+            if (!root.contains(e.target) && !panel.contains(e.target)) dotnet.invokeMethodAsync("CloseFromOutside");
+        };
+        place();
+        root._sraPicker = { place, outside };
+        addEventListener("scroll", place, true);
+        addEventListener("resize", place);
+        document.addEventListener("pointerdown", outside, true);
+        document.addEventListener("focusin", outside, true);
+    },
+    close(root) {
+        const s = root && root._sraPicker;
+        if (!s) return;
+        removeEventListener("scroll", s.place, true);
+        removeEventListener("resize", s.place);
+        document.removeEventListener("pointerdown", s.outside, true);
+        document.removeEventListener("focusin", s.outside, true);
+        delete root._sraPicker;
+    },
+    // Scrolls the list so the option between top and bottom (pixels) is in view.
+    show(list, top, bottom) {
+        if (!list) return;
+        if (top < list.scrollTop) list.scrollTop = top;
+        else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    }
+};
+
 // Hover readout for the project-finish chart (HtmlReport.SCurve with interactive: true).
 // Its div.scurve carries per-day data in data-scurve: for every calendar day, how many
 // iterations finished by the end of that day. A crosshair snaps to the nearest day and one

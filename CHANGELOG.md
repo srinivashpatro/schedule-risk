@@ -7,6 +7,10 @@
 - Expand all and Collapse all for the Gantt chart's WBS bands, from buttons in the Gantt toolbar and from
   a right-click menu anywhere on the chart, including the timescale header. The menu also opens from the
   keyboard (context-menu key or Shift+F10) and is used with the arrow keys, Enter and Escape.
+- A searchable activity picker in the risk model, where a row applies to activities (uncertainty, risks,
+  drivers, correlation): it lists each activity's ID and name, grouped by WBS as in the Gantt, and filters
+  on either as you type. Pick several with the mouse or keyboard. Model files are unchanged: they still
+  hold a list of activity IDs.
 
 ## 0.5.0 - 2026-09-26
 

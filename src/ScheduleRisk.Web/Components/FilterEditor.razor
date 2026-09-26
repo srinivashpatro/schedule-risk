@@ -9,7 +9,7 @@
     @switch (Spec.Kind)
     {
         case FilterKind.Activities:
-            <input class="input sm" @bind="Spec.Value" placeholder="Activity IDs, comma separated" aria-label="Activity IDs, comma separated" />
+            <ActivityPicker @bind-Value="Spec.Value" />
             break;
         case FilterKind.Wbs:
             <input class="input sm" @bind="Spec.Value" placeholder="WBS codes, e.g. CIV, MECH" aria-label="WBS codes, e.g. CIV, MECH" />
@@ -43,7 +43,7 @@
     private static string Label(FilterKind k) => k switch
     {
         FilterKind.All => "All activities",
-        FilterKind.Activities => "Activity IDs",
+        FilterKind.Activities => "Activities",
         FilterKind.Wbs => "WBS",
         FilterKind.Code => "Activity code",
         FilterKind.NamePattern => "Name contains",

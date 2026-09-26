@@ -221,9 +221,14 @@ not detected yet.
       the browser's own menu there. The menu works from the keyboard (context-menu key or Shift+F10,
       arrow keys, Enter, Escape) and its items are disabled while grouping by WBS is off. Collapse all
       collapses every band, as P6 does, so only the top bands remain.
-- [ ] Risk model: a searchable activity picker where a row applies to "Activity IDs" (uncertainty,
-      risks, drivers, correlation), listing ID and name grouped by WBS and filtering on either as you
-      type. Several activities can be picked; the model file keeps its list of IDs.
+- [x] Risk model: a searchable activity picker where a row applies to "Activities" (uncertainty,
+      risks, drivers, correlation), listing ID and name grouped by WBS in the Gantt's order and
+      filtering on either as you type; completed activities, milestones and summaries are tagged.
+      Several activities can be picked (chips; Backspace removes the last), by mouse or keyboard
+      (arrows, Enter, Escape), and an ID that is not in the schedule can still be typed. The model file
+      keeps its list of IDs, so saved models and the CLI are unchanged. The list floats over the page
+      so the scrolling tables do not clip it. `GanttLayout.Filter` filters one built layout as the
+      user types: on synth_5000 the list follows typing in about 60-110 ms in the browser.
 - [ ] Results: one summary panel with the key outputs of a run (mean, median, P-values, top risk
       drivers, critical and near-critical activities), replacing values that are now shown twice.
 - [ ] Report exports as PDF, PowerPoint and Word, in the app's theme, with the charts and tables shown
