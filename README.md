@@ -5,7 +5,7 @@ read a P6 XER file, recalculate it with a CPM engine that follows P6's rules,
 check the schedule's health, apply a risk model, run a Monte Carlo simulation,
 and report P-dates, criticality, sensitivity and risk rankings.
 
-Status: **v0.4 - engine core, command line, and a browser app (Blazor WebAssembly).**
+Status: **v0.5 - engine core, command line, and a browser app (Blazor WebAssembly).**
 Changes by release are in [CHANGELOG.md](CHANGELOG.md).
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
 and the site can be hosted as plain static files. Try it at
