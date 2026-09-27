@@ -11,6 +11,18 @@
   drivers, correlation): it lists each activity's ID and name, grouped by WBS as in the Gantt, and filters
   on either as you type. Pick several with the mouse or keyboard. Model files are unchanged: they still
   hold a list of activity IDs.
+- A Summary panel at the top of the Results with the key outputs of a run in one place: the deterministic
+  finish and the chance of meeting it (and the Must Finish By), P50, P80 and the chosen confidence level with
+  their contingency, mean and median (each a date and a duration in working days), the spread of the duration
+  (minimum, maximum, standard deviation, skewness, kurtosis), the top five risk drivers, and the critical
+  (criticality index 50% or more) and near-critical (10% to 49%) activities. Pre- and post-mitigation values
+  sit side by side. The HTML report opens with the same Summary.
+
+### Changed
+
+- The Summary replaces the headline tiles and the Duration statistics tables in the Results and the HTML
+  report, so each figure is shown once. The run details (start, run time, iterations, seed) move from under the
+  chart to the Summary's heading.
 
 ## 0.5.0 - 2026-09-26
 

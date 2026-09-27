@@ -403,8 +403,8 @@ public class MustFinishByTests
         var s = Build("synth_500.xer", "SYN500", "2029-03-15 17:00");
         var sum = Summarize(s);
         string report = HtmlReport.Build(s, sum);
-        Assert.Contains($"{sum.ProbMeetMustFinishBy!.Value * 100:F0}%", report);
-        Assert.Contains("Chance of meeting the Must Finish By (15-Mar-2029)", report);
+        Assert.Contains("<td>Must Finish By</td><td class=\"n\">15-Mar-2029</td>", report);   // the summary's rows
+        Assert.Contains($"<td>Chance of Must Finish By</td><td class=\"n\">{sum.ProbMeetMustFinishBy!.Value * 100:F0}%</td>", report);
         Assert.Contains("class=\"mline\"", report);                            // the static report draws the line
         string chart = HtmlReport.SCurve(sum, null, s, interactive: true, percentile: 80);
         Assert.Contains("class=\"mline\"", chart);

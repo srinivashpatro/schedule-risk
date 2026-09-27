@@ -32,9 +32,10 @@ Three steps in one page: **Schedule** (open or drop an XER, or use the sample pr
 health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (uncertainty, risk
 register with mitigation, drivers, correlation, each applied to activities picked from a searchable
 list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
-**Results** (P-dates at any confidence level, finish distribution as histogram or S-curve,
-confidence table, duration statistics, risk ranking, criticality, milestones; export the HTML
-report or CSVs).
+**Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
+contingency, mean, median and spread, top risk drivers, critical and near-critical activities; then
+the finish distribution as histogram or S-curve, confidence table, risk ranking, criticality,
+milestones; export the HTML report or CSVs).
 
 The look follows the Modernist design system from `design/redesign/` (vendored as
 `wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
@@ -121,7 +122,9 @@ project duration in working days of the project calendar from the project start 
 actual starts included), deterministic and at P5-P95, contingency (P50 and P80 minus deterministic, in
 days and percent), minimum, maximum, mean, median, standard deviation, skewness and excess kurtosis
 (as Excel's SKEW and KURT), with the run's start time, run time, iterations, seed, project, data date
-and activity and risk counts. A project Must Finish By sets P6's float in the deterministic
+and activity and risk counts. The Results summary (app and HTML report) adds the median finish date, the
+top risk drivers, and the critical (criticality index 50% or more) and near-critical (10% to 49%)
+activities. A project Must Finish By sets P6's float in the deterministic
 schedule but does not change the simulation: each iteration measures criticality to its own finish,
 and the risk model's `critical` filter picks the activities that drive the deterministic finish.
 
