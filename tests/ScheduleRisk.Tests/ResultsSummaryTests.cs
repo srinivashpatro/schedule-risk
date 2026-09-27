@@ -176,4 +176,16 @@ public class ResultsSummaryTests
         Assert.DoesNotContain("<h2>Duration statistics</h2>", html);
         Assert.DoesNotContain("class=\"tiles\"", html);
     }
+
+    [Fact]
+    public void The_html_report_carries_the_app_name_in_its_title_heading_and_footer()
+    {
+        var s = TestData.Load("parallel_1.xer");
+        string html = HtmlReport.Build(s, Run("parallel_1.xer", DiscreteRisk).Pre);
+        Assert.Contains("<title>Project Risk Analysis Report - PAR</title>", html);
+        Assert.Contains("<h1>Project risk analysis: PAR</h1>", html);
+        Assert.Contains($" by Project Risk Analysis {Brand.Version}.</p>", html);
+        Assert.DoesNotContain("ScheduleRisk", html);
+        Assert.DoesNotContain("Schedule Risk", html);
+    }
 }

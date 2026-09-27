@@ -62,6 +62,21 @@ public class WebAssetsTests
     }
 
     [Fact]
+    public void The_app_is_called_project_risk_analysis_wherever_users_see_its_name()
+    {
+        string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { WebDir }.Concat(parts).ToArray()));
+        string index = Read("wwwroot", "index.html");
+        Assert.Contains("<title>Project Risk Analysis</title>", index);
+        Assert.Contains("content=\"Project Risk Analysis\"", index);                    // name on a phone's home screen
+        Assert.Contains("<span class=\"kicker\">Project Risk Analysis</span>", index);  // loading screen
+        Assert.Contains("<span class=\"nav-brand\">Project Risk Analysis</span>", Read("App.razor"));
+        Assert.Contains("<h1>Project risk analysis for Primavera&nbsp;P6</h1>", Read("Components", "SchedulePanel.razor"));
+        foreach (var f in SourceFiles().Where(f => Path.GetExtension(f) is ".razor" or ".html"))
+            Assert.DoesNotContain("Schedule Risk", File.ReadAllText(f));
+        Assert.Equal("Project Risk Analysis", ScheduleRisk.Core.Reporting.Brand.Name);
+    }
+
+    [Fact]
     public void Scripts_make_no_network_requests()
     {
         var bad = new List<string>();

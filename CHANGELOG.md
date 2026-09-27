@@ -25,6 +25,9 @@
 
 ### Changed
 
+- The app is now called Project Risk Analysis: in the browser tab, the top bar, the loading screen, the landing
+  page ("Project risk analysis for Primavera P6") and the reports' titles and footers. The `sra` command, the
+  code's names and the web address stay the same.
 - The Summary replaces the headline tiles and the Duration statistics tables in the Results and the HTML
   report, so each figure is shown once. The run details (start, run time, iterations, seed) move from under the
   chart to the Summary's heading.

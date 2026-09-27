@@ -1,4 +1,4 @@
-# ScheduleRisk - schedule risk analysis for Primavera P6 (XER)
+# Project Risk Analysis - schedule risk analysis for Primavera P6 (XER)
 
 Schedule risk analysis for P6 schedules, as a browser app plus a command-line tool:
 read a P6 XER file, recalculate it with a CPM engine that follows P6's rules,

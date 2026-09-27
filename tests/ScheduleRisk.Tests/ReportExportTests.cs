@@ -113,7 +113,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
             "Activities that drive the finish", "Milestones", "Schedule health checks", "Engine check against P6",
         }, fx.Doc.Sections.Select(s => s.Title));
         Assert.Equal(new[] { "histogram", "cumulative", "risks", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
-        Assert.Equal("Schedule risk analysis: SYN500", fx.Doc.Title);
+        Assert.Equal("Project risk analysis: SYN500", fx.Doc.Title);
         Assert.Equal($"Generated 27-Sep-2026 09:30 by {Brand.Name} {Brand.Version}", fx.Doc.Generated);
     }
 
@@ -192,7 +192,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.InRange(pages, 4, 12);
 
         string text = r.Text();
-        foreach (var expected in new[] { "Schedule risk analysis: SYN500", "Summary", "P80 − deterministic", "Finish date distribution",
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "Summary", "P80 − deterministic", "Finish date distribution",
                                          "Confidence levels", "FINISH", Brand.Name, $"Page 1 of {pages}", "Engine check against P6" })
             Assert.Contains(expected, text);
     }
@@ -225,7 +225,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Empty(Validate(docx, word: true));
         using var zip = new ZipArchive(new MemoryStream(docx));
         string body = Part(zip, "word/document.xml");
-        foreach (var expected in new[] { "Schedule risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health checks" })
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health checks" })
             Assert.Contains(expected, body);
         Assert.Equal(fx.Doc.Charts.Count(), zip.Entries.Count(e => e.FullName.StartsWith("word/media/") && e.Name != "logo.png"));
         Assert.Contains("<w:tblHeader/>", body);                     // table heads repeat on each page

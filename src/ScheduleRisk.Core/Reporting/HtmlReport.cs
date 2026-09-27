@@ -25,7 +25,7 @@ public static class HtmlReport
         double WorkDaysBetween(long a, long b) => pcal.WorkBetween(a, b) / mpd;
         var sb = new StringBuilder();
         sb.Append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
-        sb.Append("<title>Schedule Risk Report - ").Append(E(s.ProjectCode)).Append("</title><style>");
+        sb.Append("<title>").Append(Brand.Name).Append(" Report - ").Append(E(s.ProjectCode)).Append("</title><style>");
         sb.Append(@":root{--bg:#fbfaf7;--fg:#1d1f23;--muted:#61656d;--line:#dedad2;--card:#fff;--a:#2f6db5;--b:#c2572b;--ok:#2e7d4f;--bad:#b3261e}
 @media (prefers-color-scheme:dark){:root{--bg:#16181b;--fg:#e8e6e1;--muted:#a3a6ab;--line:#33363b;--card:#1e2024;--a:#6ea4e6;--b:#e98a5e;--ok:#6cc08f;--bad:#f07f76}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
@@ -37,7 +37,7 @@ td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.wrap
 svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}
 .legend span{display:inline-block;margin-right:14px;font-size:13px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
         sb.Append("</style></head><body><main>");
-        sb.Append("<h1>Schedule risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
+        sb.Append("<h1>Project risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
         var summary = ResultsSummary.Build(pre, post);
         sb.Append("<div class=\"muted\">").Append(E(summary.Model));
         if (!string.IsNullOrEmpty(modelName)) sb.Append(" &middot; risk model: ").Append(E(modelName));
@@ -123,7 +123,7 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
               .Append(verify.Compared).Append(" activities fully match).</p>");
         }
         sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm", Inv))
-          .Append(" by ScheduleRisk ").Append(typeof(HtmlReport).Assembly.GetName().Version?.ToString(3)).Append(".</p>");
+          .Append(" by ").Append(Brand.Name).Append(' ').Append(Brand.Version).Append(".</p>");
         sb.Append("</main></body></html>");
         return sb.ToString();
     }
