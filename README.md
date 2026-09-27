@@ -35,11 +35,20 @@ list by ID or name, or by WBS, code or critical path; simulation settings; open/
 **Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; then
 the finish distribution as histogram or S-curve, confidence table, risk ranking, criticality,
-milestones; export the HTML report or CSVs).
+milestones; export the report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+
+The PDF (A4), Word (A4) and PowerPoint (16:9) reports are written in the browser, like everything
+else: the same summary, charts and tables as the Results, in the app's look (ink, the red accent,
+2px rules, small-capital table heads, the red mark and name on every page or slide) with Archivo
+embedded. Charts are pictures the browser draws from the app's own SVG charts; tables stay real,
+editable tables in Word and PowerPoint. Not yet: the Gantt chart in the reports, and these three
+formats from the command line (it writes the HTML report and CSVs).
 
 The look follows the Modernist design system from `design/redesign/` (vendored as
 `wwwroot/css/modernist.css`), with the Archivo font self-hosted under the SIL Open Font License,
-so the app still loads nothing from other sites. The landing page's industrial line drawings (a plant
+so the app still loads nothing from other sites. The exported reports embed static Archivo instances
+with Latin Extended (`wwwroot/fonts/archivo-doc-*.ttf`, made by `tools/make_doc_fonts.py`), which the
+app fetches from its own site only when a report is exported. The landing page's industrial line drawings (a plant
 in elevation with its schedule under the ground line) are inline SVG coloured by the design system's
 tokens, and `WebAssetsTests` fails if any page, style or script in the web app refers to another site.
 

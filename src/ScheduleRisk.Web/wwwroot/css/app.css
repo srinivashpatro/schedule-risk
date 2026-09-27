@@ -409,6 +409,16 @@ td > select.input { width: auto; }
 .report-dialog { width: min(520px, 100%); gap: var(--space-4); border-top: 6px solid var(--color-accent); }
 .dialog .field > label { margin-bottom: var(--space-2); }
 .dialog-note { background: var(--color-bg); padding: var(--space-3); font-size: 13px; }
+/* the report formats: the design system's radio dot, one format per row, the chosen one marked in red at its edge */
+.fmt-list { border: 1px solid var(--color-divider); display: flex; flex-direction: column; min-width: 0; }
+.fmt-opt { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: start; gap: 10px; padding: 10px 12px; }
+.fmt-opt + .fmt-opt { border-top: 1px solid var(--color-divider); }
+.fmt-opt .dot { margin-top: 2px; }
+.fmt-opt:has(input:checked) { background: var(--color-accent-100); box-shadow: inset 3px 0 0 var(--color-accent); }
+.fmt-opt:not(:has(input:checked)):hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.fmt-text b { font-weight: 800; }
+.fmt-ext { margin-left: 4px; font-size: 12px; color: var(--color-neutral-700); }
+.fmt-note { display: block; margin-top: 2px; font-size: 13px; color: var(--color-neutral-700); }
 .busy { position: fixed; inset: 0; display: grid; place-items: center; z-index: 20;
   background: color-mix(in srgb, var(--color-neutral-900) 30%, transparent); }
 .busy .dialog { border-top: 6px solid var(--color-accent); }
