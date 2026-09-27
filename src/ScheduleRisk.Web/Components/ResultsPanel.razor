@@ -19,60 +19,14 @@
     double mpd = pcal.MinutesPerDay;
     int pct = State.Percentile;
     long det = pre.DeterministicFinish;
-    long q50 = pre.FinishPercentiles[50], qp = Q(pre, pct);
     double WorkDays(long a, long b) => pcal.WorkBetween(a, b) / mpd;
-    string Delta(long t) { double d = WorkDays(det, t); return (d >= 0 ? "+" : "") + Num(d, 0) + " working days"; }
 
-    <section class="kpis rule-b">
-        <div class="kpi hot">
-            <span class="l">Chance of deterministic finish</span>
-            <span class="v">@Pct(pre.ProbMeetDeterministic)</span>
-            <span class="s">@AppState.Day(det)</span>
-        </div>
-        @if (pre.ProbMeetMustFinishBy is double pm)
-        {
-            long mfb = pre.MustFinishBy;
-            double gap = Math.Round(WorkDays(mfb, qp));
-            <div class="kpi">
-                <span class="l">Chance of meeting the Must Finish By</span>
-                <span class="v">@Pct(pm)</span>
-                <span class="s">@AppState.Day(mfb) · P@(pct) @(gap > 0 ? $"+{Num(gap, 0)} days" : gap < 0 ? $"−{Num(-gap, 0)} days" : "on the day")</span>
-            </div>
-        }
-        <div class="kpi">
-            <span class="l">P50 finish</span>
-            <span class="v">@Short(q50)</span>
-            <span class="s">@Delta(q50) vs deterministic</span>
-        </div>
-        <div class="kpi">
-            <span class="l">P@(pct) finish</span>
-            <span class="v">@Short(qp)</span>
-            <span class="s">@Delta(qp) vs deterministic</span>
-        </div>
-        <div class="kpi">
-            <span class="l">Contingency at P@(pct)</span>
-            <span class="v">@Num(Math.Max(0, WorkDays(det, qp)), 0) days</span>
-            <span class="s">@TopDriver(pre)</span>
-        </div>
-        @if (post != null)
-        {
-            long pp = Q(post, pct);
-            double gain = WorkDays(pp, qp);
-            <div class="kpi">
-                <span class="l">P@(pct) after mitigation</span>
-                <span class="v">@Short(pp)</span>
-                <span class="s">@Num(Math.Abs(gain), 0) working days @(gain >= 0 ? "earlier" : "later")</span>
-            </div>
-        }
-    </section>
+    <SummaryPanel Pre="pre" Post="post" Percentile="pct" />
 
     <section class="chart-row rule-b">
         <div class="chart-col">
             <div class="headrow wrap-row">
-                <div>
-                    <h4>Finish date distribution</h4>
-                    <span class="sub">@pre.Iterations.ToString("N0") iterations · seed @pre.Seed · @pre.Elapsed.TotalSeconds.ToString("F1") s</span>
-                </div>
+                <h4>Finish date distribution</h4>
                 <div class="chart-controls">
                     <div class="seg" role="radiogroup" aria-label="Chart type">
                         <label class="seg-opt"><input type="radio" name="chart" checked="@histogram" @onchange="@(() => histogram = true)" />Histogram</label>
@@ -140,52 +94,6 @@
                 </table>
             </div>
             <span class="sub">Click a row to show that level on the chart.</span>
-        </div>
-    </section>
-
-    <section class="pad rule-b stack">
-        <div><h4>Duration statistics</h4><span class="sub">Project duration in working days of the project calendar, from the project start. Skewness above 0: a longer tail to the late side. Kurtosis is relative to a normal distribution (0).</span></div>
-        <div class="stat-groups">
-            @foreach (var g in StatisticsTable.Build(pre, post, pct).GroupBy(r => r.Group))
-            {
-                <div class="wrap">
-                <table class="table stat-table">
-                    <thead>
-                        <tr>
-                            <th>@g.Key</th>
-                            @if (post != null && g.Any(r => !r.Shared))
-                            {
-                                <th class="n">Pre</th><th class="n">Post</th>
-                            }
-                            else
-                            {
-                                <th colspan="@(post != null ? 2 : 1)"></th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var r in g)
-                        {
-                            <tr>
-                                <td>@r.Label</td>
-                                @if (post != null && r.Shared)
-                                {
-                                    <td class="n" colspan="2">@r.Pre</td>
-                                }
-                                else
-                                {
-                                    <td class="n">@r.Pre</td>
-                                    @if (post != null)
-                                    {
-                                        <td class="n">@r.Post</td>
-                                    }
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-                </div>
-            }
         </div>
     </section>
 
@@ -339,16 +247,8 @@ else if (!State.Running)
         ? (100.0 * State.Done / State.Total).ToString("F1", CultureInfo.InvariantCulture) + "%"
         : "0%";
 
-    private static long Q(SimulationSummary sum, int p) => Statistics.PercentileSorted(sum.SortedFinish, p);
-
-    private static string Short(long m) => Time.FromMinutes(m).ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
-
     private static string W(double v, double top) =>
         (Math.Clamp(v / top, 0, 1) * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
-
-    private static string TopDriver(SimulationSummary pre) =>
-        pre.Risks.Count > 0 ? "Top risk: " + pre.Risks[0].Title
-        : pre.Activities.Count > 0 ? "Most crucial: " + pre.Activities[0].Name : "";
 
     private void SetPercentile(ChangeEventArgs e)
     {

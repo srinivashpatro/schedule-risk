@@ -30,39 +30,20 @@ public static class HtmlReport
 @media (prefers-color-scheme:dark){:root{--bg:#16181b;--fg:#e8e6e1;--muted:#a3a6ab;--line:#33363b;--card:#1e2024;--a:#6ea4e6;--b:#e98a5e;--ok:#6cc08f;--bad:#f07f76}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
 main{max-width:1060px;margin:0 auto;padding:28px 16px 64px}h1{font-size:26px;margin:0 0 4px}h2{font-size:18px;margin:36px 0 10px}
-.muted{color:var(--muted)}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}.tile b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
-.tile span{color:var(--muted);font-size:13px}table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14px}
+.muted{color:var(--muted)}.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:0 28px}.sum>div{min-width:0}
+.sum h3{margin:18px 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.sum p{margin:6px 0 0;font-size:13px}.small{font-size:13px}td.n.c{text-align:center}table{border-collapse:collapse;width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:14px}
 th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.wrap{overflow-x:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}
-.legend span{display:inline-block;margin-right:14px;font-size:13px}table.stats{max-width:560px}table.stats tr.grp th{background:var(--bg);color:var(--fg)}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
+.legend span{display:inline-block;margin-right:14px;font-size:13px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
         sb.Append("</style></head><body><main>");
         sb.Append("<h1>Schedule risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
-        sb.Append("<div class=\"muted\">Data date ").Append(D(s.Settings.DataDate)).Append(" &middot; ")
-          .Append(s.Activities.Count).Append(" activities &middot; ").Append(pre.Iterations).Append(" iterations (")
-          .Append(pre.Converged == true ? "converged" : pre.Converged == false ? "not converged" : "fixed count")
-          .Append(", seed ").Append(pre.Seed).Append(")");
-        if (!string.IsNullOrEmpty(modelName)) sb.Append(" &middot; model: ").Append(E(modelName));
-        sb.Append("</div>");
+        var summary = ResultsSummary.Build(pre, post);
+        sb.Append("<div class=\"muted\">").Append(E(summary.Model));
+        if (!string.IsNullOrEmpty(modelName)) sb.Append(" &middot; risk model: ").Append(E(modelName));
+        sb.Append("<br>").Append(E(summary.Run)).Append("</div>");
 
-        long p50 = pre.FinishPercentiles[50], p80 = pre.FinishPercentiles[80], p90 = pre.FinishPercentiles[90];
-        sb.Append("<div class=\"tiles\">");
-        Tile(sb, D(pre.DeterministicFinish), "Deterministic finish (CPM)");
-        Tile(sb, $"{pre.ProbMeetDeterministic * 100:F0}%", "Chance of meeting it");
-        if (pre.ProbMeetMustFinishBy is double pm)
-        {
-            double gap = Math.Round(WorkDaysBetween(pre.MustFinishBy, p80));
-            string where = gap > 0 ? $"P80 is {F(gap, 0)} working days after it" : gap < 0 ? $"P80 is {F(-gap, 0)} working days before it" : "P80 is on it";
-            Tile(sb, $"{pm * 100:F0}%", $"Chance of meeting the Must Finish By ({D(pre.MustFinishBy)}); {where}");
-        }
-        Tile(sb, D(p50), $"P50 (+{F(WorkDaysBetween(pre.DeterministicFinish, p50), 0)} working days)");
-        Tile(sb, D(p80), $"P80 (+{F(WorkDaysBetween(pre.DeterministicFinish, p80), 0)} working days)");
-        if (post != null)
-            Tile(sb, D(post.FinishPercentiles[80]), $"P80 after mitigation ({F(WorkDaysBetween(p80, post.FinishPercentiles[80]), 0)} days)");
-        else
-            Tile(sb, D(p90), "P90");
-        sb.Append("</div>");
+        Summary(sb, summary, post != null);
 
         sb.Append("<h2>Project finish distribution</h2><div class=\"card\">");
         sb.Append(SCurve(pre, post, s));
@@ -87,30 +68,6 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
             {
                 long pv = post.FinishPercentiles[kv.Key];
                 sb.Append("<td class=\"n\">").Append(D(pv)).Append("</td><td class=\"n\">").Append(F(WorkDaysBetween(pv, kv.Value), 1)).Append("</td>");
-            }
-            sb.Append("</tr>");
-        }
-        sb.Append("</table></div>");
-
-        sb.Append("<h2>Duration statistics</h2><p class=\"muted\">Project duration in working days of the project calendar, from the project start. ")
-          .Append("Skewness above 0 means a longer tail to the late side; kurtosis is relative to a normal distribution (0).</p>");
-        sb.Append("<div class=\"wrap\"><table class=\"stats\"><tr><th></th><th>").Append(post != null ? "Pre-mitigation" : "Value").Append("</th>");
-        if (post != null) sb.Append("<th>Post-mitigation</th>");
-        sb.Append("</tr>");
-        string? group = null;
-        foreach (var r in StatisticsTable.Build(pre, post))
-        {
-            if (r.Group != group)
-            {
-                group = r.Group;
-                sb.Append("<tr class=\"grp\"><th colspan=\"").Append(post != null ? 3 : 2).Append("\">").Append(E(group)).Append("</th></tr>");
-            }
-            sb.Append("<tr><td>").Append(E(r.Label)).Append("</td>");
-            if (r.Shared && post != null) sb.Append("<td class=\"n\" colspan=\"2\">").Append(E(r.Pre)).Append("</td>");
-            else
-            {
-                sb.Append("<td class=\"n\">").Append(E(r.Pre)).Append("</td>");
-                if (post != null) sb.Append("<td class=\"n\">").Append(E(r.Post)).Append("</td>");
             }
             sb.Append("</tr>");
         }
@@ -171,8 +128,63 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         return sb.ToString();
     }
 
-    private static void Tile(StringBuilder sb, string value, string label) =>
-        sb.Append("<div class=\"tile\"><b>").Append(E(value)).Append("</b><span>").Append(E(label)).Append("</span></div>");
+    /// <summary>The Results summary, laid out as in the browser app: finish figures and the spread of the duration (pre and
+    /// post) on the left; top drivers, critical and near-critical activities on the right.</summary>
+    private static void Summary(StringBuilder sb, ResultsSummary sum, bool both)
+    {
+        const int Top = 5;
+        void Rows(string title, List<StatRow> rows)
+        {
+            sb.Append("<h3>").Append(E(title)).Append("</h3><div class=\"wrap\"><table><tr><th></th>")
+              .Append(both ? "<th class=\"n\">Pre-mitigation</th><th class=\"n\">Post-mitigation</th>" : "<th></th>").Append("</tr>");
+            foreach (var r in rows)
+            {
+                sb.Append("<tr><td>").Append(E(r.Label)).Append("</td>");
+                if (r.Shared && both) sb.Append("<td class=\"n c\" colspan=\"2\">").Append(E(r.Pre)).Append("</td>");
+                else
+                {
+                    sb.Append("<td class=\"n\">").Append(E(r.Pre)).Append("</td>");
+                    if (both) sb.Append("<td class=\"n\">").Append(E(r.Post)).Append("</td>");
+                }
+                sb.Append("</tr>");
+            }
+            sb.Append("</table></div>");
+        }
+        void Named(string title, string valueHead, IEnumerable<(string Id, string Name, string Value)> rows, int count)
+        {
+            sb.Append("<h3>").Append(E(title));
+            if (count >= 0) sb.Append(": ").Append(count.ToString("N0", Inv));
+            sb.Append("</h3>");
+            var list = rows.Take(Top).ToList();
+            if (list.Count == 0) { sb.Append("<p class=\"muted\">None.</p>"); return; }
+            sb.Append("<div class=\"wrap\"><table><tr><th>").Append(E(valueHead == "Criticality" || sum.DriversAreActivities ? "Activity" : "Risk or driver"))
+              .Append("</th><th class=\"n\">").Append(E(valueHead)).Append("</th></tr>");
+            foreach (var (id, name, value) in list)
+                sb.Append("<tr><td>").Append(E(id)).Append(" <span class=\"muted\">").Append(E(name)).Append("</span></td><td class=\"n\">")
+                  .Append(E(value)).Append("</td></tr>");
+            sb.Append("</table></div>");
+            if (count > Top) sb.Append("<p class=\"muted\">and ").Append((count - Top).ToString("N0", Inv)).Append(" more</p>");
+        }
+
+        sb.Append("<h2>Summary</h2><div class=\"sum\"><div>");
+        Rows("Finish", sum.Finish);
+        Rows("Spread of the duration", sum.Spread);
+        sb.Append("</div><div>");
+        if (sum.Drivers.Count == 0) sb.Append("<h3>Top risk drivers</h3><p class=\"muted\">Nothing in the model varies the finish.</p>");
+        else Named("Top risk drivers", "Sensitivity", sum.Drivers.Select(d => (d.Id, d.Title, F(d.Sensitivity, 2))), -1);
+        Named("Critical activities", "Criticality", sum.Critical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.Critical.Count);
+        Named("Near-critical activities", "Criticality", sum.NearCritical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.NearCritical.Count);
+        sb.Append("</div></div><p class=\"muted small\">").Append(E(SummaryNote(sum, both))).Append("</p>");
+    }
+
+    /// <summary>What the summary's figures mean (the browser app shows the same note).</summary>
+    public static string SummaryNote(ResultsSummary sum, bool both) =>
+        "Durations are working days of the project calendar from the project start; contingency is a level's duration minus the "
+        + "deterministic one. Critical: on the critical path in 50% or more of the iterations; near-critical: 10% to 49%. "
+        + (sum.DriversAreActivities
+            ? "The model has no risks or drivers, so the top drivers are the activities whose durations track the finish most closely."
+            : "Drivers are ranked by the rank correlation of each risk's impact, or each driver's factor, with the finish.")
+        + (both ? " Drivers and critical activities are from the pre-mitigation run." : "");
 
     /// <summary>
     /// Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).

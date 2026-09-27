@@ -160,38 +160,6 @@ public class DurationStatisticsTests
     }
 
     [Fact]
-    public void Statistics_table_groups_rows_and_shows_contingency()
-    {
-        const string json = """{"risks":[{"id":"R1","probability":0.3,"activities":["P1"],"impact":{"distribution":"uniform","min":10,"mostLikely":10,"max":10,"units":"days"},"mitigated":{"probability":0.0}}]}""";
-        var s = TestData.Load("parallel_1.xer");
-        var m = RiskModelLoader.LoadJson(s, json);
-        SimulationSummary Summ(Scenario sc) { var mc = new MonteCarloEngine(s, m, sc); return SimulationSummary.Build(mc, mc.Run(1000, 5)); }
-        var pre = Summ(Scenario.PreMitigation);
-        var post = Summ(Scenario.PostMitigation);
-
-        var rows = StatisticsTable.Build(pre, null, 70);
-        Assert.Equal(new[] { StatisticsTable.DurationGroup, "Statistics", "Analysis", "Model" }, rows.Select(r => r.Group).Distinct());
-        string Val(List<StatRow> rs, string label) => rs.Single(r => r.Label == label).Pre;
-        Assert.Equal("10.0 d", Val(rows, "Deterministic"));
-        Assert.Equal("10.0 d", Val(rows, "P70"));    // the chosen level is added to P50 and P80
-        Assert.Equal("+10.0 d (+100.0%)", Val(rows, "P80 − deterministic"));
-        Assert.Equal("0.0 d (0.0%)", Val(rows, "P50 − deterministic"));
-        Assert.Equal("0.87", Val(rows, "Skewness"));
-        Assert.Equal("PAR", Val(rows, "Project"));
-        Assert.All(rows, r => Assert.Null(r.Post));
-
-        var both = StatisticsTable.Build(pre, post);
-        Assert.Equal("+10.0 d (+100.0%)", both.Single(r => r.Label == "P80 − deterministic").Pre);
-        Assert.Equal("0.0 d (0.0%)", both.Single(r => r.Label == "P80 − deterministic").Post);
-        Assert.True(both.Single(r => r.Label == "Project").Shared);
-        Assert.Equal("1,000", both.Single(r => r.Label == "Iterations").Post);
-
-        string html = ScheduleRisk.Core.Reporting.HtmlReport.Build(s, pre, post);
-        Assert.Contains("Duration statistics", html);
-        Assert.Contains("Kurtosis (excess)", html);
-    }
-
-    [Fact]
     public void Summary_describes_the_model_and_the_run()
     {
         var s = TestData.Load("parallel_2.xer");

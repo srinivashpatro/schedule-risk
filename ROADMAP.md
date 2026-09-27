@@ -229,8 +229,20 @@ not detected yet.
       keeps its list of IDs, so saved models and the CLI are unchanged. The list floats over the page
       so the scrolling tables do not clip it. `GanttLayout.Filter` filters one built layout as the
       user types: on synth_5000 the list follows typing in about 60-110 ms in the browser.
-- [ ] Results: one summary panel with the key outputs of a run (mean, median, P-values, top risk
-      drivers, critical and near-critical activities), replacing values that are now shown twice.
+- [x] Results: one Summary panel at the top of Results with the key outputs of a run. Finish: the
+      deterministic finish and the chance of meeting it (and the Must Finish By, when the project has
+      one), P50, P80 and the level chosen on the chart (highlighted) with their contingency, mean and
+      median, each a date with its duration. Spread of the duration: minimum, maximum, standard
+      deviation, skewness, excess kurtosis. Pre- and post-mitigation side by side. Top five risk drivers
+      (risks and drivers together, by rank correlation with the finish; activity durations when the
+      model has neither), and the critical (criticality index 50% or more) and near-critical (10% to
+      49%) activities with their counts and the top five of each; the thresholds apply to the whole
+      percent shown, so an activity that reads 50% is never near-critical. The run and model lines
+      (start, run time, iterations, seed; project, data date, counts) head and close the panel. It
+      replaces the headline tiles and the Duration statistics tables, and the chart no longer repeats
+      the iteration count and seed. Built by `ResultsSummary` in Core (replacing `StatisticsTable`), so
+      the HTML report shows the same Summary in the same two columns; `SimulationSummary` gains the
+      median finish date (not in the JSON). 11 tests.
 - [ ] Report exports as PDF, PowerPoint and Word, in the app's theme, with the charts and tables shown
       on screen.
 - [ ] Rename the app to "Project Risk Analysis" (landing page, tab title, header, footer, reports).

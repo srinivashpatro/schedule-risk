@@ -112,6 +112,9 @@ public sealed class SimulationSummary
     public long FinishMin { get; init; }
     public long FinishMax { get; init; }
     public long FinishMean { get; init; }
+    /// <summary>The median finish (middle of the working-time finishes; the mean of the middle pair when even). Shown in the
+    /// Results summary; not in the summary JSON.</summary>
+    public long FinishMedian { get; init; }
     public double StdevWorkingDays { get; init; }
     public List<MilestoneStats> Milestones { get; } = new();
     public List<ActivityStats> Activities { get; } = new();
@@ -198,6 +201,7 @@ public sealed class SimulationSummary
             ProbMeetMustFinishBy = mfb != Time.None ? (double)meetMfb / n : null,
             FinishMin = sorted[0], FinishMax = sorted[^1],
             FinishMean = pcal.TimeFinish(MathX.RoundHalfUp(meanW)),
+            FinishMedian = pcal.TimeFinish(MathX.RoundHalfUp(Statistics.Median(fw.Select(x => (double)x).ToArray()))),
             StdevWorkingDays = stdev,
             SortedFinish = sorted,
             Elapsed = res.Elapsed,

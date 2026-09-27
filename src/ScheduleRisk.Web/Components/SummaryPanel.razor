@@ -1,0 +1,136 @@
+@* The key results of a run in one panel, from ResultsSummary in the core library (the reports show the same figures):
+   finish dates and durations at P50, P80 and the chosen level with their contingency, mean and median, the spread
+   of the duration, the top risk drivers, and the critical and near-critical activities. *@
+
+<section class="summary rule-b" aria-labelledby="sum-title">
+    <div class="pad sum-head">
+        <h4 id="sum-title">Summary</h4>
+        <span class="sub">@sum.Run</span>
+    </div>
+    <div class="two-col">
+        <div class="stack">
+            @Rows("Finish", sum.Finish)
+            @Rows("Spread of the duration", sum.Spread)
+        </div>
+        <div class="stack">
+            <div>
+                <div class="sum-cap"><span>Top risk drivers</span><span>Sensitivity</span></div>
+                @if (sum.Drivers.Count == 0)
+                {
+                    <p class="hint sum-none">Nothing in the model varies the finish.</p>
+                }
+                else
+                {
+                    double top = Math.Max(0.01, sum.Drivers.Max(d => Math.Abs(d.Sensitivity)));
+                    <div class="barlist">
+                        @foreach (var (d, i) in sum.Drivers.Take(Top).Select((d, i) => (d, i)))
+                        {
+                            <div class="barrow" title="@($"{d.Kind} {d.Id}: {d.Title}")">
+                                <span class="id">@d.Id</span>
+                                <span class="nm">@d.Title</span>
+                                <div class="track"><div class="fill @(i == 0 ? "top" : "")" style="width:@W(Math.Abs(d.Sensitivity), top)"></div></div>
+                                <span class="val">@d.Sensitivity.ToString("F2", CultureInfo.InvariantCulture)</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            @Activities("Critical activities", sum.Critical)
+            @Activities("Near-critical activities", sum.NearCritical)
+        </div>
+    </div>
+    <p class="pad sum-foot hint">@sum.Model. @HtmlReport.SummaryNote(sum, Post != null)</p>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SimulationSummary Pre { get; set; } = null!;
+    [Parameter] public SimulationSummary? Post { get; set; }
+    /// <summary>The confidence level chosen on the chart; its rows join P50 and P80 and are highlighted.</summary>
+    [Parameter] public int Percentile { get; set; } = 80;
+
+    private const int Top = 5;
+    private ResultsSummary sum = null!;
+    private (SimulationSummary? Pre, SimulationSummary? Post, int P) built;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(built.Pre, Pre) && ReferenceEquals(built.Post, Post) && built.P == Percentile) return;
+        sum = ResultsSummary.Build(Pre, Post, Percentile);
+        built = (Pre, Post, Percentile);
+    }
+
+    private bool Chosen(StatRow r) => r.Label == $"P{Percentile}" || r.Label == $"P{Percentile} − deterministic";
+
+    private RenderFragment Rows(string title, List<StatRow> rows) => __builder =>
+    {
+        <div class="wrap">
+            <table class="table stat-table">
+                <thead>
+                    <tr>
+                        <th>@title</th>
+                        @if (Post != null)
+                        {
+                            <th class="n">Pre-mitigation</th><th class="n">Post-mitigation</th>
+                        }
+                        else
+                        {
+                            <th></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in rows)
+                    {
+                        <tr class="@(Chosen(r) ? "sel" : "")">
+                            <td>@r.Label</td>
+                            @if (Post != null && r.Shared)
+                            {
+                                <td class="n shared" colspan="2">@r.Pre</td>
+                            }
+                            else
+                            {
+                                <td class="n">@r.Pre</td>
+                                @if (Post != null)
+                                {
+                                    <td class="n">@r.Post</td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    };
+
+    private RenderFragment Activities(string title, List<ActivityStats> list) => __builder =>
+    {
+        <div>
+            <div class="sum-cap"><span>@title <b class="sum-count">@list.Count.ToString("N0", CultureInfo.InvariantCulture)</b></span><span>Criticality</span></div>
+            @if (list.Count == 0)
+            {
+                <p class="hint sum-none">None.</p>
+            }
+            else
+            {
+                <div class="barlist">
+                    @foreach (var a in list.Take(Top))
+                    {
+                        <div class="barrow" title="@($"{a.Code} {a.Name}")">
+                            <span class="id">@a.Code</span>
+                            <span class="nm">@a.Name</span>
+                            <div class="track"><div class="fill ink" style="width:@W(a.Criticality, 1)"></div></div>
+                            <span class="val">@ResultsSummary.Pct(a.Criticality)</span>
+                        </div>
+                    }
+                </div>
+                @if (list.Count > Top)
+                {
+                    <p class="hint sum-more">and @((list.Count - Top).ToString("N0", CultureInfo.InvariantCulture)) more</p>
+                }
+            }
+        </div>
+    };
+
+    private static string W(double v, double top) =>
+        (Math.Clamp(v / top, 0, 1) * 100).ToString("F1", CultureInfo.InvariantCulture) + "%";
+}
