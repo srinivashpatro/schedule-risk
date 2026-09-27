@@ -1,6 +1,7 @@
 @* The key results of a run in one panel, from ResultsSummary in the core library (the reports show the same figures):
    finish dates and durations at P50, P80 and the chosen level with their contingency, mean and median, the spread
-   of the duration, the top risk drivers, and the critical and near-critical activities. *@
+   of the duration, the top risk drivers, and the critical and near-critical activities. ResultsNotes, under it, says
+   what they mean. *@
 
 <section class="summary rule-b" aria-labelledby="sum-title">
     <div class="pad sum-head">
@@ -39,7 +40,7 @@
             @Activities("Near-critical activities", sum.NearCritical)
         </div>
     </div>
-    <p class="pad sum-foot hint">@sum.Model. @HtmlReport.SummaryNote(sum, Post != null)</p>
+    <p class="pad sum-foot hint">@sum.Model.</p>
 </section>
 
 @code {

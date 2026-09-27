@@ -77,6 +77,10 @@ public static class DocxReport
                     case TextBlock t:
                         body.Append(Para(Run(t.Text, color: t.Muted ? null : pal.Ink), style: t.Muted ? "Note" : "Lead"));
                         break;
+                    case NotesBlock n:
+                        if (n.Title != null) body.Append(Para(Run(n.Title), style: "Caption"));
+                        body.Append(Notes(n, pal)).Append(Para("", style: "Gap"));
+                        break;
                 }
         }
         body.Append($"<w:sectPr><w:headerReference w:type=\"default\" r:id=\"{header}\"/><w:footerReference w:type=\"default\" r:id=\"{footer}\"/>"
@@ -166,6 +170,28 @@ public static class DocxReport
         sb.Append(TableRow(t, t.Header, cols, pal, header: true, highlight: false, keepNext: true));
         for (int i = 0; i < t.Rows.Count; i++)
             sb.Append(TableRow(t, t.Rows[i].Cells, cols, pal, header: false, t.Rows[i].Highlight, keepNext: keep && i < t.Rows.Count - 1));
+        return sb.Append("</w:tbl>").ToString();
+    }
+
+    /// <summary>Label and text pairs as a borderless two-column table: the label in small capitals, a rule under each pair.</summary>
+    private static string Notes(NotesBlock n, ReportPalette pal)
+    {
+        const int labelW = 2240;
+        var sb = new StringBuilder("<w:tbl><w:tblPr>");
+        sb.Append($"<w:tblW w:w=\"{TextW}\" w:type=\"dxa\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"12\" w:space=\"0\" w:color=\"{pal.Divider}\"/>"
+            + $"<w:left w:val=\"nil\"/><w:bottom w:val=\"single\" w:sz=\"5\" w:space=\"0\" w:color=\"{pal.Divider}\"/><w:right w:val=\"nil\"/>"
+            + $"<w:insideH w:val=\"single\" w:sz=\"5\" w:space=\"0\" w:color=\"{pal.Divider}\"/><w:insideV w:val=\"nil\"/></w:tblBorders><w:tblLayout w:type=\"fixed\"/>"
+            + "<w:tblCellMar><w:left w:w=\"90\" w:type=\"dxa\"/><w:right w:w=\"90\" w:type=\"dxa\"/></w:tblCellMar>"
+            + "<w:tblLook w:val=\"0000\" w:firstRow=\"0\" w:lastRow=\"0\" w:firstColumn=\"0\" w:lastColumn=\"0\" w:noHBand=\"1\" w:noVBand=\"1\"/></w:tblPr>");
+        sb.Append($"<w:tblGrid><w:gridCol w:w=\"{labelW}\"/><w:gridCol w:w=\"{TextW - labelW}\"/></w:tblGrid>");
+        foreach (var note in n.Notes)
+            sb.Append("<w:tr><w:trPr><w:cantSplit/></w:trPr>")
+              .Append($"<w:tc><w:tcPr><w:tcW w:w=\"{labelW}\" w:type=\"dxa\"/></w:tcPr><w:p><w:pPr><w:pStyle w:val=\"NoteLabel\"/></w:pPr>")
+              .Append(Run(note.Label, Heavy, 14, pal.Label, caps: true, spacing: 11)).Append("</w:p></w:tc>")
+              .Append($"<w:tc><w:tcPr><w:tcW w:w=\"{TextW - labelW}\" w:type=\"dxa\"/></w:tcPr><w:p><w:pPr><w:pStyle w:val=\"NoteText\"/></w:pPr>")
+              // hyphenated words (dates, 1-in-5) stay on one line
+
+              .Append(Run(ResultsNarrative.NoBreakHyphens(note.Text)).Replace("\u2011", "</w:t><w:noBreakHyphen/><w:t xml:space=\"preserve\">")).Append("</w:p></w:tc></w:tr>");
         return sb.Append("</w:tbl>").ToString();
     }
 
@@ -265,6 +291,8 @@ public static class DocxReport
         sb.Append(P("Gap", "Gap", "<w:spacing w:after=\"120\" w:line=\"120\" w:lineRule=\"exact\"/>", "<w:sz w:val=\"8\"/><w:szCs w:val=\"8\"/>"));
         sb.Append(P("TableHead", "Table head", "<w:keepNext/><w:spacing w:before=\"70\" w:after=\"50\"/>", ""));
         sb.Append(P("TableText", "Table text", "<w:spacing w:before=\"60\" w:after=\"60\" w:line=\"240\" w:lineRule=\"auto\"/>", ""));
+        sb.Append(P("NoteLabel", "Note label", "<w:spacing w:before=\"110\" w:after=\"90\" w:line=\"240\" w:lineRule=\"auto\"/>", ""));
+        sb.Append(P("NoteText", "Note text", "<w:spacing w:before=\"80\" w:after=\"90\" w:line=\"264\" w:lineRule=\"auto\"/>", "<w:sz w:val=\"19\"/><w:szCs w:val=\"19\"/>"));
         sb.Append(P("Header", "header", $"<w:pBdr><w:bottom w:val=\"single\" w:sz=\"12\" w:space=\"6\" w:color=\"{pal.Divider}\"/></w:pBdr>"
             + $"<w:tabs><w:tab w:val=\"right\" w:pos=\"{TextW}\"/></w:tabs>", "", custom: false));
         sb.Append(P("Footer", "footer", $"<w:pBdr><w:top w:val=\"single\" w:sz=\"5\" w:space=\"6\" w:color=\"{pal.Divider}\"/></w:pBdr>"

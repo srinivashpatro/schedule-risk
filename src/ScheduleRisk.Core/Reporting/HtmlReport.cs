@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Model;
@@ -35,7 +36,12 @@ main{max-width:1060px;margin:0 auto;padding:28px 16px 64px}h1{font-size:26px;mar
 th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
 td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.wrap{overflow-x:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}
-.legend span{display:inline-block;margin-right:14px;font-size:13px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}");
+.legend span{display:inline-block;margin-right:14px;font-size:13px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+h2+.lead{margin:-4px 0 10px}dl.notes{margin:0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:2px 16px}
+dl.notes>div{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:4px 20px;padding:10px 0;border-top:1px solid var(--line)}dl.notes>div:first-child{border-top:0}
+dl.notes dt{font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding-top:2px}dl.notes dd{margin:0;max-width:68ch}
+dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.nw{white-space:nowrap}@media (max-width:560px){dl.notes>div{grid-template-columns:minmax(0,1fr)}}");
         sb.Append("</style></head><body><main>");
         sb.Append("<h1>Project risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
         var summary = ResultsSummary.Build(pre, post);
@@ -44,6 +50,7 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         sb.Append("<br>").Append(E(summary.Run)).Append("</div>");
 
         Summary(sb, summary, post != null);
+        Notes(sb, ResultsNarrative.Build(pre, post, summary: summary));
 
         sb.Append("<h2>Project finish distribution</h2><div class=\"card\">");
         sb.Append(SCurve(pre, post, s));
@@ -174,17 +181,36 @@ svg text{fill:var(--muted);font-size:11px}.pass{color:var(--ok);font-weight:600}
         else Named("Top risk drivers", "Sensitivity", sum.Drivers.Select(d => (d.Id, d.Title, F(d.Sensitivity, 2))), -1);
         Named("Critical activities", "Criticality", sum.Critical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.Critical.Count);
         Named("Near-critical activities", "Criticality", sum.NearCritical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.NearCritical.Count);
-        sb.Append("</div></div><p class=\"muted small\">").Append(E(SummaryNote(sum, both))).Append("</p>");
+        sb.Append("</div></div>");
     }
 
-    /// <summary>What the summary's figures mean (the browser app shows the same note).</summary>
-    public static string SummaryNote(ResultsSummary sum, bool both) =>
-        "Durations are working days of the project calendar from the project start; contingency is a level's duration minus the "
-        + "deterministic one. Critical: on the critical path in 50% or more of the iterations; near-critical: 10% to 49%. "
-        + (sum.DriversAreActivities
-            ? "The model has no risks or drivers, so the top drivers are the activities whose durations track the finish most closely."
-            : "Drivers are ranked by the rank correlation of each risk's impact, or each driver's factor, with the finish.")
-        + (both ? " Drivers and critical activities are from the pre-mitigation run." : "");
+    /// <summary>Encoded text with each hyphenated word (a date such as 13-Sep-2028, or 1-in-5) kept on one line.</summary>
+    public static string Unbroken(string text)
+    {
+        var sb = new StringBuilder();
+        int at = 0;
+        foreach (Match m in ResultsNarrative.Hyphenated.Matches(text))
+        {
+            sb.Append(E(text[at..m.Index])).Append("<span class=\"nw\">").Append(E(m.Value)).Append("</span>");
+            at = m.Index + m.Length;
+        }
+        return sb.Append(E(text[at..])).ToString();
+    }
+
+    /// <summary>"What the results mean": the plain-language findings, then the glossary (the browser app shows the same).</summary>
+    private static void Notes(StringBuilder sb, ResultsNarrative notes)
+    {
+        void List(string cls, IEnumerable<(string Dt, string Dd)> items)
+        {
+            sb.Append("<dl class=\"").Append(cls).Append("\">");
+            foreach (var (dt, dd) in items) sb.Append("<div><dt>").Append(E(dt)).Append("</dt><dd>").Append(Unbroken(dd)).Append("</dd></div>");
+            sb.Append("</dl>");
+        }
+        sb.Append("<h2>What the results mean</h2><p class=\"muted lead\">").Append(E(ResultsNarrative.Lead)).Append("</p>");
+        List("notes", notes.Findings.Select(f => (f.Label, f.Text)));
+        sb.Append("<h3>Terms used</h3>");
+        List("notes terms", ResultsNarrative.Terms.Select(t => (t.Name, t.Meaning)));
+    }
 
     /// <summary>
     /// Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).

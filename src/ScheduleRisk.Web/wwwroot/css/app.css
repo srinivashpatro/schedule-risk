@@ -372,6 +372,20 @@ td > select.input { width: auto; }
 .sum-count { margin-left: var(--space-1); color: var(--color-text); font-weight: 800; letter-spacing: 0; }
 .sum-none, .sum-more { margin: var(--space-2) 0 0; }
 .sum-foot { margin: 0; padding-top: 0; max-width: 120ch; }
+/* What the results mean: label (small capitals) over the text, in newspaper columns on a wide screen. */
+.notes-head { display: flex; align-items: baseline; gap: var(--space-2) var(--space-4); flex-wrap: wrap; padding-bottom: var(--space-2); }
+.notes-panel > dl.notes { padding: 0 var(--space-6); }
+dl.notes { margin: 0; columns: 2 420px; column-gap: var(--space-8); }
+dl.notes .note { break-inside: avoid; padding: var(--space-3) 0; border-top: 1px solid var(--color-divider); }
+dl.notes dt { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent); }
+dl.notes dd { margin: var(--space-1) 0 0; max-width: 72ch; line-height: 1.5; }
+dl.notes .note.sel { background: var(--color-accent-100); box-shadow: -8px 0 0 var(--color-accent-100), 8px 0 0 var(--color-accent-100); }
+.notes-panel details.terms { padding-top: var(--space-3); }
+.notes-panel details.terms > summary { font-weight: 600; }
+.notes-panel details.terms[open] > summary { margin-bottom: var(--space-2); }
+.notes-panel details.terms dd { font-size: 13px; }
+.nw { white-space: nowrap; }
 .stat-table tbody tr.sel { background: var(--color-accent-100); }
 .stat-table tbody tr.sel td { font-weight: 700; color: var(--color-text); }
 .chart-row { display: flex; flex-wrap: wrap; }
@@ -502,6 +516,8 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
   .landing-text { padding-top: var(--space-6); padding-bottom: 0; }
   .dropzone.slim { flex: 1 1 100%; }
   .barrow { grid-template-columns: 52px minmax(0, 1fr) minmax(48px, 30%) 44px; gap: var(--space-2); }
+  .notes-head { padding-bottom: var(--space-2); }
+  .notes-panel > dl.notes { padding: 0 var(--space-4); }
   .grid-wrap { height: 420px; }
   .toolbar .input[type=search] { min-width: 0; width: 100%; }
 }

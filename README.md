@@ -33,12 +33,21 @@ health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (
 register with mitigation, drivers, correlation, each applied to activities picked from a searchable
 list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
 **Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
-contingency, mean, median and spread, top risk drivers, critical and near-critical activities; then
-the finish distribution as histogram or S-curve, confidence table, risk ranking, criticality,
-milestones; export the report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
+it, what those results mean in plain words, with a glossary; then the finish distribution as
+histogram or S-curve, confidence table, risk ranking, criticality, milestones; export the report as
+PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+
+"What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
+the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
+median, skewness and kurtosis say about the finish, what mitigation gains, what drives the finish,
+and how far to trust the run. The notes come from fixed templates and thresholds in the core library
+(no AI model and no network call), so every report and the Results page say the same thing; the
+rules are in [docs/READING_RESULTS.md](docs/READING_RESULTS.md). Every report carries them right
+after its Summary, with the glossary.
 
 The PDF (A4), Word (A4) and PowerPoint (16:9) reports are written in the browser, like everything
-else: the same summary, charts and tables as the Results, in the app's look (ink, the red accent,
+else: the same summary, notes, charts and tables as the Results, in the app's look (ink, the red accent,
 2px rules, small-capital table heads, the red mark and name on every page or slide) with Archivo
 embedded. Charts are pictures the browser draws from the app's own SVG charts; tables stay real,
 editable tables in Word and PowerPoint. Not yet: the Gantt chart in the reports, and these three
@@ -84,7 +93,8 @@ From source: `dotnet run --project src\ScheduleRisk.Cli -c Release -- <command> 
 `duration` block (working days from the project start) and a `model` block; the run's start time and
 run time are left out of it, so the same seed always gives the same file.
 
-The risk model format is described in [docs/RISK_MODEL.md](docs/RISK_MODEL.md).
+The risk model format is described in [docs/RISK_MODEL.md](docs/RISK_MODEL.md), and how the
+results are put into words in [docs/READING_RESULTS.md](docs/READING_RESULTS.md).
 
 ## The P6 check (the most important test)
 

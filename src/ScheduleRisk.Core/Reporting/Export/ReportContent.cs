@@ -52,6 +52,11 @@ public sealed record TextBlock(string Text, bool Muted = true) : Block;
 /// screen), in slides one slide per column with its tables side by side.</summary>
 public sealed record ColumnsBlock(IReadOnlyList<Block> Left, IReadOnlyList<Block> Right, string LeftTitle = "", string RightTitle = "") : Block;
 
+/// <summary>Label and text pairs, such as "What the results mean" and its glossary: in documents a label column beside
+/// the text, in slides one slide per block.</summary>
+public sealed record NotesBlock(string? Title, IReadOnlyList<Note> Notes) : Block;
+public sealed record Note(string Label, string Text);
+
 public sealed class Section
 {
     public required string Title { get; init; }
@@ -66,10 +71,10 @@ public sealed record ReportInput(Schedule Schedule, SimulationSummary Pre, Simul
                                  string? ModelName = null, int Percentile = 80, DateTime? Generated = null);
 
 /// <summary>
-/// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary, the finish
-/// date distribution (histogram and cumulative curve), the confidence levels, the risk ranking (or duration
-/// sensitivity), the criticality index, the risk drivers, the activities that drive the finish and the milestones;
-/// then, as in the HTML report, the schedule health checks and the engine check against P6.
+/// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary and what the
+/// results mean, the finish date distribution (histogram and cumulative curve), the confidence levels, the risk
+/// ranking (or duration sensitivity), the criticality index, the risk drivers, the activities that drive the finish
+/// and the milestones; then, as in the HTML report, the schedule health checks and the engine check against P6.
 /// </summary>
 public sealed class ReportContent
 {
@@ -122,8 +127,13 @@ public sealed class ReportContent
                     sum.NearCritical.Count, "None.")),
             },
             "Finish dates and their spread", "What drives the finish"));
-        summary.Blocks.Add(new TextBlock(HtmlReport.SummaryNote(sum, both)));
         doc.Sections.Add(summary);
+
+        // What the results mean: the Summary's figures in plain words, then the terms they use.
+        var notes = new Section { Title = "What the results mean", Lead = ResultsNarrative.Lead };
+        notes.Blocks.Add(new NotesBlock(null, ResultsNarrative.Build(pre, post, pct, sum).Findings.Select(f => new Note(f.Label, f.Text)).ToList()));
+        notes.Blocks.Add(new NotesBlock("Terms used", ResultsNarrative.Terms.Select(t => new Note(t.Name, t.Meaning)).ToList()));
+        doc.Sections.Add(notes);
 
         long cut = Statistics.PercentileSorted(pre.SortedFinish, pct);
         var dist = new Section
