@@ -1,0 +1,41 @@
+@* "What the results mean": the Summary's figures in plain words, then the terms they use (folded away until opened).
+   From ResultsNarrative in the core library, so the reports say the same. *@
+
+<section class="notes-panel rule-b" aria-labelledby="notes-title">
+    <div class="pad notes-head">
+        <h4 id="notes-title">What the results mean</h4>
+        <span class="sub">@ResultsNarrative.Lead</span>
+    </div>
+    <dl class="notes">
+        @foreach (var f in notes.Findings)
+        {
+            <div class="note @(f.Key == "level" ? "sel" : "")"><dt>@f.Label</dt><dd>@((MarkupString)HtmlReport.Unbroken(f.Text))</dd></div>
+        }
+    </dl>
+    <details class="pad terms">
+        <summary>Terms used</summary>
+        <dl class="notes">
+            @foreach (var t in ResultsNarrative.Terms)
+            {
+                <div class="note"><dt>@t.Name</dt><dd>@((MarkupString)HtmlReport.Unbroken(t.Meaning))</dd></div>
+            }
+        </dl>
+    </details>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public SimulationSummary Pre { get; set; } = null!;
+    [Parameter] public SimulationSummary? Post { get; set; }
+    /// <summary>The confidence level chosen on the chart; a level other than P50 and P80 gets its own note.</summary>
+    [Parameter] public int Percentile { get; set; } = 80;
+
+    private ResultsNarrative notes = null!;
+    private (SimulationSummary? Pre, SimulationSummary? Post, int P) built;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(built.Pre, Pre) && ReferenceEquals(built.Post, Post) && built.P == Percentile) return;
+        notes = ResultsNarrative.Build(Pre, Post, Percentile);
+        built = (Pre, Post, Percentile);
+    }
+}

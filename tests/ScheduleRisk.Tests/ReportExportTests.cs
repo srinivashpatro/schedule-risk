@@ -109,7 +109,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
     {
         Assert.Equal(new[]
         {
-            "Summary", "Finish date distribution", "Confidence levels", "Risk ranking", "Criticality index", "Risk drivers",
+            "Summary", "What the results mean", "Finish date distribution", "Confidence levels", "Risk ranking", "Criticality index", "Risk drivers",
             "Activities that drive the finish", "Milestones", "Schedule health checks", "Engine check against P6",
         }, fx.Doc.Sections.Select(s => s.Title));
         Assert.Equal(new[] { "histogram", "cumulative", "risks", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
@@ -131,6 +131,63 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Equal("Top risk drivers", right[0]);
         Assert.StartsWith("Critical activities (", right[1]);
         Assert.StartsWith("Near-critical activities (", right[2]);
+    }
+
+    [Fact]
+    public void What_the_results_mean_follows_the_summary_with_its_glossary()
+    {
+        Assert.DoesNotContain(fx.Doc.Sections[0].Blocks, b => b is TextBlock);   // the old footnote is in the glossary now
+        var notes = fx.Doc.Sections[1];
+        Assert.Equal(ResultsNarrative.Lead, notes.Lead);
+        Assert.Collection(notes.Blocks,
+            b =>
+            {
+                var n = Assert.IsType<NotesBlock>(b);
+                Assert.Null(n.Title);
+                Assert.Equal(new[] { "Current finish", "P50", "P80", "Mean and median", "Skewness", "Kurtosis", "Spread", "Mitigation",
+                                     "What drives it", "Critical activities", "About these results" }, n.Notes.Select(x => x.Label));
+                Assert.StartsWith("There is an 80% chance of finishing by ", n.Notes[2].Text);
+            },
+            b =>
+            {
+                var n = Assert.IsType<NotesBlock>(b);
+                Assert.Equal("Terms used", n.Title);
+                Assert.Equal(ResultsNarrative.Terms.Select(t => (t.Name, t.Meaning)), n.Notes.Select(x => (x.Label, x.Text)));
+            });
+    }
+
+    [Fact]
+    public void Every_format_explains_the_results()
+    {
+        var findings = Assert.IsType<NotesBlock>(fx.Doc.Sections[1].Blocks[0]).Notes;
+        string p80 = findings.Single(n => n.Label == "P80").Text;
+
+        string pdf = new MiniPdf(PdfReport.Write(fx.Doc, fx.Fonts, fx.Images)).Text();
+        foreach (var expected in new[] { "What the results mean", "TERMS USED", "MEAN AND MEDIAN", "There is an 80% chance", "WORKING DAYS" })
+            Assert.Contains(expected, pdf);
+        Assert.True(pdf.IndexOf("What the results mean") < pdf.IndexOf("Finish date distribution"));
+
+        using (var zip = new ZipArchive(new MemoryStream(DocxReport.Write(fx.Doc, fx.Fonts, fx.Images))))
+        {
+            string body = Part(zip, "word/document.xml");
+            // hyphenated words (the date, 1-in-5) are kept whole with non-breaking hyphens
+            Assert.Contains(p80, Regex.Replace(body.Replace("<w:noBreakHyphen/>", "-"), "<[^>]+>", ""));
+            Assert.Contains("<w:noBreakHyphen/>", body);
+            Assert.Contains(">Terms used<", body);
+            Assert.True(body.IndexOf(">What the results mean<") < body.IndexOf(">Finish date distribution<"));
+        }
+
+        using (var zip = new ZipArchive(new MemoryStream(PptxReport.Write(fx.Doc, fx.Fonts, fx.Images))))
+        {
+            var slides = zip.Entries.Where(e => Regex.IsMatch(e.FullName, @"^ppt/slides/slide\d+\.xml$"))
+                .OrderBy(e => int.Parse(Regex.Match(e.FullName, @"\d+").Value)).Select(e => Part(zip, e.FullName)).ToList();
+            // the findings on one slide, the glossary on the next, both straight after the Summary's two slides
+            Assert.Contains(">What the results mean<", slides[3]);
+            Assert.Contains(ResultsNarrative.NoBreakHyphens(p80), slides[3]);
+            Assert.Contains("<a:normAutofit/>", slides[3]);
+            Assert.Contains(">What the results mean: Terms used<", slides[4]);
+            Assert.Contains(">Finish date distribution<", slides[5]);
+        }
     }
 
     [Fact]

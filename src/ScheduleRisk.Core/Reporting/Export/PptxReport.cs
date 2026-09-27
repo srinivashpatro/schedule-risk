@@ -139,6 +139,20 @@ public static class PptxReport
                         } while (at < t.Rows.Count);
                         break;
                     }
+                    case NotesBlock nb:
+                    {
+                        string title = section.Title + (nb.Title != null ? ": " + nb.Title : "");
+                        var pages = NotePages(nb.Notes, fonts, out int size);
+                        for (int i = 0; i < pages.Count; i++)
+                        {
+                            var s = New();
+                            long top = Header(s, title + (i > 0 ? " (continued)" : ""), Lead(), pal);
+                            for (int c = 0; c < pages[i].Count; c++)
+                                TextBox(s, MarginX + c * (NoteColW + NoteGap), top, NoteColW, ContentBottom - top,
+                                    string.Concat(pages[i][c].Select((n, k) => NoteParas(n, size, k == 0, pal))), autofit: true);
+                        }
+                        break;
+                    }
                     case TextBlock tx:
                         pendingNotes.Add(tx.Text);
                         break;
@@ -353,14 +367,82 @@ public static class PptxReport
         return height;
     }
 
+    // ------------------------------------------------------------------ notes: two columns of label and text
+
+    private const long NoteGap = (long)(0.45 * In), NoteColW = (ContentW - NoteGap) / 2;
+    private static int NoteLabelSize(int size) => size * 70 / 100;
+    private static int NoteSpace(int size) => size * 75 / 100;
+
+    /// <summary>A note's height at a size: its label in small capitals, the text under it, and the space above it.</summary>
+    private static long NoteHeight(Note n, ReportFonts fonts, int size, bool first)
+    {
+        double room = (NoteColW / (double)Pt) * 0.92, z = size / 100.0, lz = NoteLabelSize(size) / 100.0;
+        int label = PdfLayout.Wrap(n.Label.ToUpperInvariant(), fonts.ExtraBold, lz, room, lz * 0.08).Count;
+        int text = PdfLayout.Wrap(n.Text, fonts.Regular, z, room).Count;
+        return (long)(((first ? 0 : NoteSpace(size) / 100.0) + label * lz * 1.2 + 2 + text * z * 1.2) * Pt);
+    }
+
+    /// <summary>The notes laid out as slides of two columns, in order: at the largest size from 14pt down to 11pt that
+    /// needs the fewest slides, each slide's notes split between its columns as evenly as they go.</summary>
+    private static List<List<List<Note>>> NotePages(IReadOnlyList<Note> notes, ReportFonts fonts, out int size)
+    {
+        long room = ContentBottom - ContentTop - (long)(0.4 * In);   // a lead line above, as on the section's first slide
+        var sizes = new[] { 1400, 1300, 1200, 1100 };
+        List<List<Note>> Columns(int z)
+        {
+            var cols = new List<List<Note>> { new() };
+            long used = 0;
+            foreach (var n in notes)
+            {
+                long h = NoteHeight(n, fonts, z, cols[^1].Count == 0);
+                if (cols[^1].Count > 0 && used + h > room) { cols.Add(new()); used = 0; h = NoteHeight(n, fonts, z, true); }
+                cols[^1].Add(n);
+                used += h;
+            }
+            return cols;
+        }
+        int fewest = sizes.Min(z => (Columns(z).Count + 1) / 2);
+        size = sizes.First(z => (Columns(z).Count + 1) / 2 == fewest);
+        int zs = size;
+        var cols = Columns(size);
+        var pages = new List<List<List<Note>>>();
+        for (int i = 0; i < cols.Count; i += 2)
+        {
+            var all = cols.Skip(i).Take(2).SelectMany(c => c).ToList();
+            var heights = all.Select((n, k) => NoteHeight(n, fonts, zs, false)).ToList();
+            // the split that keeps the taller column shortest, within the room
+            int best = all.Count;
+            long bestH = long.MaxValue;
+            for (int k = 1; k <= all.Count; k++)
+            {
+                long left = heights.Take(k).Sum(), right = heights.Skip(k).Sum();
+                if (left > room + NoteSpace(zs) * Pt / 100 || right > room + NoteSpace(zs) * Pt / 100) continue;
+                if (Math.Max(left, right) < bestH) { bestH = Math.Max(left, right); best = k; }
+            }
+            pages.Add(new List<List<Note>> { all.Take(best).ToList(), all.Skip(best).ToList() }.Where(c => c.Count > 0).ToList());
+        }
+        return pages;
+    }
+
+    private static string NoteParas(Note n, int size, bool first, ReportPalette pal)
+    {
+        int lz = NoteLabelSize(size);
+        string Run(string text, string font, int z, string color, bool caps) =>
+            $"<a:r><a:rPr lang=\"en-GB\" sz=\"{z}\" b=\"0\"{(caps ? " cap=\"all\"" : "")}{(caps ? $" spc=\"{lz * 8 / 100}\"" : "")} dirty=\"0\">"
+            + $"<a:solidFill><a:srgbClr val=\"{color}\"/></a:solidFill><a:latin typeface=\"{font}\"/><a:cs typeface=\"{font}\"/></a:rPr><a:t>{OpcPackage.Text(text)}</a:t></a:r>";
+        return $"<a:p><a:pPr algn=\"l\"><a:spcBef><a:spcPts val=\"{(first ? 0 : NoteSpace(size))}\"/></a:spcBef><a:spcAft><a:spcPts val=\"200\"/></a:spcAft></a:pPr>"
+             + Run(n.Label, Heavy, lz, pal.Label, caps: true) + "</a:p>"
+             + $"<a:p><a:pPr algn=\"l\"/>{Run(ResultsNarrative.NoBreakHyphens(n.Text), "Archivo", size, pal.Ink, caps: false)}</a:p>";
+    }
+
     // ------------------------------------------------------------------ shapes
 
-    private static void TextBox(Slide s, long x, long y, long w, long h, string paragraphs, string anchor = "t")
+    private static void TextBox(Slide s, long x, long y, long w, long h, string paragraphs, string anchor = "t", bool autofit = false)
     {
         int id = s.Id();
         s.Shapes.Append($"<p:sp><p:nvSpPr><p:cNvPr id=\"{id}\" name=\"Text {id}\"/><p:cNvSpPr txBox=\"1\"/><p:nvPr/></p:nvSpPr>"
             + $"<p:spPr><a:xfrm><a:off x=\"{x}\" y=\"{y}\"/><a:ext cx=\"{w}\" cy=\"{h}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>"
-            + $"<p:txBody><a:bodyPr wrap=\"square\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"{anchor}\"><a:noAutofit/></a:bodyPr><a:lstStyle/>{paragraphs}</p:txBody></p:sp>");
+            + $"<p:txBody><a:bodyPr wrap=\"square\" lIns=\"0\" tIns=\"0\" rIns=\"0\" bIns=\"0\" anchor=\"{anchor}\">{(autofit ? "<a:normAutofit/>" : "<a:noAutofit/>")}</a:bodyPr><a:lstStyle/>{paragraphs}</p:txBody></p:sp>");
     }
 
     private static void Rect(Slide s, long x, long y, long w, long h, string color)

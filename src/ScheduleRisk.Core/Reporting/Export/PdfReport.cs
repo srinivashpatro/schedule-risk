@@ -142,6 +142,7 @@ internal sealed class PdfLayout
                 case TableBlock t: FlowTable(t.Table); break;
                 case ChartBlock c: ChartAt(c.Chart, charts > 1 || c.Chart.Title != s.Title); break;
                 case TextBlock t: Paragraph(t.Text, t.Muted); break;
+                case NotesBlock n: Notes(n); break;
             }
         }
     }
@@ -152,8 +153,54 @@ internal sealed class PdfLayout
         ChartBlock c => 16 + W * c.Chart.Height / c.Chart.Width,
         TableBlock t => TableStart(t.Table),
         ColumnsBlock c => c.Left.Count > 0 ? FirstHeight(c.Left[0]) : 40,
+        NotesBlock n => NotesHeadH(n) + (n.Notes.Count > 0 ? NoteH(n.Notes[0]) : 0),
         _ => 30,
     };
+
+    // ------------------------------------------------------------------ notes: label in small capitals beside the text
+
+    private const double NoteLabelW = 112, NoteSize = 9, NoteHeadH = 16;
+    private const double NoteTextW = W - NoteLabelW;
+
+    private double NotesHeadH(NotesBlock n) => n.Title == null ? 0 : NoteHeadH;
+
+    private List<string> NoteLabel(Note n) => Wrap(n.Label.ToUpperInvariant(), faces.ExtraBold, Head, NoteLabelW - 2 * PadX, 0.08 * Head);
+
+    private List<string> NoteText(Note n) => Wrap(n.Text, faces.Regular, NoteSize, NoteTextW - 2 * PadX);
+
+    private double NoteH(Note n) => Math.Max(NoteLabel(n).Count * LineH(Head), NoteText(n).Count * LineH(NoteSize)) + 2 * PadY + 2;
+
+    private void Notes(NotesBlock n)
+    {
+        if (n.Title != null)
+        {
+            Ensure(NoteHeadH + (n.Notes.Count > 0 ? NoteH(n.Notes[0]) : 0));
+            Text(Left, y + 8, n.Title.ToUpperInvariant(), FontWeight.ExtraBold, Head, pal.Label, 0.08 * Head);
+            y += NoteHeadH;
+        }
+        Line(Left, Left + W, y - 0.75, 1.5, pal.Divider);
+        var face = faces.Regular;
+        foreach (var note in n.Notes)
+        {
+            double h = NoteH(note);
+            if (!Fits(h))
+            {
+                NewPage();
+                Line(Left, Left + W, y - 0.75, 1.5, pal.Divider);
+            }
+            // both columns share the first baseline, set by the text's larger size
+            double box = (face.Ascent - face.Descent) * NoteSize / face.UnitsPerEm;
+            double firstBase = PadY + 1 + (LineH(NoteSize) - box) / 2 + face.Ascent * NoteSize / face.UnitsPerEm;
+            var label = NoteLabel(note);
+            for (int i = 0; i < label.Count; i++)
+                Text(Left + PadX, y + firstBase + i * LineH(Head), label[i], FontWeight.ExtraBold, Head, pal.Label, 0.08 * Head);
+            var text = NoteText(note);
+            for (int i = 0; i < text.Count; i++)
+                Text(Left + NoteLabelW + PadX, y + firstBase + i * LineH(NoteSize), text[i], FontWeight.Regular, NoteSize, pal.Ink);
+            y += h;
+            Line(Left, Left + W, y - 0.3, 0.6, pal.Divider);
+        }
+    }
 
     private void Paragraph(string text, bool muted)
     {

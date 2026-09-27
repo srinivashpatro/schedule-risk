@@ -22,6 +22,12 @@
   and name on every page or slide, and the generated line and page numbers. Charts are pictures of the app's own
   charts; tables stay editable in Word and PowerPoint. Everything is written in the browser; the only files it
   fetches are the report fonts, from the app's own site, the first time.
+- "What the results mean" under the Summary: plain-language notes that say what each result means for the
+  finish date (how likely the current finish is, what the P50 and P80 promise, what the mean, median,
+  skewness and kurtosis say, the spread, what mitigation gains, what drives the finish and how far to trust
+  the run), and a glossary of the terms. They are written from fixed rules, not by an AI model, and nothing
+  leaves the browser. Every report (HTML, PDF, Word, PowerPoint) carries them after its Summary. The rules
+  are in docs/READING_RESULTS.md.
 
 ### Changed
 
@@ -31,6 +37,8 @@
 - The Summary replaces the headline tiles and the Duration statistics tables in the Results and the HTML
   report, so each figure is shown once. The run details (start, run time, iterations, seed) move from under the
   chart to the Summary's heading.
+- The note under the Summary (working days, contingency, the critical thresholds, how drivers are ranked)
+  moves into the new glossary.
 
 ## 0.5.0 - 2026-09-26
 

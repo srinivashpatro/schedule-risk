@@ -268,6 +268,19 @@ not detected yet.
       footer of its own. Code and project names (`ScheduleRisk.*`), the `sra` command and the web
       address (/schedule-risk/) stay. Up to 1100px wide the name stacks over two lines, so the top bar
       keeps the rows it had. Tests check the name in the page, the top bar and the reports.
+- [x] Results: "What the results mean", plain-language notes on each Summary figure so that anyone
+      can read the results: how likely the current finish (and the Must Finish By) is, what the P50 and
+      P80 promise and the contingency they need, the chosen level when it is neither, the mean and
+      median and what their gap says, skewness and kurtosis in words (including results that fall
+      into two groups, such as a risk that happens or not), the P10 to P90 spread, what mitigation
+      gains, what drives the finish, the critical activities, and how far to trust the run. Then a
+      glossary of the terms, which replaces the note under the Summary. Built by `ResultsNarrative` in
+      Core from fixed templates and named thresholds (no AI model, no network), documented in
+      docs/READING_RESULTS.md; sentences of at most 25 words. Shown under the Summary on the Results
+      page (glossary folded) and right after the Summary in the HTML, PDF and Word reports, and as two
+      slides in PowerPoint. 21 tests (52 cases): exact wording on fixed seeds, each threshold's
+      boundaries, and the edge cases (no spread, no risks, lumpy results, a deadline, shorter
+      durations).
 
 ## Shipped
 
