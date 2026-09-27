@@ -102,7 +102,7 @@ public sealed class ReportContent
         var doc = new ReportContent
         {
             ProjectCode = s.ProjectCode,
-            Title = "Schedule risk analysis: " + s.ProjectCode,
+            Title = "Project risk analysis: " + s.ProjectCode,
             Lines = new[] { sum.Model + (string.IsNullOrEmpty(input.ModelName) ? "" : " · risk model: " + input.ModelName), sum.Run },
             Generated = $"Generated {when.ToString("dd-MMM-yyyy HH:mm", Inv)} by {Brand.Name} {Brand.Version}",
             GeneratedAt = when,

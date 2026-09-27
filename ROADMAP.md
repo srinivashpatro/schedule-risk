@@ -261,7 +261,13 @@ not detected yet.
       and PowerPoint files rendered by LibreOffice (Word's embedded Archivo used). 14 tests. To
       confirm in PowerPoint itself: that it takes the embedded fonts (LibreOffice 24.2 does not read
       PPTX fonts, so the slides were checked with its fallback font).
-- [ ] Rename the app to "Project Risk Analysis" (landing page, tab title, header, footer, reports).
+- [x] Rename the app to "Project Risk Analysis" wherever users see it: the browser tab and home-screen
+      title, the top bar, the loading screen, the landing headline ("Project risk analysis for
+      Primavera P6"), and the reports' titles, headings and footers (HTML, PDF, Word, PowerPoint, and
+      the documents' properties), all from `Brand.Name` in Core; the README title. The app has no page
+      footer of its own. Code and project names (`ScheduleRisk.*`), the `sra` command and the web
+      address (/schedule-risk/) stay. Up to 1100px wide the name stacks over two lines, so the top bar
+      keeps the rows it had. Tests check the name in the page, the top bar and the reports.
 
 ## Shipped
 
