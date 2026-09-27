@@ -152,6 +152,15 @@ public sealed class AppState
         await Task.Delay(20); // let the browser paint before heavy work
     }
 
+    /// <summary>Shows the busy overlay with this text (or updates it) and lets the browser paint it.</summary>
+    public Task ShowBusy(string text) => SetBusy(text);
+
+    public void EndBusy()
+    {
+        Busy = false;
+        Notify();
+    }
+
     // ---------------------------------------------------------------- risk model
     public RiskModelDocument Model { get; set; } = RiskModelDocument.Default();
 

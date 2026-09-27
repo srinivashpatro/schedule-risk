@@ -17,6 +17,11 @@
   (minimum, maximum, standard deviation, skewness, kurtosis), the top five risk drivers, and the critical
   (criticality index 50% or more) and near-critical (10% to 49%) activities. Pre- and post-mitigation values
   sit side by side. The HTML report opens with the same Summary.
+- Report exports as PDF (A4), Word (A4) and PowerPoint (16:9), next to the HTML report and CSVs. They carry the
+  same summary, charts and tables as the Results, in the app's look with the Archivo font embedded, the red mark
+  and name on every page or slide, and the generated line and page numbers. Charts are pictures of the app's own
+  charts; tables stay editable in Word and PowerPoint. Everything is written in the browser; the only files it
+  fetches are the report fonts, from the app's own site, the first time.
 
 ### Changed
 

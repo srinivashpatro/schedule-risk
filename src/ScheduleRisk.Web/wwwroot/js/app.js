@@ -11,6 +11,50 @@ window.sraDownload = function (fileName, contentType, text) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 };
 
+// Exported reports (PDF, Word, PowerPoint): the browser draws each chart's SVG, made by ReportCharts with its colours
+// and fonts inside, into a PNG. Nothing leaves the page: the SVG goes through a blob URL into an image, then a canvas.
+let sraLastChart = null;
+window.sraRaster = async function (svg, width, height) {
+    const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+    try {
+        const img = new Image();
+        img.src = url;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = width;
+        c.height = height;
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        sraLastChart = c;
+        const png = await new Promise(done => c.toBlob(done, "image/png"));
+        return new Uint8Array(await png.arrayBuffer());
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+};
+
+// The last chart again as zlib-compressed RGB rows, the form a PDF image takes (the chart has an opaque ground).
+window.sraRasterRgb = async function () {
+    const c = sraLastChart;
+    const px = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+    const rgb = new Uint8Array(c.width * c.height * 3);
+    for (let i = 0, j = 0; i < px.length; i += 4, j += 3) {
+        rgb[j] = px[i]; rgb[j + 1] = px[i + 1]; rgb[j + 2] = px[i + 2];
+    }
+    const reader = new Blob([rgb]).stream().pipeThrough(new CompressionStream("deflate")).getReader();
+    const parts = [];
+    let size = 0;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        size += value.length;
+    }
+    const out = new Uint8Array(size);
+    let at = 0;
+    for (const p of parts) { out.set(p, at); at += p.length; }
+    return out;
+};
+
 // Keep --nav-h equal to the sticky top bar's height (it wraps on narrow screens) so
 // the risk-model side column can stick just below it.
 window.sraWatchNav = function () {

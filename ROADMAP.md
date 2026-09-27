@@ -243,8 +243,24 @@ not detected yet.
       the iteration count and seed. Built by `ResultsSummary` in Core (replacing `StatisticsTable`), so
       the HTML report shows the same Summary in the same two columns; `SimulationSummary` gains the
       median finish date (not in the JSON). 11 tests.
-- [ ] Report exports as PDF, PowerPoint and Word, in the app's theme, with the charts and tables shown
-      on screen.
+- [x] Report exports as PDF, PowerPoint and Word, in the app's theme, with the charts and tables shown
+      on screen. Written in the browser by Core's `Reporting/Export` (no dependencies): one
+      `ReportContent` (the Summary, finish date histogram and cumulative curve, confidence levels, risk
+      ranking or duration sensitivity, criticality index, risk drivers, driving activities, milestones,
+      health checks, engine check) laid out three ways. PDF: A4, Archivo embedded as subset CID fonts
+      with ToUnicode maps (text copies and searches), tables that continue with their heads, short
+      tables and headings kept with what follows. Word: A4 with styles, header (mark and name) and
+      footer (generated line, page X of Y), tables that repeat their heads, Archivo embedded as
+      obfuscated fonts. PowerPoint: 16:9 on the app's warm grey, one slide per chart, tables split
+      evenly over slides, the Summary as two slides with text sized to fit, Archivo embedded as EOT
+      font data as LibreOffice writes it. Charts are the app's SVG charts (and its bar lists) made
+      standalone with the palette and Archivo subsets inside, drawn to PNG by the browser (canvas) at
+      2x; PDF takes them as zlib RGB. Fonts: static 400/600/800 instances of the Archivo variable font
+      with Latin Extended (`tools/make_doc_fonts.py`), fetched from the site when first exporting.
+      Checked: qpdf and poppler on the PDFs, the Open XML SDK validator in the tests (0 errors), Word
+      and PowerPoint files rendered by LibreOffice (Word's embedded Archivo used). 14 tests. To
+      confirm in PowerPoint itself: that it takes the embedded fonts (LibreOffice 24.2 does not read
+      PPTX fonts, so the slides were checked with its fallback font).
 - [ ] Rename the app to "Project Risk Analysis" (landing page, tab title, header, footer, reports).
 
 ## Shipped
