@@ -292,3 +292,6 @@ not detected yet.
       this file, and the chance of meeting the Must Finish By (see CHANGELOG.md)
 - [x] v0.5: duration statistics in the results, the landing page themed on industrial project
       planning, and the P6-style Gantt chart (see CHANGELOG.md)
+- [x] v0.6: the Results Summary panel, plain-language notes on what the results mean, report
+      exports as PDF, Word and PowerPoint, the rename to Project Risk Analysis, Expand all /
+      Collapse all in the Gantt, and the searchable activity picker (see CHANGELOG.md)
