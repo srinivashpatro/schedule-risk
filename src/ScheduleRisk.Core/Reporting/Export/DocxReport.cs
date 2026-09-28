@@ -77,6 +77,16 @@ public static class DocxReport
                     case TextBlock t:
                         body.Append(Para(Run(t.Text, color: t.Muted ? null : pal.Ink), style: t.Muted ? "Note" : "Lead"));
                         break;
+                    case ContentsBlock:
+                        // Word's own table of contents field, over the Heading 1 titles, with the titles as its
+                        // result until Word fills in the page numbers (it offers to when the file opens).
+                        body.Append("<w:p><w:pPr><w:pStyle w:val=\"Lead\"/></w:pPr><w:r><w:fldChar w:fldCharType=\"begin\" w:dirty=\"true\"/></w:r>"
+                            + "<w:r><w:instrText xml:space=\"preserve\"> TOC \\o \"1-1\" \\h \\z \\u </w:instrText></w:r><w:r><w:fldChar w:fldCharType=\"separate\"/></w:r>"
+                            + "<w:r><w:t xml:space=\"preserve\">Update this field to show the page numbers.</w:t></w:r></w:p>");
+                        foreach (var other in doc.Sections.Where(x => x.Title != ReportContent.ContentsTitle))
+                            body.Append(Para(Run(other.Title), style: "Lead"));
+                        body.Append("<w:p><w:r><w:fldChar w:fldCharType=\"end\"/></w:r></w:p><w:p><w:r><w:br w:type=\"page\"/></w:r></w:p>");
+                        break;
                     case NotesBlock n:
                         if (n.Title != null) body.Append(Para(Run(n.Title), style: "Caption"));
                         body.Append(Notes(n, pal)).Append(Para("", style: "Gap"));
@@ -90,7 +100,7 @@ public static class DocxReport
         pkg.Add("word/document.xml", $"<w:document {Ns}><w:body>{body}</w:body></w:document>", Main + "document.main+xml");
         pkg.Add("word/styles.xml", Styles(pal), Main + "styles+xml");
         pkg.Add("word/settings.xml", $"<w:settings xmlns:w=\"{W}\"><w:zoom w:percent=\"100\"/><w:embedTrueTypeFonts/><w:defaultTabStop w:val=\"720\"/>"
-            + "<w:characterSpacingControl w:val=\"doNotCompress\"/><w:compat><w:compatSetting w:name=\"compatibilityMode\" "
+            + "<w:characterSpacingControl w:val=\"doNotCompress\"/><w:updateFields w:val=\"true\"/><w:compat><w:compatSetting w:name=\"compatibilityMode\" "
             + "w:uri=\"http://schemas.microsoft.com/office/word\" w:val=\"15\"/></w:compat></w:settings>", Main + "settings+xml");
 
         // header: the red mark and the name, the project on the right, over a 2px rule

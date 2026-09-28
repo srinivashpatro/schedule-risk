@@ -53,8 +53,13 @@ public static class PptxReport
         TextBox(first, MarginX, (long)(4.3 * In), ContentW, (long)(1.0 * In),
             string.Concat(doc.Lines.Select(l => Para(l, "Archivo", 1400, pal.Muted))) + Para(doc.Generated, "Archivo", 1400, pal.Muted));
 
+        // The contents slide is laid out once every section's first slide number is known.
+        Slide? contentsSlide = null;
+        long contentsTop = 0;
+        var firstSlide = new List<(string Title, int Number)>();
         foreach (var section in doc.Sections)
         {
+            if (section.Title != ReportContent.ContentsTitle) firstSlide.Add((section.Title, slides.Count + 1));
             bool leadShown = false;
             string? Lead()
             {
@@ -94,7 +99,7 @@ public static class PptxReport
                     case ChartBlock cb:
                     {
                         var s = New();
-                        long top = Header(s, cb.Chart.Title, Lead(), pal);
+                        long top = Header(s, cb.Chart.Title == section.Title ? section.Title : $"{section.Title}: {cb.Chart.Title}", Lead(), pal);
                         if (images.TryGetValue(cb.Chart.Key, out var img))
                         {
                             if (!media.ContainsKey(cb.Chart.Key))
@@ -156,6 +161,10 @@ public static class PptxReport
                     case TextBlock tx:
                         pendingNotes.Add(tx.Text);
                         break;
+                    case ContentsBlock:
+                        contentsSlide = New();
+                        contentsTop = Header(contentsSlide, section.Title, Lead(), pal);
+                        break;
                 }
             if (pendingNotes.Count > 0)
             {
@@ -166,6 +175,16 @@ public static class PptxReport
                 TextBox(s, MarginX, top, ContentW, (long)(own ? 1.5 * In : 0.55 * In),
                     string.Concat(pendingNotes.Select(n => Para(n, "Archivo", own ? 1600 : 1000, own ? pal.Ink : pal.Muted))), anchor: own ? "t" : "b");
             }
+        }
+
+        if (contentsSlide != null)
+        {
+            // two columns of "title ... slide" when the list is long
+            int per = (int)Math.Ceiling(firstSlide.Count / (firstSlide.Count > 9 ? 2.0 : 1.0));
+            long colW = firstSlide.Count > 9 ? (ContentW - (long)(0.4 * In)) / 2 : ContentW;
+            for (int c = 0; c * per < firstSlide.Count; c++)
+                TextBox(contentsSlide, MarginX + c * (colW + (long)(0.4 * In)), contentsTop, colW, ContentBottom - contentsTop,
+                    string.Concat(firstSlide.Skip(c * per).Take(per).Select(e => Para($"{e.Title}  ·  slide {e.Number}", "Archivo", 1500, pal.Ink))), autofit: true);
         }
 
         // the mark and name on every slide, the project and slide number on the right

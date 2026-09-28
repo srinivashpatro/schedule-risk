@@ -127,104 +127,153 @@ public class ReportExportTests : IClassFixture<ExportFixture>
     // ------------------------------------------------------------------ content
 
     [Fact]
-    public void The_report_follows_the_results_page()
+    public void The_report_follows_the_owners_order()
     {
         Assert.Equal(new[]
         {
-            "Summary", "What the results mean", "Finish date distribution", "Confidence levels", "Risk ranking", "Cost-benefit of responses", "Risk register", "Risk actions", "Criticality index", "Risk drivers",
-            "Activities that drive the finish", "Milestones", "Schedule health: P6 Check Schedule", "Schedule health: DCMA 14-Point Assessment", "Engine check against P6",
+            "Table of Contents",
+            "Schedule Health Check: P6 Check Schedule", "Schedule Health Check: DCMA 14-Point Assessment", "Engine check against P6",
+            "Summary & Charts", "Risk & Activity Breakdown", "Analysis of the Result", "Sensitivity & Criticality", "Finish-Driving Activities",
+            "Confidence levels", "Cost-benefit of responses", "Risk register", "Risk actions", "Risk drivers", "Terms used",
+            "Annexure: Milestones",
         }, fx.Doc.Sections.Select(s => s.Title));
-        Assert.Equal(new[] { "histogram", "cumulative", "risks", "heatmap-current", "heatmap-target", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
+        Assert.IsType<ContentsBlock>(Assert.Single(fx.Doc.Sections[0].Blocks));
+        Assert.Equal(new[] { "histogram", "cumulative", "risks", "criticality", "heatmap-current", "heatmap-target", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
         Assert.Equal("Project risk analysis: SYN500", fx.Doc.Title);
         Assert.Equal($"Generated 27-Sep-2026 09:30 by {Brand.Name} {Brand.Version}", fx.Doc.Generated);
     }
 
+    private Section Titled(string title) => fx.Doc.Sections.Single(s => s.Title == title);
+
     [Fact]
-    public void The_summary_tables_hold_the_results_summary_with_the_chosen_level_highlighted()
+    public void The_summary_holds_the_finish_and_spread_tables_with_the_bell_curve_and_s_curve()
     {
-        var columns = Assert.IsType<ColumnsBlock>(fx.Doc.Sections[0].Blocks[0]);
-        var finish = Assert.IsType<TableBlock>(columns.Left[0]).Table;
+        var blocks = Titled("Summary & Charts").Blocks;
+        var finish = Assert.IsType<TableBlock>(blocks[0]).Table;
         Assert.Equal(new[] { "FINISH", "PRE-MITIGATION", "POST-MITIGATION" }, finish.Header.Select(h => h.Text.ToUpperInvariant()));
         Assert.Equal(new[] { "Deterministic", "Chance of deterministic", "P50", "P50 − deterministic", "P80", "P80 − deterministic", "Mean", "Median" },
                      finish.Rows.Select(r => r.Cells[0].Text));
         Assert.Equal(new[] { "P80", "P80 − deterministic" }, finish.Rows.Where(r => r.Highlight).Select(r => r.Cells[0].Text));
         Assert.Equal(2, finish.Rows[0].Cells[1].Span);                // the deterministic finish is shared by both columns
-        var right = columns.Right.Cast<TableBlock>().Select(t => t.Table.Header[0].Text).ToList();
-        Assert.Equal("Top risk drivers", right[0]);
-        Assert.StartsWith("Critical activities (", right[1]);
-        Assert.StartsWith("Near-critical activities (", right[2]);
+        Assert.Equal("Spread of the duration", Assert.IsType<TableBlock>(blocks[1]).Table.Header[0].Text);
+        Assert.Equal("histogram", Assert.IsType<ChartBlock>(blocks[2]).Chart.Key);
+        Assert.Equal("cumulative", Assert.IsType<ChartBlock>(blocks[3]).Chart.Key);
     }
 
     [Fact]
-    public void What_the_results_mean_follows_the_summary_with_its_glossary()
+    public void The_breakdown_lists_the_top_drivers_and_every_critical_and_near_critical_activity()
     {
-        Assert.DoesNotContain(fx.Doc.Sections[0].Blocks, b => b is TextBlock);   // the old footnote is in the glossary now
-        var notes = fx.Doc.Sections[1];
-        Assert.Equal(ResultsNarrative.Lead, notes.Lead);
-        Assert.Collection(notes.Blocks,
-            b =>
-            {
-                var n = Assert.IsType<NotesBlock>(b);
-                Assert.Null(n.Title);
-                Assert.Equal(new[] { "Current finish", "P50", "P80", "Mean and median", "Skewness", "Kurtosis", "Spread", "Mitigation",
-                                     "What drives it", "Critical activities", "About these results" }, n.Notes.Select(x => x.Label));
-                Assert.StartsWith("There is an 80% chance of finishing by ", n.Notes[2].Text);
-            },
-            b =>
-            {
-                var n = Assert.IsType<NotesBlock>(b);
-                Assert.Equal("Terms used", n.Title);
-                Assert.Equal(ResultsNarrative.Terms.Select(t => (t.Name, t.Meaning)), n.Notes.Select(x => (x.Label, x.Text)));
-            });
+        var tables = Titled("Risk & Activity Breakdown").Blocks.Cast<TableBlock>().Select(b => b.Table).ToList();
+        Assert.Equal("Top risk drivers", tables[0].Header[0].Text);
+        Assert.StartsWith("Critical activities (", tables[1].Header[0].Text);
+        Assert.StartsWith("Near-critical activities (", tables[2].Header[0].Text);
+        var sum = ResultsSummary.Build(fx.Pre, fx.Post, 80);
+        Assert.Equal(Math.Max(1, sum.Critical.Count), tables[1].Rows.Count);          // all of them, not the top five
+        Assert.Equal(Math.Max(1, sum.NearCritical.Count), tables[2].Rows.Count);
+        Assert.Null(tables[1].Note);
     }
 
     [Fact]
-    public void Every_format_explains_the_results()
+    public void Analysis_of_the_result_is_a_parameter_value_and_statement_table()
     {
-        var findings = Assert.IsType<NotesBlock>(fx.Doc.Sections[1].Blocks[0]).Notes;
-        string p80 = findings.Single(n => n.Label == "P80").Text;
+        var sec = Titled("Analysis of the Result");
+        Assert.Equal(ResultsNarrative.Lead, sec.Lead);
+        var t = Assert.IsType<TableBlock>(Assert.Single(sec.Blocks)).Table;
+        Assert.Equal(new[] { "Parameter", "Value", "Analysis Statement" }, t.Header.Select(h => h.Text));
+        Assert.Equal(new[] { "Current finish", "P50", "P80", "Mean and median", "Skewness", "Kurtosis", "Spread", "Mitigation",
+                             "What drives it", "Critical activities", "About these results" }, t.Rows.Select(r => r.Cells[0].Text));
+        Assert.All(t.Rows, r => Assert.False(string.IsNullOrWhiteSpace(r.Cells[1].Text)));
+        var p80 = t.Rows.Single(r => r.Cells[0].Text == "P80");
+        Assert.Matches(@"^\d\d-[A-Z][a-z]{2}-\d{4} \(\+?-?[\d,]+ working days\)$", p80.Cells[1].Text);
+        Assert.StartsWith("There is an 80% chance of finishing by ", p80.Cells[2].Text);
+        var terms = Assert.IsType<NotesBlock>(Assert.Single(Titled("Terms used").Blocks));
+        Assert.Equal(ResultsNarrative.Terms.Select(x => (x.Name, x.Meaning)), terms.Notes.Select(x => (x.Label, x.Text)));
+    }
+
+    [Fact]
+    public void Sensitivity_and_criticality_follow_the_analysis_and_milestones_are_the_annexure()
+    {
+        var sc = Titled("Sensitivity & Criticality");
+        var charts = sc.Blocks.OfType<ChartBlock>().Select(c => c.Chart.Key).ToList();
+        Assert.Equal(new[] { "risks", "criticality" }, charts);
+        Assert.Equal("Finish-Driving Activities", fx.Doc.Sections[fx.Doc.Sections.IndexOf(sc) + 1].Title);
+        Assert.Equal("Annexure: Milestones", fx.Doc.Sections[^1].Title);
+        Assert.DoesNotContain(fx.Doc.Sections, s => s.Title.Contains("Annexure") && s != fx.Doc.Sections[^1]);
+    }
+
+    [Fact]
+    public void The_pdf_contents_page_gives_each_sections_page()
+    {
+        var r = new MiniPdf(PdfReport.Write(fx.Doc, fx.Fonts, fx.Images));
+        var lines = r.Text().Split('\n');
+        int pages = int.Parse(Regex.Match(r.All, @"/Type /Pages /Kids \[[^\]]*\] /Count (\d+)").Groups[1].Value);
+        var titles = fx.Doc.Sections.Skip(1).Select(s => s.Title).ToList();
+        var numbers = new List<int>();
+        foreach (var title in titles)
+        {
+            // each entry: the title, its dotted leader, then the page number
+            int k = Array.FindIndex(lines, x => x == title);
+            while (k >= 0 && !(k + 2 < lines.Length && lines[k + 1].StartsWith("....") && int.TryParse(lines[k + 2], out _)))
+                k = Array.FindIndex(lines, k + 1, x => x == title);
+            Assert.True(k >= 0, $"no contents entry for {title}");
+            numbers.Add(int.Parse(lines[k + 2]));
+        }
+        Assert.Equal(2, numbers[0]);                                    // the health check starts after the contents page
+        Assert.Equal(numbers.OrderBy(n => n), numbers);
+        Assert.InRange(numbers[^1], 2, pages);
+    }
+
+    [Fact]
+    public void Every_format_has_the_contents_and_the_analysis_table()
+    {
+        var t = Assert.IsType<TableBlock>(Titled("Analysis of the Result").Blocks[0]).Table;
+        string p80 = t.Rows.Single(r => r.Cells[0].Text == "P80").Cells[2].Text;
 
         string pdf = new MiniPdf(PdfReport.Write(fx.Doc, fx.Fonts, fx.Images)).Text();
-        foreach (var expected in new[] { "What the results mean", "TERMS USED", "MEAN AND MEDIAN", "There is an 80% chance", "WORKING DAYS" })
+        foreach (var expected in new[] { "Table of Contents", "Analysis of the Result", "ANALYSIS STATEMENT", "Terms used", "Mean and median", "There is an 80% chance" })
             Assert.Contains(expected, pdf);
-        Assert.True(pdf.IndexOf("What the results mean") < pdf.IndexOf("Finish date distribution"));
+        Assert.True(pdf.LastIndexOf("Schedule Health Check: P6 Check Schedule") < pdf.LastIndexOf("Summary & Charts"));
+        Assert.True(pdf.LastIndexOf("Analysis of the Result") < pdf.LastIndexOf("Sensitivity & Criticality"));
 
         using (var zip = new ZipArchive(new MemoryStream(DocxReport.Write(fx.Doc, fx.Fonts, fx.Images))))
         {
             string body = Part(zip, "word/document.xml");
-            // hyphenated words (the date, 1-in-5) are kept whole with non-breaking hyphens
+            Assert.Contains(" TOC \\o \"1-1\" \\h \\z \\u ", body);
+            Assert.Contains("<w:updateFields w:val=\"true\"/>", Part(zip, "word/settings.xml"));
             Assert.Contains(p80, Regex.Replace(body.Replace("<w:noBreakHyphen/>", "-"), "<[^>]+>", ""));
             Assert.Contains("<w:noBreakHyphen/>", body);
-            Assert.Contains(">Terms used<", body);
-            Assert.True(body.IndexOf(">What the results mean<") < body.IndexOf(">Finish date distribution<"));
+            Assert.True(body.LastIndexOf(">Schedule Health Check: P6 Check Schedule<") < body.LastIndexOf(">Summary &amp; Charts<"));
+            Assert.True(body.LastIndexOf(">Analysis of the Result<") < body.LastIndexOf(">Sensitivity &amp; Criticality<"));
         }
 
         using (var zip = new ZipArchive(new MemoryStream(PptxReport.Write(fx.Doc, fx.Fonts, fx.Images))))
         {
             var slides = zip.Entries.Where(e => Regex.IsMatch(e.FullName, @"^ppt/slides/slide\d+\.xml$"))
                 .OrderBy(e => int.Parse(Regex.Match(e.FullName, @"\d+").Value)).Select(e => Part(zip, e.FullName)).ToList();
-            // the findings on one slide, the glossary on the next, both straight after the Summary's two slides
-            Assert.Contains(">What the results mean<", slides[3]);
-            Assert.Contains(ResultsNarrative.NoBreakHyphens(p80), slides[3]);
-            Assert.Contains("<a:normAutofit/>", slides[3]);
-            Assert.Contains(">What the results mean: Terms used<", slides[4]);
-            Assert.Contains(">Finish date distribution<", slides[5]);
+            Assert.Contains(">Table of Contents<", slides[1]);                         // straight after the title slide
+            // every contents entry names the slide its section starts on
+            foreach (Match m in Regex.Matches(slides[1], @">([^<]+)  ·  slide (\d+)<"))
+            {
+                string title = System.Net.WebUtility.HtmlDecode(m.Groups[1].Value);
+                Assert.Contains(">" + System.Security.SecurityElement.Escape(title), slides[int.Parse(m.Groups[2].Value) - 1]);
+            }
+            Assert.Equal(fx.Doc.Sections.Count - 1, Regex.Matches(slides[1], @"  ·  slide \d+<").Count);
         }
     }
 
     [Fact]
-    public void Without_risks_duration_sensitivity_takes_the_place_of_the_risk_ranking()
+    public void Without_risks_duration_sensitivity_takes_the_place_of_the_risk_tornado()
     {
         var s = TestData.Load("parallel_2.xer");
         var m = RiskModelLoader.LoadJson(s, """{"uncertainty":[{"filter":{"all":true},"distribution":"uniform","min":50,"mostLikely":100,"max":150}]}""");
         var mc = new MonteCarloEngine(s, m);
         var doc = ReportContent.Build(new ReportInput(s, SimulationSummary.Build(mc, mc.Run(200, 3)), Generated: ExportFixture.When), fx.Fonts);
         var titles = doc.Sections.Select(x => x.Title).ToList();
-        Assert.Contains("Duration sensitivity", titles);
-        Assert.DoesNotContain("Risk ranking", titles);
+        var sc = doc.Sections.Single(x => x.Title == "Sensitivity & Criticality");
+        Assert.Equal(new[] { "sensitivity", "criticality" }, sc.Blocks.OfType<ChartBlock>().Select(c => c.Chart.Key));
         Assert.DoesNotContain("Risk drivers", titles);
-        Assert.DoesNotContain(titles, t => t.StartsWith("Schedule health", StringComparison.Ordinal));
-        var finish = ((TableBlock)((ColumnsBlock)doc.Sections[0].Blocks[0]).Left[0]).Table;
+        Assert.DoesNotContain(titles, t => t.StartsWith("Schedule Health Check", StringComparison.Ordinal));
+        var finish = ((TableBlock)doc.Sections.Single(x => x.Title == "Summary & Charts").Blocks[0]).Table;
         Assert.Equal(2, finish.Columns);                               // no post-mitigation column
     }
 
@@ -271,7 +320,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.InRange(pages, 4, 12);
 
         string text = r.Text();
-        foreach (var expected in new[] { "Project risk analysis: SYN500", "Summary", "P80 − deterministic", "Finish date distribution",
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "Summary & Charts", "P80 − deterministic", "BELL CURVE: FINISH DATE DISTRIBUTION",
                                          "Confidence levels", "FINISH", Brand.Name, $"Page 1 of {pages}", "Engine check against P6" })
             Assert.Contains(expected, text);
     }
@@ -304,7 +353,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Empty(Validate(docx, word: true));
         using var zip = new ZipArchive(new MemoryStream(docx));
         string body = Part(zip, "word/document.xml");
-        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health: P6 Check Schedule", "DCMA 14-Point Assessment" })
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Bell curve: finish date distribution", "Schedule Health Check: P6 Check Schedule", "DCMA 14-Point Assessment" })
             Assert.Contains(expected, body);
         Assert.Equal(fx.Doc.Charts.Count(), zip.Entries.Count(e => e.FullName.StartsWith("word/media/") && e.Name != "logo.png"));
         Assert.Contains("<w:tblHeader/>", body);                     // table heads repeat on each page

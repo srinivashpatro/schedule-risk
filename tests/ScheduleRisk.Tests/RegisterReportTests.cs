@@ -70,8 +70,8 @@ public class RegisterReportTests : IClassFixture<ExportFixture>
     public void The_html_report_has_the_heat_maps_and_tables()
     {
         string html = HtmlReport.Build(fx.Schedule, fx.Pre, fx.Post, register: fx.Register, generated: ExportFixture.When);
-        Assert.Contains("<h2>Risk register</h2>", html);
-        Assert.Contains("<h2>Risk actions</h2>", html);
+        Assert.Matches(">Risk register</h2>", html);
+        Assert.Matches(">Risk actions</h2>", html);
         Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(html, "aria-label=\"Heat map").Count);
         Assert.Contains(">V.B<", html);
         Assert.Contains("Chase the second supplier", html);

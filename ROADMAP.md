@@ -533,6 +533,12 @@ To decide before the first item (the plan assumes the choice in brackets):
       carries a register and a cost-benefit, so the PDF checks and the Open XML validator cover the new
       sections in every format. 6 tests.
 
+- [x] Report structure in the owner's order: table of contents with page numbers (PDF), a TOC field (Word),
+      slide numbers (PowerPoint), links (HTML); schedule health check; Summary & Charts (bell curve and
+      S-curve); Risk & Activity Breakdown; Analysis of the Result as a Parameter / Value / Analysis
+      Statement table; Sensitivity & Criticality (risk tornado, criticality index); Finish-Driving
+      Activities; the remaining results; annexure of milestones only.
+
 ## Hosting and access
 
 - [ ] Restricted access with Cloudflare Access. A copy of the browser app that only invited users can
