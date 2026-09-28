@@ -543,6 +543,12 @@ To decide before the first item (the plan assumes the choice in brackets):
       fields, the Matrix sheet read back, opening replaces the register. The template is also in
       docs/risk-register-template.xlsx. 19 tests.
 
+- [x] Report structure in the owner's order: table of contents with page numbers (PDF), a TOC field (Word),
+      slide numbers (PowerPoint), links (HTML); schedule health check; Summary & Charts (bell curve and
+      S-curve); Risk & Activity Breakdown; Analysis of the Result as a Parameter / Value / Analysis
+      Statement table; Sensitivity & Criticality (risk tornado, criticality index); Finish-Driving
+      Activities; the remaining results; annexure of milestones only.
+
 ## Hosting and access
 
 - [ ] Restricted access with Cloudflare Access. A copy of the browser app that only invited users can

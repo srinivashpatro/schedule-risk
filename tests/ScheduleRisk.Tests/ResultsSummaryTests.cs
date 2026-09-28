@@ -169,7 +169,7 @@ public class ResultsSummaryTests
         var s = TestData.Load("parallel_1.xer");
         var (pre, post) = Run("parallel_1.xer", DiscreteRisk);
         string html = HtmlReport.Build(s, pre, post);
-        Assert.Contains("<h2>Summary</h2>", html);
+        Assert.Matches("<h2 id=\"s\\d+\">Summary &amp; Charts</h2>", html);
         Assert.Contains("Top risk drivers", html);
         Assert.Contains("Near-critical", html);
         Assert.Contains("Kurtosis (excess)", html);

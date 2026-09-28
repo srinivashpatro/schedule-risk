@@ -43,7 +43,7 @@ h2+.lead{margin:-4px 0 10px}dl.notes{margin:0;background:var(--card);border:1px 
 dl.notes>div{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:4px 20px;padding:10px 0;border-top:1px solid var(--line)}dl.notes>div:first-child{border-top:0}
 dl.notes dt{font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding-top:2px}dl.notes dd{margin:0;max-width:68ch}
 dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.nw{white-space:nowrap}@media (max-width:560px){dl.notes>div{grid-template-columns:minmax(0,1fr)}}");
+.nw{white-space:nowrap}.toc{columns:2 280px;margin:0;padding-left:22px}.toc a{color:var(--fg)}@media (max-width:560px){dl.notes>div{grid-template-columns:minmax(0,1fr)}}");
         sb.Append("</style></head><body><main>");
         sb.Append("<h1>Project risk analysis: ").Append(E(s.ProjectCode)).Append("</h1>");
         var summary = ResultsSummary.Build(pre, post);
@@ -51,10 +51,40 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         if (!string.IsNullOrEmpty(modelName)) sb.Append(" &middot; risk model: ").Append(E(modelName));
         sb.Append("<br>").Append(E(summary.Run)).Append("</div>");
 
+        sb.Append("<!--contents-->");
+        if (health != null)
+        {
+            void HealthTable(string title, IEnumerable<HealthItem> items)
+            {
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                sb.Append("<h2>").Append(E(title)).Append("</h2><p class=\"muted\">").Append(p).Append(" passed, ").Append(f).Append(" failed, ")
+                  .Append(na).Append(" not applicable.</p><div class=\"wrap\"><table><tr><th>Check</th><th>Status</th><th>Actual</th><th>Target</th><th>Count</th><th>Notes</th></tr>");
+                foreach (var i in list)
+                {
+                    bool pass = i.Status == HealthStatus.Pass, na1 = i.Status == HealthStatus.NotApplicable;
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    sb.Append("<tr><td>").Append(E((i.Number != null ? i.Number + ". " : "") + i.Label)).Append("</td><td class=\"")
+                      .Append(pass ? "pass" : na1 ? "muted" : "fail").Append("\">").Append(E(i.StatusText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.ActualText)).Append("</td><td class=\"n\">").Append(E(i.TargetText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.CountText)).Append("</td><td>").Append(E(note)).Append("</td></tr>");
+                }
+                sb.Append("</table></div>");
+            }
+            HealthTable("Schedule Health Check: P6 Check Schedule", health.P6);
+            HealthTable("Schedule Health Check: DCMA 14-Point Assessment", health.Dcma);
+        }
+        if (verify != null)
+        {
+            sb.Append("<h2>Engine check against P6</h2><p>").Append(verify.FieldsMatched).Append(" of ").Append(verify.FieldsCompared)
+              .Append(" date and float fields match the values P6 stored in the file (").Append(verify.ActivitiesMatched).Append(" of ")
+              .Append(verify.Compared).Append(" activities fully match).</p>");
+        }
         Summary(sb, summary, post != null);
-        Notes(sb, ResultsNarrative.Build(pre, post, summary: summary));
-
-        sb.Append("<h2>Project finish distribution</h2><div class=\"card\">");
+        sb.Append("<h3>Bell curve: finish date distribution</h3><div class=\"card\">");
+        sb.Append(SCurve(pre, post, s, histogram: true, bins: HistogramBins.Daily));
+        sb.Append("</div><h3>Risk analysis: cumulative probability of finish</h3><div class=\"card\">");
         sb.Append(SCurve(pre, post, s, bins: HistogramBins.Daily));
         sb.Append("<div class=\"legend\"><span><i class=\"sw\" style=\"background:var(--a)\"></i>Pre-mitigation</span>");
         if (post != null) sb.Append("<span><i class=\"sw\" style=\"background:var(--b)\"></i>Post-mitigation</span>");
@@ -66,6 +96,31 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
                 : $"Must Finish By {D(pre.MustFinishBy)}, off the chart ({(pre.MustFinishBy > pre.SortedFinish[^1] ? "later" : "earlier")})").Append("</span>");
         }
         sb.Append("</div></div>");
+
+        Breakdown(sb, summary);
+        Analysis(sb, ResultsNarrative.Build(pre, post, summary: summary));
+        sb.Append("<h2>Sensitivity &amp; Criticality</h2>");
+        if (pre.Risks.Count > 0)
+        {
+            sb.Append("<h3>Sensitivity analysis: risk tornado</h3><p class=\"muted\">Sorted by rank correlation between the risk's realised impact and the project finish. The delta is the mean finish when the risk occurs minus when it does not.</p>");
+            sb.Append("<div class=\"card\">").Append(Tornado(RiskTornado.Build(pre, post, 15))).Append("</div>");
+            sb.Append("<div class=\"wrap\" style=\"margin-top:10px\"><table><tr><th>Risk</th><th>Occurred</th><th>Sensitivity</th><th>Finish delta (working days)</th></tr>");
+            foreach (var r in pre.Risks)
+                sb.Append("<tr><td>").Append(E(r.Id)).Append(" ").Append(E(r.Title)).Append("</td><td class=\"n\">").Append(F(r.Occurrence * 100, 0))
+                  .Append("%</td><td class=\"n\">").Append(F(r.Sensitivity, 2)).Append("</td><td class=\"n\">")
+                  .Append(r.MeanFinishDeltaDays.HasValue ? F(r.MeanFinishDeltaDays.Value, 1) : "").Append("</td></tr>");
+            sb.Append("</table></div>");
+        }
+        sb.Append("<h3>Criticality index</h3><p class=\"muted\">Share of iterations in which the activity sits on the critical path.</p><div class=\"card\">")
+          .Append(Tornado(pre.Activities.OrderByDescending(a => a.Criticality).ThenByDescending(a => a.Cruciality).Take(12)
+              .Select(a => (a.Code + " " + a.Name, a.Criticality)).ToList())).Append("</div>");
+        sb.Append("<h2>Finish-Driving Activities</h2><p class=\"muted\">Criticality: share of iterations on the critical path. Sensitivity: rank correlation of duration with finish. Cruciality = criticality &times; sensitivity.</p>");
+        sb.Append("<div class=\"wrap\"><table><tr><th>Activity</th><th>Criticality</th><th>Sensitivity</th><th>Cruciality</th></tr>");
+        foreach (var a in pre.Activities.Take(25))
+            sb.Append("<tr><td>").Append(E(a.Code)).Append(" <span class=\"muted\">").Append(E(a.Name)).Append("</span></td><td class=\"n\">")
+              .Append(F(a.Criticality * 100, 0)).Append("%</td><td class=\"n\">").Append(F(a.Sensitivity, 2)).Append("</td><td class=\"n\">")
+              .Append(F(a.Cruciality, 3)).Append("</td></tr>");
+        sb.Append("</table></div>");
 
         sb.Append("<h2>Confidence levels</h2><div class=\"wrap\"><table><tr><th>Percentile</th><th>Pre-mitigation</th>");
         if (post != null) sb.Append("<th>Post-mitigation</th><th>Improvement (working days)</th>");
@@ -81,41 +136,6 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
             sb.Append("</tr>");
         }
         sb.Append("</table></div>");
-
-        if (pre.Risks.Count > 0)
-        {
-            sb.Append("<h2>Risk ranking</h2><p class=\"muted\">Sorted by rank correlation between the risk's realised impact and the project finish. The delta is the mean finish when the risk occurs minus when it does not.</p>");
-            sb.Append("<div class=\"card\">").Append(Tornado(RiskTornado.Build(pre, post, 15))).Append("</div>");
-            sb.Append("<div class=\"wrap\" style=\"margin-top:10px\"><table><tr><th>Risk</th><th>Occurred</th><th>Sensitivity</th><th>Finish delta (working days)</th></tr>");
-            foreach (var r in pre.Risks)
-                sb.Append("<tr><td>").Append(E(r.Id)).Append(" ").Append(E(r.Title)).Append("</td><td class=\"n\">").Append(F(r.Occurrence * 100, 0))
-                  .Append("%</td><td class=\"n\">").Append(F(r.Sensitivity, 2)).Append("</td><td class=\"n\">")
-                  .Append(r.MeanFinishDeltaDays.HasValue ? F(r.MeanFinishDeltaDays.Value, 1) : "").Append("</td></tr>");
-            sb.Append("</table></div>");
-        }
-        if (pre.Drivers.Count > 0)
-        {
-            sb.Append("<h2>Risk drivers</h2><div class=\"card\">")
-              .Append(Tornado(pre.Drivers.Select(d => (d.Id + " " + d.Title, d.Sensitivity)).ToList())).Append("</div>");
-        }
-
-        sb.Append("<h2>Activities that drive the finish</h2><p class=\"muted\">Criticality: share of iterations on the critical path. Sensitivity: rank correlation of duration with finish. Cruciality = criticality &times; sensitivity.</p>");
-        sb.Append("<div class=\"wrap\"><table><tr><th>Activity</th><th>Criticality</th><th>Sensitivity</th><th>Cruciality</th></tr>");
-        foreach (var a in pre.Activities.Take(25))
-            sb.Append("<tr><td>").Append(E(a.Code)).Append(" <span class=\"muted\">").Append(E(a.Name)).Append("</span></td><td class=\"n\">")
-              .Append(F(a.Criticality * 100, 0)).Append("%</td><td class=\"n\">").Append(F(a.Sensitivity, 2)).Append("</td><td class=\"n\">")
-              .Append(F(a.Cruciality, 3)).Append("</td></tr>");
-        sb.Append("</table></div>");
-
-        if (pre.Milestones.Count > 0)
-        {
-            sb.Append("<h2>Milestones</h2><div class=\"wrap\"><table><tr><th>Milestone</th><th>Deterministic</th><th>P10</th><th>P50</th><th>P80</th><th>P90</th></tr>");
-            foreach (var m in pre.Milestones)
-                sb.Append("<tr><td>").Append(E(m.Code)).Append(" <span class=\"muted\">").Append(E(m.Name)).Append("</span></td><td class=\"n\">")
-                  .Append(D(m.Deterministic)).Append("</td><td class=\"n\">").Append(D(m.P10)).Append("</td><td class=\"n\">").Append(D(m.P50))
-                  .Append("</td><td class=\"n\">").Append(D(m.P80)).Append("</td><td class=\"n\">").Append(D(m.P90)).Append("</td></tr>");
-            sb.Append("</table></div>");
-        }
 
         if (costBenefit is { Rows.Count: > 0 } cb)
         {
@@ -162,39 +182,27 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
                 sb.Append("</table></div>");
             }
         }
-        if (health != null)
+        if (pre.Drivers.Count > 0)
         {
-            void HealthTable(string title, IEnumerable<HealthItem> items)
-            {
-                var list = items.ToList();
-                var (p, f, na) = health.Score(list);
-                sb.Append("<h2>").Append(E(title)).Append("</h2><p class=\"muted\">").Append(p).Append(" passed, ").Append(f).Append(" failed, ")
-                  .Append(na).Append(" not applicable.</p><div class=\"wrap\"><table><tr><th>Check</th><th>Status</th><th>Actual</th><th>Target</th><th>Count</th><th>Notes</th></tr>");
-                foreach (var i in list)
-                {
-                    bool pass = i.Status == HealthStatus.Pass, na1 = i.Status == HealthStatus.NotApplicable;
-                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
-                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
-                    sb.Append("<tr><td>").Append(E((i.Number != null ? i.Number + ". " : "") + i.Label)).Append("</td><td class=\"")
-                      .Append(pass ? "pass" : na1 ? "muted" : "fail").Append("\">").Append(E(i.StatusText)).Append("</td><td class=\"n\">")
-                      .Append(E(i.ActualText)).Append("</td><td class=\"n\">").Append(E(i.TargetText)).Append("</td><td class=\"n\">")
-                      .Append(E(i.CountText)).Append("</td><td>").Append(E(note)).Append("</td></tr>");
-                }
-                sb.Append("</table></div>");
-            }
-            HealthTable("Schedule health: P6 Check Schedule", health.P6);
-            HealthTable("Schedule health: DCMA 14-Point Assessment", health.Dcma);
+            sb.Append("<h2>Risk drivers</h2><div class=\"card\">")
+              .Append(Tornado(pre.Drivers.Select(d => (d.Id + " " + d.Title, d.Sensitivity)).ToList())).Append("</div>");
         }
-        if (verify != null)
+
+        Terms(sb);
+        if (pre.Milestones.Count > 0)
         {
-            sb.Append("<h2>Engine check against P6</h2><p>").Append(verify.FieldsMatched).Append(" of ").Append(verify.FieldsCompared)
-              .Append(" date and float fields match the values P6 stored in the file (").Append(verify.ActivitiesMatched).Append(" of ")
-              .Append(verify.Compared).Append(" activities fully match).</p>");
+            sb.Append("<h2>Annexure: Milestones</h2><div class=\"wrap\"><table><tr><th>Milestone</th><th>Deterministic</th><th>P10</th><th>P50</th><th>P80</th><th>P90</th></tr>");
+            foreach (var m in pre.Milestones)
+                sb.Append("<tr><td>").Append(E(m.Code)).Append(" <span class=\"muted\">").Append(E(m.Name)).Append("</span></td><td class=\"n\">")
+                  .Append(D(m.Deterministic)).Append("</td><td class=\"n\">").Append(D(m.P10)).Append("</td><td class=\"n\">").Append(D(m.P50))
+                  .Append("</td><td class=\"n\">").Append(D(m.P80)).Append("</td><td class=\"n\">").Append(D(m.P90)).Append("</td></tr>");
+            sb.Append("</table></div>");
         }
+
         sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append((generated ?? DateTime.Now).ToString("yyyy-MM-dd HH:mm", Inv))
           .Append(" by ").Append(Brand.Name).Append(' ').Append(Brand.Version).Append(".</p>");
         sb.Append("</main></body></html>");
-        return sb.ToString();
+        return Contents(sb.ToString());
     }
 
     /// <summary>The Results summary, laid out as in the browser app: finish figures and the spread of the duration (pre and
@@ -235,15 +243,35 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
             if (count > Top) sb.Append("<p class=\"muted\">and ").Append((count - Top).ToString("N0", Inv)).Append(" more</p>");
         }
 
-        sb.Append("<h2>Summary</h2><div class=\"sum\"><div>");
+        sb.Append("<h2>Summary &amp; Charts</h2><div class=\"sum\"><div>");
         Rows("Finish", sum.Finish);
-        Rows("Spread of the duration", sum.Spread);
         sb.Append("</div><div>");
+        Rows("Spread of the duration", sum.Spread);
+        sb.Append("</div></div>");
+    }
+
+    /// <summary>The top risk drivers and every critical and near-critical activity.</summary>
+    private static void Breakdown(StringBuilder sb, ResultsSummary sum)
+    {
+        void Named(string title, string valueHead, IEnumerable<(string Id, string Name, string Value)> rows, int count)
+        {
+            sb.Append("<h3>").Append(E(title));
+            if (count >= 0) sb.Append(": ").Append(count.ToString("N0", Inv));
+            sb.Append("</h3>");
+            var list = rows.ToList();
+            if (list.Count == 0) { sb.Append("<p class=\"muted\">None.</p>"); return; }
+            sb.Append("<div class=\"wrap\"><table><tr><th>").Append(E(valueHead == "Criticality" || sum.DriversAreActivities ? "Activity" : "Risk or driver"))
+              .Append("</th><th class=\"n\">").Append(E(valueHead)).Append("</th></tr>");
+            foreach (var (id, name, value) in list)
+                sb.Append("<tr><td>").Append(E(id)).Append(" <span class=\"muted\">").Append(E(name)).Append("</span></td><td class=\"n\">")
+                  .Append(E(value)).Append("</td></tr>");
+            sb.Append("</table></div>");
+        }
+        sb.Append("<h2>Risk &amp; Activity Breakdown</h2>");
         if (sum.Drivers.Count == 0) sb.Append("<h3>Top risk drivers</h3><p class=\"muted\">Nothing in the model varies the finish.</p>");
         else Named("Top risk drivers", "Sensitivity", sum.Drivers.Select(d => (d.Id, d.Title, F(d.Sensitivity, 2))), -1);
         Named("Critical activities", "Criticality", sum.Critical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.Critical.Count);
         Named("Near-critical activities", "Criticality", sum.NearCritical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))), sum.NearCritical.Count);
-        sb.Append("</div></div>");
     }
 
     /// <summary>Encoded text with each hyphenated word (a date such as 13-Sep-2028, or 1-in-5) kept on one line.</summary>
@@ -259,19 +287,36 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         return sb.Append(E(text[at..])).ToString();
     }
 
-    /// <summary>"What the results mean": the plain-language findings, then the glossary (the browser app shows the same).</summary>
-    private static void Notes(StringBuilder sb, ResultsNarrative notes)
+    /// <summary>"Analysis of the Result": each figure as parameter, value and analysis statement.</summary>
+    private static void Analysis(StringBuilder sb, ResultsNarrative notes)
     {
-        void List(string cls, IEnumerable<(string Dt, string Dd)> items)
+        sb.Append("<h2>Analysis of the Result</h2><p class=\"muted lead\">").Append(E(ResultsNarrative.Lead)).Append("</p>");
+        sb.Append("<div class=\"wrap\"><table><tr><th>Parameter</th><th>Value</th><th>Analysis Statement</th></tr>");
+        foreach (var f in notes.Findings)
+            sb.Append("<tr><td><b>").Append(E(f.Label)).Append("</b></td><td>").Append(Unbroken(f.Value)).Append("</td><td>").Append(Unbroken(f.Text)).Append("</td></tr>");
+        sb.Append("</table></div>");
+    }
+
+    /// <summary>The glossary (the browser app shows the same).</summary>
+    private static void Terms(StringBuilder sb)
+    {
+        sb.Append("<h2>Terms used</h2><dl class=\"notes terms\">");
+        foreach (var t in ResultsNarrative.Terms) sb.Append("<div><dt>").Append(E(t.Name)).Append("</dt><dd>").Append(Unbroken(t.Meaning)).Append("</dd></div>");
+        sb.Append("</dl>");
+    }
+
+    /// <summary>Gives each section heading an id and puts a linked Table of Contents where the report marks it.</summary>
+    private static string Contents(string html)
+    {
+        var toc = new StringBuilder("<h2 id=\"contents\">Table of Contents</h2><ol class=\"toc\">");
+        int k = 0;
+        string body = Regex.Replace(html, "<h2>(.*?)</h2>", m =>
         {
-            sb.Append("<dl class=\"").Append(cls).Append("\">");
-            foreach (var (dt, dd) in items) sb.Append("<div><dt>").Append(E(dt)).Append("</dt><dd>").Append(Unbroken(dd)).Append("</dd></div>");
-            sb.Append("</dl>");
-        }
-        sb.Append("<h2>What the results mean</h2><p class=\"muted lead\">").Append(E(ResultsNarrative.Lead)).Append("</p>");
-        List("notes", notes.Findings.Select(f => (f.Label, f.Text)));
-        sb.Append("<h3>Terms used</h3>");
-        List("notes terms", ResultsNarrative.Terms.Select(t => (t.Name, t.Meaning)));
+            string id = "s" + ++k;
+            toc.Append("<li><a href=\"#").Append(id).Append("\">").Append(m.Groups[1].Value).Append("</a></li>");
+            return $"<h2 id=\"{id}\">{m.Groups[1].Value}</h2>";
+        });
+        return body.Replace("<!--contents-->", toc.Append("</ol>").ToString());
     }
 
     /// <summary>

@@ -5,8 +5,8 @@ using ScheduleRisk.Core.Simulation;
 
 namespace ScheduleRisk.Core.Reporting;
 
-/// <summary>One plain-language note on the results: a short label and one to three sentences.</summary>
-public sealed record Finding(string Key, string Label, string Text);
+/// <summary>One plain-language note on the results: a short label, the figure it is about, and one to three sentences.</summary>
+public sealed record Finding(string Key, string Label, string Text, string Value = "");
 
 /// <summary>A glossary entry: the term and one or two plain sentences.</summary>
 public sealed record Term(string Name, string Meaning);
@@ -71,30 +71,31 @@ public sealed class ResultsNarrative
     {
         var sum = summary ?? ResultsSummary.Build(pre, post, percentile);
         var f = new List<Finding>();
-        void Add(string key, string label, params string[] sentences) =>
-            f.Add(new Finding(key, label, string.Join(' ', sentences.Where(x => x.Length > 0))));
+        void Add(string key, string label, string value, params string[] sentences) =>
+            f.Add(new Finding(key, label, string.Join(' ', sentences.Where(x => x.Length > 0)), value));
+        static string Days(double d) => (Whole(d) > 0 ? "+" : "") + Whole(d).ToString("N0", Inv) + " working days";
         int n = Math.Max(1, pre.SortedFinish.Length);
         double det = pre.Duration.Deterministic;
         string before = post != null ? "Before mitigation, " : "";
         bool flat = pre.Duration.Stdev == 0;
 
-        Add("finish", "Current finish",
+        Add("finish", "Current finish", $"{Day(pre.DeterministicFinish)} ({ResultsSummary.Pct(pre.ProbMeetDeterministic)})",
             $"The current schedule finishes on {Day(pre.DeterministicFinish)}, with no allowance for risk.",
             $"Based on this model, that date is {Band(ResultsSummary.Percent(pre.ProbMeetDeterministic))}: {FinishBy(pre.ProbMeetDeterministic, n)}.");
         if (pre.ProbMeetMustFinishBy is double mfb)
-            Add("deadline", "Must Finish By",
+            Add("deadline", "Must Finish By", $"{Day(pre.MustFinishBy)} ({ResultsSummary.Pct(mfb)})",
                 $"The project's deadline in P6, its Must Finish By date, is {Day(pre.MustFinishBy)}.",
                 $"Based on this model, meeting it is {Band(ResultsSummary.Percent(mfb))}: {FinishBy(mfb, n)}.");
 
         if (flat)
-            Add("flat", "No spread", $"Every simulated outcome finishes on {Day(pre.FinishMin)}: the model adds no variation, so there is no spread to describe.");
+            Add("flat", "No spread", Day(pre.FinishMin), $"Every simulated outcome finishes on {Day(pre.FinishMin)}: the model adds no variation, so there is no spread to describe.");
         else
         {
             long d50 = Statistics.PercentileSorted(pre.SortedFinish, 50);
             double c50 = pre.DurationAt(50) - det;
             double share50 = ShareBy(pre.SortedFinish, d50);
             bool coin = Math.Abs(ResultsSummary.Percent(share50) - 50) <= LevelTolerance;
-            Add("p50", "P50",
+            Add("p50", "P50", $"{Day(d50)} ({Days(c50)})",
                 coin ? $"The P50 date, {Day(d50)}, is a coin flip: half the outcomes finish by then, and half finish later."
                      : $"The P50 date, {Day(d50)}, is the middle outcome; in fact {FinishBy(share50, n)}.",
                 Whole(c50) == 0 ? $"It falls on the current schedule's finish{(coin ? ", but a coin flip is not a date to promise" : "")}."
@@ -103,7 +104,7 @@ public sealed class ResultsNarrative
             long d80 = Statistics.PercentileSorted(pre.SortedFinish, 80);
             double c80 = pre.DurationAt(80) - det;
             double share80 = ShareBy(pre.SortedFinish, d80);
-            Add("p80", "P80",
+            Add("p80", "P80", $"{Day(d80)} ({Days(c80)})",
                 Math.Abs(ResultsSummary.Percent(share80) - 80) <= LevelTolerance
                     ? $"There is an 80% chance of finishing by {Day(d80)} (the P80), and a 1-in-5 chance of finishing later."
                     : $"The P80 date, {Day(d80)}, is the earliest date with at least an 80% chance: {FinishBy(share80, n)}.",
@@ -117,7 +118,7 @@ public sealed class ResultsNarrative
                 long dp = Statistics.PercentileSorted(pre.SortedFinish, p);
                 double cp = pre.DurationAt(p) - det;
                 double shareP = ShareBy(pre.SortedFinish, dp);
-                Add("level", $"P{p} (chosen)",
+                Add("level", $"P{p} (chosen)", $"{Day(dp)} ({Days(cp)})",
                     Math.Abs(ResultsSummary.Percent(shareP) - p) <= LevelTolerance
                         ? $"At the level chosen on the chart, P{p}, there is {Article(p)} {p}% chance of finishing by {Day(dp)}."
                         : $"At the level chosen on the chart, P{p}, the date is {Day(dp)}; {FinishBy(shareP, n)}.",
@@ -133,17 +134,17 @@ public sealed class ResultsNarrative
                 : side == 0 ? "They are about the same, which suggests the outcomes spread evenly on both sides."
                 : side > 0 ? $"The average is {About(gap)} later because some very late outcomes drag it later."
                 : $"The average is {About(gap)} earlier because some very early outcomes drag it earlier.";
-            Add("centre", "Mean and median",
+            Add("centre", "Mean and median", $"Mean {Day(pre.FinishMean)}; median {Day(pre.FinishMedian)}",
                 $"The average finish (the mean) is {Day(pre.FinishMean)}, while the middle outcome (the median) is {Day(pre.FinishMedian)}.", centre);
 
             if (pre.Duration.Skewness is double sk)
-                Add("skew", "Skewness", SkewSentence(sk, risks: pre.Risks.Count > 0));
+                Add("skew", "Skewness", sk.ToString("F2", Inv), SkewSentence(sk, risks: pre.Risks.Count > 0));
             if (pre.Duration.Kurtosis is double ku)
-                Add("tails", "Kurtosis", TailsSentence(ku));
+                Add("tails", "Kurtosis", ku.ToString("F2", Inv), TailsSentence(ku));
 
             double width = pre.DurationAt(90) - pre.DurationAt(10);
             string ofLength = det > 0 ? $", {Math.Round(Math.Abs(width) / det * 100, MidpointRounding.AwayFromZero).ToString("F0", Inv)}% of the current schedule's length," : "";
-            Add("spread", "Spread",
+            Add("spread", "Spread", $"{Day(pre.FinishPercentiles[10])} to {Day(pre.FinishPercentiles[90])}",
                 $"The middle 80% of outcomes (P10 to P90) finish between {Day(pre.FinishPercentiles[10])} and {Day(pre.FinishPercentiles[90])}.",
                 Whole(width) == 0 ? "That range is under 1 working day, so the finish barely varies."
                     : $"That range of {About(width)}{ofLength} shows how uncertain the finish is.");
@@ -154,16 +155,16 @@ public sealed class ResultsNarrative
             double gain = pre.DurationAt(80) - post.DurationAt(80);
             long post80 = Statistics.PercentileSorted(post.SortedFinish, 80);
             int a = ResultsSummary.Percent(pre.ProbMeetDeterministic), b = ResultsSummary.Percent(post.ProbMeetDeterministic);
-            Add("mitigation", "Mitigation",
+            Add("mitigation", "Mitigation", $"P80 {Day(post80)} ({Days(-gain)})",
                 Whole(gain) == 0 ? "The planned mitigation does not move the P80."
                     : $"With the planned mitigation, the P80 moves to {Day(post80)}, {About(gain)} {(gain > 0 ? "earlier" : "later")}.",
                 a == b ? $"The current schedule's finish stays {Band(b)} ({b}%)."
                     : $"The chance of meeting the current schedule's finish {(b > a ? "rises" : "falls")} from {a}% to {b}%.");
         }
 
-        Add("drivers", "What drives it", Drivers(sum, before));
-        Add("critical", "Critical activities", Critical(sum, before));
-        Add("caveat", "About these results",
+        Add("drivers", "What drives it", sum.Drivers.Count > 0 ? $"{sum.Drivers[0].Id} {sum.Drivers[0].Title}".Trim() : "None", Drivers(sum, before));
+        Add("critical", "Critical activities", $"{sum.Critical.Count.ToString("N0", Inv)} critical, {sum.NearCritical.Count.ToString("N0", Inv)} near-critical", Critical(sum, before));
+        Add("caveat", "About these results", $"{n.ToString("N0", Inv)} iterations",
             $"These results come from {n.ToString("N0", Inv)} simulated outcomes of this schedule and risk model, so they are only as good as its logic and data.",
             n < RoughBelow ? $"With fewer than {RoughBelow.ToString("N0", Inv)} outcomes, the P-dates are rough estimates."
                 : pre.Converged == true ? "The simulation ran until the P-dates stopped changing noticeably." : "");

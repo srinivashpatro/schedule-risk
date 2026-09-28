@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Reporting;
 using ScheduleRisk.Core.Risk;
@@ -262,17 +263,26 @@ public class ResultsNarrativeTests
     }
 
     [Fact]
-    public void The_html_report_explains_the_results_right_after_the_summary()
+    public void The_html_report_follows_the_owners_order_with_a_linked_contents_list()
     {
         var s = TestData.Load("parallel_1.xer");
         var (pre, post) = Json("parallel_1.xer", DiscreteRisk, 1000, 5, post: true);
-        string html = HtmlReport.Build(s, pre, post);
-        int summary = html.IndexOf("<h2>Summary</h2>"), notes = html.IndexOf("<h2>What the results mean</h2>"),
-            terms = html.IndexOf("<h3>Terms used</h3>"), chart = html.IndexOf("<h2>Project finish distribution</h2>");
-        Assert.True(summary >= 0 && summary < notes && notes < terms && terms < chart, $"{summary} {notes} {terms} {chart}");
-        Assert.Contains("<dt>Mean and median</dt><dd>The average finish (the mean) is <span class=\"nw\">21-Jan-2026</span>", html);
+        var hc = HealthCheck.Run(s, new ScheduleRisk.Core.Cpm.CpmEngine(s).Run());
+        string html = HtmlReport.Build(s, pre, post, hc);
+        var heads = Regex.Matches(html, "<h2 id=\"(s\\d+)\">(.*?)</h2>").Select(m => (Id: m.Groups[1].Value, Title: m.Groups[2].Value)).ToList();
+        Assert.Equal(new[]
+        {
+            "Schedule Health Check: P6 Check Schedule", "Schedule Health Check: DCMA 14-Point Assessment", "Summary &amp; Charts",
+            "Risk &amp; Activity Breakdown", "Analysis of the Result", "Sensitivity &amp; Criticality", "Finish-Driving Activities",
+            "Confidence levels", "Terms used", "Annexure: Milestones",
+        }, heads.Select(h => h.Title).Where(t => t != "Risk drivers"));
+        // the contents list comes first and links every heading
+        int contents = html.IndexOf("<h2 id=\"contents\">Table of Contents</h2>");
+        Assert.True(contents >= 0 && contents < html.IndexOf("<h2 id=\"s1\">"));
+        foreach (var (id, title) in heads) Assert.Contains($"<li><a href=\"#{id}\">{title}</a></li>", html);
+        Assert.Contains("<th>Parameter</th><th>Value</th><th>Analysis Statement</th>", html);
+        Assert.Contains("<td><b>Mean and median</b></td><td>Mean <span class=\"nw\">21-Jan-2026</span>", html);
         Assert.Contains("<dt>Working days</dt>", html);
-        // the Summary's old footnote now lives in the glossary
-        Assert.DoesNotContain("Durations are working days of the project calendar from the project start; contingency is", html);
+        Assert.DoesNotContain("What the results mean", html);
     }
 }
