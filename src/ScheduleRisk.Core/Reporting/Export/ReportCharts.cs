@@ -27,7 +27,8 @@ public static class ReportCharts
     public static Chart Distribution(string key, string title, SimulationSummary pre, SimulationSummary? post, Schedule s,
                                      int percentile, bool histogram, ReportFonts fonts)
     {
-        string svg = HtmlReport.SCurve(pre, post, s, interactive: false, percentile: percentile, histogram: histogram);
+        string svg = HtmlReport.SCurve(pre, post, s, interactive: false, percentile: percentile, histogram: histogram,
+            bins: HistogramBins.Daily);
         string inner = svg[(svg.IndexOf('>') + 1)..svg.LastIndexOf("</svg>", StringComparison.Ordinal)];
         const int plot = 300;
 
@@ -37,7 +38,7 @@ public static class ReportCharts
             items.Add(("a", "Pre-mitigation"));
             if (post != null) items.Add(("b", "Post-mitigation"));
         }
-        items.Add(("boxes", (post != null ? "Pre-mitigation finish dates" : "Finish dates") + $", red up to P{percentile}"));
+        items.Add(("boxes", (post != null ? "Pre-mitigation finish dates" : "Finish dates") + $" per day, red up to P{percentile}"));
         items.Add(("dash", "Deterministic finish"));
 
         var legend = new StringBuilder();

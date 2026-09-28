@@ -55,7 +55,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         Notes(sb, ResultsNarrative.Build(pre, post, summary: summary));
 
         sb.Append("<h2>Project finish distribution</h2><div class=\"card\">");
-        sb.Append(SCurve(pre, post, s));
+        sb.Append(SCurve(pre, post, s, bins: HistogramBins.Daily));
         sb.Append("<div class=\"legend\"><span><i class=\"sw\" style=\"background:var(--a)\"></i>Pre-mitigation</span>");
         if (post != null) sb.Append("<span><i class=\"sw\" style=\"background:var(--b)\"></i>Post-mitigation</span>");
         sb.Append("<span>Dashed line: deterministic finish</span>");
@@ -544,7 +544,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
 /// <summary>How the finish date histogram groups its bars.</summary>
 public enum HistogramBins
 {
-    /// <summary>40 equal bins over the chart range (the static report).</summary>
+    /// <summary>40 equal bins over the chart range .</summary>
     Auto,
     /// <summary>One bar per calendar day.</summary>
     Daily,
