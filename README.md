@@ -45,8 +45,8 @@ Red, Amber or Green cell by cell, all editable) and saves the register as a JSON
 (docs/RISK_REGISTER.md). Step 02 proposes risks as cause, event and effect, approves or rejects them,
 and searches and filters the register. Step 03 assesses approved risks at three points (inherent,
 current, target) on a heat map that draws each risk's movement, with responses, owners, costs and
-actions. Not yet: Promote, which fill the register and feed it to the
-model (see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
+actions. Not yet: Promote, which turns the register's Red and Amber risks into risks in the model
+(see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
