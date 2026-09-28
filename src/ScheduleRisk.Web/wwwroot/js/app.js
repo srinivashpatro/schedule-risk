@@ -236,7 +236,10 @@ window.sraPicker = {
             layer.setAttribute("visibility", "visible");
 
             const nb = d.bins.length;
-            const bin = Math.max(0, Math.min(nb - 1, Math.floor((end - d.lo) / (d.hi - d.lo) * nb)));
+            // the bar holding the last minute of day k
+            let bin = 0;
+            if (d.edges) { const t = Math.min(end - 1, d.hi - 1); while (bin < nb - 1 && d.edges[bin + 1] <= t) bin++; }
+            else bin = Math.max(0, Math.min(nb - 1, Math.floor((end - d.lo) / (d.hi - d.lo) * nb)));
             if (lit) lit.classList.remove("on");
             lit = bars[bin] || null;
             if (lit) lit.classList.add("on");
@@ -255,7 +258,8 @@ window.sraPicker = {
             // A Must Finish By at 00:00 is met by finishing the day before.
             if (d.mfb != null && k === Math.floor((d.mfb - 1 - d.day0) / DAY)) rows.push(div("tip-n", "Must Finish By"));
             const n0 = d.series[0].n;
-            const from = d.lo + (d.hi - d.lo) * bin / nb, to = d.lo + (d.hi - d.lo) * (bin + 1) / nb;
+            const from = d.edges ? d.edges[bin] : d.lo + (d.hi - d.lo) * bin / nb;
+            const to = d.edges ? d.edges[bin + 1] : d.lo + (d.hi - d.lo) * (bin + 1) / nb;
             rows.push(div("tip-n", "Bar: " + pct(d.bins[bin], n0) + " of " + (d.series.length > 1 ? "pre-mitigation " : "") +
                 "runs finish " + date(from, false) + " – " + date(to, false)));
             tip.replaceChildren(...rows);

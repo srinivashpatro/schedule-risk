@@ -48,7 +48,8 @@ list by ID or name, or by WBS, code or critical path; simulation settings; open/
 **06 Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
 it, what those results mean in plain words, with a glossary; then the finish distribution as
-histogram or S-curve, confidence table, the risk tornado before and after mitigation, criticality,
+one combined chart (histogram of finish dates per day or per week on the frequency axis, S-curve on
+the cumulative percent axis), confidence table, the risk tornado before and after mitigation, criticality,
 milestones, and on request the cost-benefit of each response from paired runs) -> **07 Review** (the
 report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
 
