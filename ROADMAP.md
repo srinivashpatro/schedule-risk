@@ -282,6 +282,74 @@ not detected yet.
       boundaries, and the edge cases (no spread, no risks, lumpy results, a deadline, shorter
       durations).
 
+## Risk workflow (design: seven steps from register to report)
+
+The Claude design `design/workflow/steps.png` turns the app's three steps (Schedule, Risk model,
+Results) into a guided risk process: 01 Setup, 02 Identify, 03 Assess, then Promote (a bridge, not a
+numbered step), 04 Schedule check, 05 Model, 06 Results, 07 Review. Steps 01-03 and Promote are new: a
+qualitative risk register (probability-impact matrix) whose approved risks above a threshold become
+the quantified risks the Monte Carlo already uses. Steps 04-07 reorganise what exists, plus a tornado
+and a mitigation cost-benefit in Results. Everything stays in the browser; the register is saved and
+opened as a local JSON file like the risk model. Register logic and the promotion rules live in Core
+(UI-agnostic, tested, shared with the CLI); the scheduling engine and simulation are not changed, so
+seeds give the same results as today for the same risk model.
+
+To decide before the first item (the plan assumes the choice in brackets):
+- Where the XER is opened: on the landing page before step 01, as today, with steps 02-03 usable
+  without a schedule and activities picked at Promote [assumed]; or as part of Setup.
+- Where the Gantt and activity table go: step 04 Schedule check, with the engine check and health
+  checks [assumed].
+- Default matrix: 5x5; probability bands 1-10%, 10-30%, 30-50%, 50-70%, 70-99%; schedule impact
+  bands <5, 5-20, 20-60, 60-120, >120 working days; score = P x I; Low 1-6, Medium 8-12, High 15-25;
+  promote threshold 8 [assumed, all editable in Setup].
+- Cost-benefit method: per risk, days of P80 saved by its response (a paired run with only that risk
+  mitigated, same seed) against the response cost, and value of those days at a cost of delay per day
+  set in Setup [assumed]; or the cheaper expected-value method (probability x mean impact, no extra
+  runs).
+- Review lists PDF, Word, PowerPoint and CSV: keep the HTML report as a fifth format [assumed].
+- Import of P6's own risk register (XER `PROJRISK`/`RISKTYPE`): later, not in this list.
+
+- [ ] Workflow shell. The seven steps and the Promote bridge in the top bar (numbered 01-07 with a
+      title and the design's one-line description, Promote with an arrow), mapped for now to the
+      existing panels: 01-03 show a placeholder, 04 the schedule panel, 05 the risk model, 06 results,
+      07 the report formats as a page instead of the Report dialog. Steps that need a schedule or a
+      run stay disabled as today. No Core change. Tests: the page lists the steps in order.
+- [ ] Core: risk register and matrix. `Risk/Register` in Core: matrix settings (probability and impact
+      scales with bands, labels and ranges, score rule, rating bands and colours, promote threshold,
+      categories), risks (ID, title, cause-event-effect description, category, threat or opportunity,
+      status Proposed / Approved / Rejected / Closed, raised by and date), pre- and post-response
+      probability and impact scores, response (avoid / transfer / mitigate / accept; exploit / share /
+      enhance / accept for opportunities), owner, response cost, actions (text, owner, due date,
+      status). JSON load and save with a version field (docs/RISK_REGISTER.md), validation messages,
+      scoring and rating. Tests first. Needs approval: engine core.
+- [ ] 01 Setup. Edit the matrix scales, the rating bands, the promote threshold and the categories,
+      with the defaults above and a live preview of the matrix; cost of delay per day. Open and save
+      the register file.
+- [ ] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
+      and edit their descriptions; a register table with search, category and status filters.
+- [ ] 03 Assess. Score each approved risk pre- and post-response on the matrix; a heat map (counts per
+      cell, pre and post side by side, click a cell to filter the register); response, owner, cost and
+      actions per risk; an action list across risks with overdue actions marked.
+- [ ] Promote. Approved risks scoring at or above the threshold become quantified risks: the
+      probability band gives a probability (band midpoint, editable), the schedule impact band gives a
+      triangle in working days (band low / midpoint / high, editable), pre and post from the two
+      assessments, mapped to activities with the activity picker. Core `RegisterPromoter` writes them
+      into the risk model's register with the same IDs (traceable both ways); promoting again updates
+      them and keeps the activity mapping. CLI: `sra promote register.json model.json`. Tests on the
+      band arithmetic and the round trip.
+- [ ] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
+      the activity table (moved from the current step 01; the landing page keeps file opening).
+- [ ] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
+      and edited at the register (a link back to Promote), other risks, uncertainty, drivers and
+      correlation as today.
+- [ ] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
+      table (per risk: response cost, days saved at P80 and at the chosen level, value at the cost of
+      delay, net benefit) using the method chosen above, reproducible for a seed. Tornado and
+      cost-benefit also in the HTML report and the exports.
+- [ ] 07 Review. The export page (PDF, Word, PowerPoint, CSV and HTML), and the reports gain the
+      register: heat maps pre and post, the register table, the action list and the cost-benefit; the
+      CSV gains `register.csv`. Update README Status and Not yet.
+
 ## Shipped
 
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with
