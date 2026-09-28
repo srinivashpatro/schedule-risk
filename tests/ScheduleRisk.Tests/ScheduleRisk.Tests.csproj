@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ScheduleRisk.Core\ScheduleRisk.Core.csproj" />
+    <ProjectReference Include="..\..\src\ScheduleRisk.Web\ScheduleRisk.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

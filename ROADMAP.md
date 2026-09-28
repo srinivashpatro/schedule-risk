@@ -427,6 +427,41 @@ To decide before the first item (the plan assumes the choice in brackets):
       register: heat maps pre and post, the register table, the action list and the cost-benefit; the
       CSV gains `register.csv`. Update README Status and Not yet.
 
+## Hosting and access
+
+- [ ] Restricted access with Cloudflare Access. A copy of the browser app that only invited users can
+      open. The login is checked by Cloudflare on every request, before any file is served, so it
+      cannot be bypassed from the browser (a login screen inside the app could be, since its DLLs
+      download to every visitor). The app gets no login code, no JWT handling and no new network
+      call; Access's sign-in page and `CF_Authorization` cookie live outside the app, so
+      `WebAssetsTests` still holds. XER files still never leave the browser: Cloudflare serves the
+      app's own files and learns who signed in, never schedule data.
+      Decided (owner, 2026-09-28): invited email addresses, signing in with Cloudflare's one-time
+      PIN; the free `<project>.pages.dev` address; sessions of 2 days; the GitHub Pages copy stays
+      up and public; the repository stays public for now. So Access restricts the Cloudflare copy,
+      not the app: anyone can still use the GitHub Pages copy or build from source.
+      Done in the repository:
+      1. The workflow assembles two copies of the site (current app plus v0.4/ and v0.3/): GitHub
+         Pages as before (base href `/schedule-risk/`, `404.html`, `.nojekyll`), and Cloudflare
+         Pages at the root of its address (base href `/`, no `404.html`, so Pages serves index.html
+         for unknown paths), checked against Pages' 25 MiB and 20,000-file limits. It deploys the
+         Cloudflare copy with Wrangler once the repository has `CLOUDFLARE_API_TOKEN` (secret),
+         `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_PAGES_PROJECT` (variables); until then the step is
+         skipped.
+      2. Ended session: the files the app fetches after it has loaded (the report fonts on the first
+         export, the sample project) fail once the session ends, because the request is sent to the
+         sign-in page on another site. The app now says to open it in a new tab, sign in there, and
+         try again in the first tab, which keeps its work (`SiteFiles`, 3 tests).
+      3. docs/HOSTING.md: the Cloudflare setup (account, token, Pages project, repository settings,
+         one-time PIN, one Access application covering `<project>.pages.dev` and
+         `*.<project>.pages.dev`, 48-hour sessions, the email policy kept in Cloudflare and not in
+         this public repository, Web Analytics left off), inviting and removing people, and the
+         checks below. README and CHANGELOG.
+      Left for the owner: the Cloudflare setup in docs/HOSTING.md. Tick when, from a private window,
+      every path (/, `_framework/`, `sample/`, `fonts/`, v0.4/, v0.3/, a deployment address) shows
+      the Access sign-in and no app file; an uninvited address gets no PIN; and signed in, the app,
+      sample, simulation and every report export work as before.
+
 ## Shipped
 
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with

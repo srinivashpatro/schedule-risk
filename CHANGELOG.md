@@ -4,7 +4,7 @@
 
 ### Added
 
-- A qualitative risk register in the core library, not yet in the app: a probability-severity matrix
+- A qualitative risk register: a probability-severity matrix
   (5 x 5 by default, probability A to E, severity I to V on schedule, cost, quality, health and safety,
   environment and regulatory, rated Red, Amber or Green from a grid), risks with three assessments
   (inherent, current, target), responses, owners and actions, saved as a JSON file
@@ -27,13 +27,19 @@
   assessment is before mitigation and the target after it. Values can be set by hand, and each risk is
   mapped to the activities it would delay. Promoting again updates them. Also `sra promote` on the
   command line (docs/RISK_REGISTER.md).
+- A second copy of the browser app on Cloudflare Pages behind Cloudflare Access, for invited email addresses
+  only: they sign in with a one-time PIN sent by email, and a sign-in lasts 48 hours. The workflow deploys it
+  once the repository has the Cloudflare settings; the GitHub Pages copy stays public. The app has no sign-in
+  code and still sends nothing anywhere. Set-up steps and privacy notes are in docs/HOSTING.md.
 
 ### Changed
 
 - The app is laid out as the seven-step risk workflow: 01 Setup, 02 Identify, 03 Assess, Promote,
-  04 Schedule check, 05 Model, 06 Results, 07 Review, listed in a column beside the page. Steps 01-03
-  and Promote say what they will hold; the schedule, model and results are steps 04-06, and the report
-  formats are now a page, step 07, instead of a dialog.
+  04 Schedule check, 05 Model, 06 Results, 07 Review, listed in a column beside the page. The schedule,
+  model and results are steps 04-06, and the report formats are now a page, step 07, instead of a dialog.
+- When the sample project or the report fonts cannot be fetched from the site (a dropped connection, or an
+  ended sign-in on the Cloudflare copy), the message now says to open the app in a new tab, sign in if asked,
+  and try again, instead of showing the browser's own error. The tab keeps its schedule and results.
 
 ## 0.6.0 - 2026-09-27
 

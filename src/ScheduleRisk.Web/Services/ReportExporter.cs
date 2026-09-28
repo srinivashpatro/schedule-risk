@@ -73,6 +73,10 @@ public sealed class ReportExporter
             };
             await js.InvokeVoidAsync("sraDownload", $"{s.ProjectCode}-risk-report.{ext}", type, bytes);
         }
+        catch (HttpRequestException e)   // only the fonts are fetched
+        {
+            state.Error = $"Could not make the {what} report. {SiteFiles.LoadFailed("the report fonts", e)}";
+        }
         catch (Exception e)
         {
             state.Error = $"Could not make the {what} report: {e.Message}";

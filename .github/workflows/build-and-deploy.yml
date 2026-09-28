@@ -36,28 +36,16 @@ jobs:
       - name: Publish web app
         run: dotnet publish src/ScheduleRisk.Web -c Release -o publish
 
-      - name: Prepare for GitHub Pages
-        run: |
-          REPO="${GITHUB_REPOSITORY#*/}"
-          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO}/\" />|" publish/wwwroot/index.html
-          cp publish/wwwroot/index.html publish/wwwroot/404.html
-          touch publish/wwwroot/.nojekyll
-
-      # Earlier releases stay online next to the current app, each in its own folder with its own base
-      # href: /<repo>/v0.4/ from the v0.4.0 tag and /<repo>/v0.3/ from the release/0.3 branch.
+      # Earlier releases stay online next to the current app, each in its own folder: v0.4/ from the v0.4.0 tag and
+      # v0.3/ from the release/0.3 branch.
       - name: Check out release 0.4.0
         uses: actions/checkout@v7
         with:
           ref: v0.4.0
           path: previous/v0.4
 
-      - name: Publish release 0.4.0 under v0.4/
-        run: |
-          REPO="${GITHUB_REPOSITORY#*/}"
-          dotnet publish previous/v0.4/src/ScheduleRisk.Web -c Release -o previous/publish-v0.4
-          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO}/v0.4/\" />|" previous/publish-v0.4/wwwroot/index.html
-          grep -q "<base href=\"/${REPO}/v0.4/\" />" previous/publish-v0.4/wwwroot/index.html
-          cp -r previous/publish-v0.4/wwwroot publish/wwwroot/v0.4
+      - name: Publish release 0.4.0
+        run: dotnet publish previous/v0.4/src/ScheduleRisk.Web -c Release -o previous/publish-v0.4
 
       - name: Check out release 0.3.0
         uses: actions/checkout@v7
@@ -65,17 +53,47 @@ jobs:
           ref: release/0.3
           path: previous/v0.3
 
-      - name: Publish release 0.3.0 under v0.3/
+      - name: Publish release 0.3.0
+        run: dotnet publish previous/v0.3/src/ScheduleRisk.Web -c Release -o previous/publish-v0.3
+
+      # Two copies of the same site, each with the base hrefs for where it is served: GitHub Pages serves it under
+      # /<repo>/ (public), Cloudflare Pages at the root of its address, behind Cloudflare Access (docs/HOSTING.md).
+      - name: Assemble the sites
         run: |
           REPO="${GITHUB_REPOSITORY#*/}"
-          dotnet publish previous/v0.3/src/ScheduleRisk.Web -c Release -o previous/publish-v0.3
-          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO}/v0.3/\" />|" previous/publish-v0.3/wwwroot/index.html
-          grep -q "<base href=\"/${REPO}/v0.3/\" />" previous/publish-v0.3/wwwroot/index.html
-          cp -r previous/publish-v0.3/wwwroot publish/wwwroot/v0.3
+          assemble() {  # $1 = output folder, $2 = path the site is served under
+            cp -r publish/wwwroot "$1"
+            sed -i "s|<base href=\"/\" />|<base href=\"$2\" />|" "$1/index.html"
+            grep -q "<base href=\"$2\" />" "$1/index.html"
+            for v in v0.4 v0.3; do
+              cp -r "previous/publish-$v/wwwroot" "$1/$v"
+              sed -i "s|<base href=\"/\" />|<base href=\"$2$v/\" />|" "$1/$v/index.html"
+              grep -q "<base href=\"$2$v/\" />" "$1/$v/index.html"
+            done
+          }
+          assemble site-github "/${REPO}/"
+          cp site-github/index.html site-github/404.html
+          touch site-github/.nojekyll
+          # Cloudflare Pages serves index.html for unknown paths when there is no 404.html, so none is added.
+          assemble site-cloudflare "/"
+          # Cloudflare Pages takes files up to 25 MiB, 20,000 of them.
+          big=$(find site-cloudflare -type f -size +25M)
+          [ -z "$big" ] || { echo "Over Cloudflare Pages' 25 MiB file limit: $big"; exit 1; }
+          [ "$(find site-cloudflare -type f | wc -l)" -le 20000 ]
+
+      # Runs once the repository has the Cloudflare settings (docs/HOSTING.md); until then it is skipped. The site holds
+      # only the app's own files: schedules are opened in the browser and never leave it.
+      - name: Deploy to Cloudflare Pages
+        if: vars.CLOUDFLARE_PAGES_PROJECT != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: npx --yes wrangler@4 pages deploy site-cloudflare --project-name="$PROJECT" --branch=main --commit-dirty=true
 
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: publish/wwwroot
+          path: site-github
           include-hidden-files: true
 
   deploy:
