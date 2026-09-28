@@ -4,6 +4,9 @@
 
 ### Added
 
+- One combined finish date chart in the Results: the histogram on a left frequency axis and the cumulative
+  S-curve on a right percent axis, replacing the Histogram / Cumulative toggle. A Daily / Weekly switch groups the
+  bars by calendar day or by 7-day week.
 - The risk register as an Excel workbook. Open... in steps 01 to 03 and Promote reads an Excel workbook (.xlsx) or a
   JSON file; Save as Excel and Save as JSON write either; Excel template gives an empty workbook on the register's
   matrix to fill in. The workbook has a Guide, the Risks one per row (the risk, inherent, current and target

@@ -583,6 +583,8 @@ To decide before the first item (the plan assumes the choice in brackets):
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with
       Latin Hypercube, seed-reproducible), `sra` CLI, Blazor WebAssembly app on GitHub Pages
 - [x] Interactive finish-date chart (hover and keyboard readout)
+- [x] Combined finish-date chart: histogram on the primary (frequency) axis and the S-curve on the
+      secondary (cumulative percent) axis, with the bars grouped by day or by week
 - [x] Modernist redesign of the browser app, with a sample project
 - [x] v0.4: interactive chart and redesign above, the engine-accuracy and Must Finish By fixes in
       this file, and the chance of meeting the Must Finish By (see CHANGELOG.md)

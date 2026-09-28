@@ -275,54 +275,71 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
     }
 
     /// <summary>
-    /// Cumulative finish curve with histogram, as inline SVG (theme via CSS variables --a, --b, --fg, --line).
+    /// Combined finish date chart as inline SVG (theme via CSS variables --a, --b, --fg, --line): the histogram of finish
+    /// dates on the primary (left, frequency) axis and the cumulative probability S-curve on the secondary (right, percent)
+    /// axis. <paramref name="bins"/> groups the bars by calendar day, by 7-day week, or (Auto) into 40 equal bins.
     /// <paramref name="interactive"/> wraps it in a focusable <c>div.scurve</c> whose <c>data-scurve</c> JSON holds, for every
-    /// calendar day, how many iterations finished by the end of that day; the browser app's js/app.js draws the hover readout.
+    /// calendar day, how many iterations finished by the end of that day, plus the bar counts and edges; the browser app's
+    /// js/app.js draws the hover readout.
     /// <paramref name="percentile"/> (browser app) marks that confidence level with a labelled line, gives the bars up to it
     /// the class <c>in</c>, and labels the deterministic line and, with two scenarios, each curve.
-    /// <paramref name="histogram"/> draws the bars at full height, without the curves and the percent axis.
+    /// <paramref name="histogram"/> draws the bars only, without the curves and the percent axis.
     /// </summary>
     public static string SCurve(SimulationSummary pre, SimulationSummary? post, Schedule s, bool interactive = false,
-                                int? percentile = null, bool histogram = false)
+                                int? percentile = null, bool histogram = false, HistogramBins bins = HistogramBins.Auto)
     {
-        const int W = 960, H = 300, L = 48, R = 16, B = 34;
+        const int W = 960, H = 300, L = 56, B = 34;
+        int R = histogram ? 16 : 48;
         long mfb = pre.MustFinishBy;
         // room above the plot for the line labels: deterministic, P-level and, with one, the Must Finish By
         int T = percentile == null ? 12 : mfb != Time.None ? 62 : 44;
         var (lo, hi, mfbOnChart) = ChartRange(pre, post);
         double X(long t) => L + (double)(t - lo) / (hi - lo) * (W - L - R);
         double Y(double p) => T + (1 - p) * (H - T - B);
-        string what = histogram ? "Distribution of project finish dates" : "Cumulative probability of project finish";
+        string what = histogram ? "Distribution of project finish dates"
+            : "Distribution and cumulative probability of project finish";
         var sb = new StringBuilder();
         sb.Append($"<svg viewBox=\"0 0 {W} {H}\" width=\"100%\" role=\"img\"");
         sb.Append(interactive
             ? $" tabindex=\"0\" aria-label=\"{what}. Focus and use the arrow keys to read the chance of finishing by each date.\">"
             : $" aria-label=\"{what}\">");
+
+        // histogram (pre) behind the curve, on the primary axis
+        long[] edges = BinEdges(lo, hi, bins);
+        int nb = edges.Length - 1;
+        var counts = new int[nb];
+        foreach (var t in pre.SortedFinish)
+        {
+            int bi = Array.BinarySearch(edges, t);
+            bi = bi >= 0 ? bi : ~bi - 1;
+            counts[Math.Clamp(bi, 0, nb - 1)]++;
+        }
+        int cmax = Math.Max(1, counts.Max());
+        int fstep = NiceStep(cmax / 4.0);
+        int fmax = Math.Max(fstep, (cmax + fstep - 1) / fstep * fstep);
+        for (int f = 0; f <= fmax; f += fstep)
+        {
+            double y = Y(f / (double)fmax);
+            sb.Append($"<line x1=\"{L}\" x2=\"{W - R}\" y1=\"{F(y)}\" y2=\"{F(y)}\" stroke=\"var(--line)\"/>");
+            sb.Append($"<text x=\"{L - 6}\" y=\"{F(y + 4)}\" text-anchor=\"end\" class=\"faxis\">{f}</text>");
+        }
+        sb.Append($"<text x=\"12\" y=\"{F((T + H - B) / 2.0)}\" text-anchor=\"middle\" transform=\"rotate(-90 12 {F((T + H - B) / 2.0)})\" class=\"atitle\">Frequency</text>");
         if (!histogram)
         {
             for (int k = 0; k <= 4; k++)
             {
                 double p = k / 4.0;
-                sb.Append($"<line x1=\"{L}\" x2=\"{W - R}\" y1=\"{F(Y(p))}\" y2=\"{F(Y(p))}\" stroke=\"var(--line)\"/>");
-                sb.Append($"<text x=\"{L - 6}\" y=\"{F(Y(p) + 4)}\" text-anchor=\"end\">{p * 100:F0}%</text>");
+                sb.Append($"<text x=\"{W - R + 6}\" y=\"{F(Y(p) + 4)}\" text-anchor=\"start\" class=\"paxis\">{p * 100:F0}%</text>");
             }
         }
-        // histogram (pre) behind the curve
-        const int bins = 40;
-        var counts = new int[bins];
-        foreach (var t in pre.SortedFinish)
-        {
-            int bi = (int)((double)(t - lo) / (hi - lo) * bins);
-            counts[Math.Clamp(bi, 0, bins - 1)]++;
-        }
-        int cmax = Math.Max(1, counts.Max());
-        double bw = (W - L - R) / (double)bins;
         long cut = percentile is int pc ? Statistics.PercentileSorted(pre.SortedFinish, pc) : 0;
-        for (int k = 0; k < bins; k++)
+        for (int k = 0; k < nb; k++)
         {
-            double h = counts[k] / (double)cmax * (H - T - B) * (histogram ? 1 : 0.45);
-            string cls = percentile != null && lo + (hi - lo) * (k + 0.5) / bins <= cut ? "bar in" : "bar";
-            sb.Append($"<rect x=\"{F(L + k * bw + 1)}\" y=\"{F(H - B - h)}\" width=\"{F(bw - 2)}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\" class=\"{cls}\"/>");
+            double x0 = X(edges[k]), x1 = X(edges[k + 1]);
+            double gap = x1 - x0 > 4 ? 1 : 0;
+            double h = counts[k] / (double)fmax * (H - T - B);
+            string cls = percentile != null && (edges[k] + edges[k + 1]) / 2 <= cut ? "bar in" : "bar";
+            sb.Append($"<rect x=\"{F(x0 + gap)}\" y=\"{F(H - B - h)}\" width=\"{F(Math.Max(0.5, x1 - x0 - 2 * gap))}\" height=\"{F(h)}\" fill=\"var(--a)\" opacity=\".15\" class=\"{cls}\"/>");
         }
         void Curve(long[] sorted, string color)
         {
@@ -385,7 +402,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         if (mfb != Time.None) js.Append(string.Create(Inv, $"\"mfb\":{mfb},"));
         js
           .Append(string.Create(Inv, $"\"day0\":{day0 * Time.MinutesPerDay},\"date0\":\"{Time.FromMinutes(day0 * Time.MinutesPerDay).ToString("yyyy-MM-dd", Inv)}\","))
-          .Append("\"bins\":[").Append(string.Join(',', counts)).Append("],\"series\":[");
+          .Append("\"bins\":[").Append(string.Join(',', counts)).Append("],\"edges\":[").Append(string.Join(',', edges)).Append("],\"series\":[");
         void Series(string name, string color, long[] sorted)
         {
             js.Append("{\"name\":\"").Append(name).Append("\",\"color\":\"").Append(color).Append("\",\"n\":").Append(sorted.Length).Append(",\"cum\":[");
@@ -403,6 +420,38 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         if (post != null) { js.Append(','); Series("Post-mitigation", "var(--b)", post.SortedFinish); }
         js.Append("]}");
         return $"<div class=\"scurve{(histogram ? " hist" : "")}\" data-scurve=\"{E(js.ToString())}\">{sb}</div>";
+    }
+
+    /// <summary>
+    /// Bar edges in minutes for the finish date histogram over [lo, hi]: 40 equal bins (Auto), or one bar per calendar
+    /// day or per 7-day week starting at midnight on the day of <paramref name="lo"/>. The outer edges are clamped to the
+    /// chart range so the bars stay inside the plot.
+    /// </summary>
+    public static long[] BinEdges(long lo, long hi, HistogramBins bins)
+    {
+        if (bins == HistogramBins.Auto)
+        {
+            const int n = 40;
+            var e = new long[n + 1];
+            for (int k = 0; k <= n; k++) e[k] = lo + (hi - lo) * k / n;
+            return e;
+        }
+        long width = (bins == HistogramBins.Weekly ? 7 : 1) * Time.MinutesPerDay;
+        long start = lo / Time.MinutesPerDay * Time.MinutesPerDay;
+        var list = new List<long> { lo };
+        for (long t = start + width; t < hi; t += width) list.Add(t);
+        list.Add(hi);
+        return list.ToArray();
+    }
+
+    // 1, 2 or 5 times a power of ten, at least v.
+    private static int NiceStep(double v)
+    {
+        if (v <= 1) return 1;
+        double p = Math.Pow(10, Math.Floor(Math.Log10(v)));
+        foreach (int m in new[] { 1, 2, 5, 10 })
+            if (m * p >= v) return (int)(m * p);
+        return (int)(10 * p);
     }
 
     /// <summary>Horizontal tornado bars as inline SVG.</summary>
@@ -490,4 +539,15 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         sb.Append("</svg>");
         return sb.ToString();
     }
+}
+
+/// <summary>How the finish date histogram groups its bars.</summary>
+public enum HistogramBins
+{
+    /// <summary>40 equal bins over the chart range (the static report).</summary>
+    Auto,
+    /// <summary>One bar per calendar day.</summary>
+    Daily,
+    /// <summary>One bar per 7-day week.</summary>
+    Weekly,
 }
