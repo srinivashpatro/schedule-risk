@@ -4,6 +4,7 @@
 
 ### Added
 
+- A pull request workflow (`pr-build-test.yml`) that builds, tests and publishes the web app without deploying.
 - One combined finish date chart in the Results: the histogram on a left frequency axis and the cumulative
   S-curve on a right percent axis, replacing the Histogram / Cumulative toggle. A Daily / Weekly switch groups the
   bars by calendar day or by 7-day week. The exported reports (HTML, PDF, Word, PowerPoint) use daily bars.
