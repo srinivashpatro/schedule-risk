@@ -43,7 +43,9 @@ Identify, 03 Assess, Promote, 04 Schedule check, 05 Model, 06 Results and 07 Rev
 formats). Step 01 sets up the risk register's probability-severity matrix (5 x 5 by default, rated
 Red, Amber or Green cell by cell, all editable) and saves the register as a JSON file on your device
 (docs/RISK_REGISTER.md). Step 02 proposes risks as cause, event and effect, approves or rejects them,
-and searches and filters the register. Not yet: step 03 and Promote, which fill the register and feed it to the
+and searches and filters the register. Step 03 assesses approved risks at three points (inherent,
+current, target) on a heat map that draws each risk's movement, with responses, owners, costs and
+actions. Not yet: Promote, which fill the register and feed it to the
 model (see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely

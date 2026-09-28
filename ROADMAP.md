@@ -377,12 +377,24 @@ To decide before the first item (the plan assumes the choice in brackets):
       and an effect; only risks never approved can be deleted, approved ones are closed so the register
       keeps its history. `RegisterFilter` for search (every word, any field, ignoring case) and filters.
       The register file's Open / Save / New are shared with Setup (`RegisterFile`). 18 tests.
-- [ ] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
+- [x] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
       band text shown, as in the reference) at each assessment point; a heat map in the reference's
       layout (probability rows E to A, severity columns I to V, cell names, Red / Amber / Green, counts
       per cell, click a cell to filter the register) with a risk's path drawn as arrows between its
       assessment points; response, owner, cost and
       actions per risk; an action list across risks with overdue actions marked.
+      Done: `AssessPanel`: approved risks listed in the side column with their current cell, the heat
+      map (`HeatMapView`, SVG) for the inherent, current or target point with Red / Amber / Green counts
+      and a count and ids per cell, clicking a cell lists its risks, and the selected risk's path drawn as
+      markers 1-2-3 joined by arrows (spread apart when two points share a cell). Per risk: probability
+      and a severity per area at each point, chosen from the matrix with the band's guidance shown under
+      each choice, "Copy inherent" / "Copy current" to start a point from the one before, the cell and
+      rating per point; response (threat or opportunity strategies), owner, cost and description;
+      actions with owner, due date and status, overdue ones marked; and all actions across the register
+      (open only by default, overdue first). Core: `HeatMap` (approved risks only, placed or not
+      assessed, counts by rating, paths), `RiskRegister.ActionList` and `AssessmentIssues` (warnings: not
+      assessed, no owner, an assessment worse than the one before, Amber or Red today with no response).
+      8 tests.
 - [ ] Promote. Approved risks scoring at or above the threshold become quantified risks: the
       probability letter gives a probability (band midpoint, editable: A 2.5%, B 15%, C 37.5%, D 60%,
       E 82.5%), the schedule severity gives a triangle in working days from its % band times the

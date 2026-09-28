@@ -17,6 +17,10 @@
   reject, close or reopen them, and find them in the register by search, status, category and type.
   Approval needs a title and an event; approved risks are closed, not deleted, so the register keeps
   its history.
+- Step 03 Assess: place each approved risk on the matrix before any controls, with today's controls and
+  after the response, choosing from the matrix's guidance; the heat map shows the risks per cell with
+  Red, Amber and Green counts and draws a risk's movement as numbered arrows. Record the response, owner,
+  cost and actions per risk, and see every action across the register with overdue ones marked.
 
 ### Changed
 

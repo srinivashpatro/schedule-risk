@@ -22,12 +22,7 @@ public static class Workflow
     {
         new(WorkflowStep.Setup, "01", "Setup", "Matrix scales, promote threshold, categories", None),
         new(WorkflowStep.Identify, "02", "Identify", "Propose, approve and describe risks", None),
-        new(WorkflowStep.Assess, "03", "Assess", "Heat map, responses, owners and actions", new[]
-        {
-            "Probability and severity of each approved risk: inherent, current and target",
-            "A heat map with each risk's movement across the matrix",
-            "Response, owner, cost and actions for each risk",
-        }),
+        new(WorkflowStep.Assess, "03", "Assess", "Heat map, responses, owners and actions", None),
         new(WorkflowStep.Promote, "", "Promote", "Score bands become probabilities and days", new[]
         {
             "Red and Amber risks become risks in the model",

@@ -1,0 +1,117 @@
+@* The heat map in the reference's layout: probability rows (most likely at the top), severity columns I upwards, each
+   cell in its rating colour with its name and the risks in it. A risk's path is drawn as numbered markers
+   (1 inherent, 2 current, 3 target) joined by arrows. Cells are buttons that filter the register. *@
+
+@{
+    var m = Matrix; int np = m.Probability.Count, ns = m.SeverityLevels.Count;
+    double width = LabelW + ns * (CellW + Gap), height = HeadH + np * (CellH + Gap);
+}
+
+<svg class="heatmap" viewBox="0 0 @F(width) @F(height)" width="@F(width)" role="group" aria-label="@AriaLabel">
+    <defs>
+        <marker id="hm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="hm-arrowhead" />
+        </marker>
+    </defs>
+    <text class="hm-axis" x="4" y="18">Severity →</text>
+    <text class="hm-axis" x="4" y="@F(HeadH - 8)">Probability ↓</text>
+    @for (int s = 0; s < ns; s++)
+    {
+        double x = X(s);
+        <g><text class="hm-col" x="@F(x + CellW / 2)" y="24" text-anchor="middle">@MatrixSettings.Roman(s)</text>
+        <text class="hm-col-name" x="@F(x + CellW / 2)" y="44" text-anchor="middle">@m.SeverityLevels[s]</text></g>
+    }
+    @for (int p = 0; p < np; p++)
+    {
+        int pp = p;
+        var band = m.Probability[p];
+        double y = Y(p);
+        <g><text class="hm-row" x="4" y="@F(y + CellH / 2 - 4)">@band.Letter · @band.Label</text>
+        <text class="hm-row-rng" x="4" y="@F(y + CellH / 2 + 14)">@Pct(band.Min)–@Pct(band.Max)</text></g>
+        @for (int s = 0; s < ns; s++)
+        {
+            int ss = s;
+            var rating = pp < m.Ratings.Count && ss < m.Ratings[pp].Length ? m.Ratings[pp][ss] : RiskRating.Green;
+            var risks = Map.Risks(pp, ss);
+            bool on = Selected is { } sel && sel.P == pp && sel.S == ss;
+            string name = m.CellName(pp, ss);
+            <g class="hm-cell @Rag(rating) @(on ? "on" : "") @(risks.Count > 0 ? "has" : "")" tabindex="0" role="button"
+               aria-pressed="@(on ? "true" : "false")" aria-label="@($"{name}, {rating}, {Count(risks.Count)}")"
+               @onclick="@(() => Click(pp, ss))" @onkeydown="@(e => Key(e, pp, ss))">
+                <title>@name · @rating · @Count(risks.Count)@(risks.Count > 0 ? ": " + string.Join(", ", risks.Select(r => r.Id)) : "")</title>
+                <rect x="@F(X(ss))" y="@F(y)" width="@F(CellW)" height="@F(CellH)" />
+                <text class="hm-name" x="@F(X(ss) + 6)" y="@F(y + 14)">@name</text>
+                @if (risks.Count > 0)
+                {
+                    <g><text class="hm-count" x="@F(X(ss) + CellW / 2)" y="@F(y + CellH / 2 + 6)" text-anchor="middle">@risks.Count</text>
+                    <text class="hm-ids" x="@F(X(ss) + CellW / 2)" y="@F(y + CellH - 7)" text-anchor="middle">@Ids(risks)</text></g>
+                }
+            </g>
+        }
+    }
+    @if (Path is { Count: > 0 } path)
+    {
+        var pts = Points(path);
+        for (int i = 1; i < pts.Count; i++)
+        {
+            var (x1, y1) = pts[i - 1]; var (x2, y2) = pts[i];
+            double dx = x2 - x1, dy = y2 - y1, len = Math.Sqrt(dx * dx + dy * dy);
+            if (len < 2 * R + 2) continue;
+            double ux = dx / len, uy = dy / len;
+            <line class="hm-path" x1="@F(x1 + ux * R)" y1="@F(y1 + uy * R)" x2="@F(x2 - ux * (R + 2))" y2="@F(y2 - uy * (R + 2))" marker-end="url(#hm-arrow)" />
+        }
+        for (int i = 0; i < pts.Count; i++)
+        {
+            var (x, y) = pts[i];
+            <g class="hm-marker">
+                <title>@path[i].Point: @m.CellName(path[i].Probability, path[i].Severity) (@path[i].Rating)</title>
+                <circle cx="@F(x)" cy="@F(y)" r="@F(R)" />
+                <text x="@F(x)" y="@F(y + 5)" text-anchor="middle">@((int)path[i].Point + 1)</text>
+            </g>
+        }
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public MatrixSettings Matrix { get; set; } = null!;
+    [Parameter, EditorRequired] public HeatMap Map { get; set; } = null!;
+    [Parameter] public List<PathStep>? Path { get; set; }
+    [Parameter] public (int P, int S)? Selected { get; set; }
+    [Parameter] public EventCallback<(int P, int S)?> OnSelect { get; set; }
+
+    private const double LabelW = 150, HeadH = 56, CellW = 104, CellH = 62, Gap = 3, R = 13;
+
+    private string AriaLabel => $"Heat map, {Map.Point.ToString().ToLowerInvariant()} assessment: {Map.Placed} risks placed";
+
+    private double X(int s) => LabelW + s * (CellW + Gap);
+    private double Y(int p) => HeadH + (Matrix.Probability.Count - 1 - p) * (CellH + Gap);
+
+    // Marker centres, spread apart when two points share a cell (e.g. an unchanged probability and severity).
+    private List<(double X, double Y)> Points(List<PathStep> path)
+    {
+        var list = new List<(double, double)>();
+        for (int i = 0; i < path.Count; i++)
+        {
+            int same = path.Take(i).Count(q => q.Probability == path[i].Probability && q.Severity == path[i].Severity);
+            double cx = X(path[i].Severity) + CellW / 2 + (same == 0 ? 0 : same == 1 ? -30 : 30);
+            double cy = Y(path[i].Probability) + CellH / 2;
+            list.Add((cx, cy));
+        }
+        return list;
+    }
+
+    private static string F(double v) => v.ToString("0.#", CultureInfo.InvariantCulture);
+    private static string Pct(double f) => (f * 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
+    private static string Rag(RiskRating r) => r switch { RiskRating.Red => "rag-red", RiskRating.Amber => "rag-amber", _ => "rag-green" };
+    private static string Count(int n) => n == 1 ? "1 risk" : $"{n} risks";
+    private static string Ids(IReadOnlyList<RegisterRisk> risks) =>
+        risks.Count <= 3 ? string.Join(" ", risks.Select(r => r.Id)) : string.Join(" ", risks.Take(2).Select(r => r.Id)) + $" +{risks.Count - 2}";
+
+    private Task Click(int p, int s) =>
+        OnSelect.InvokeAsync(Selected is { } sel && sel.P == p && sel.S == s ? null : (p, s));
+
+    private async Task Key(KeyboardEventArgs e, int p, int s)
+    {
+        if (e.Key is "Enter" or " ") await Click(p, s);
+    }
+}

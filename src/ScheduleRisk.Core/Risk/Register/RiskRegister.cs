@@ -90,6 +90,18 @@ public sealed class RegisterRisk
         _ => Target,
     };
 
+    /// <summary>Starts one assessment from another (e.g. current from inherent), as a separate copy.</summary>
+    public void CopyAssessment(AssessmentPoint from, AssessmentPoint to)
+    {
+        var copy = At(from).Clone();
+        switch (to)
+        {
+            case AssessmentPoint.Inherent: Inherent = copy; break;
+            case AssessmentPoint.Current: Current = copy; break;
+            default: Target = copy; break;
+        }
+    }
+
     /// <summary>The response strategies that suit a threat or an opportunity (PMBOK's lists).</summary>
     public static IReadOnlyList<ResponseStrategy> Responses(RiskKind kind) => kind == RiskKind.Threat
         ? new[] { ResponseStrategy.Avoid, ResponseStrategy.Transfer, ResponseStrategy.Mitigate, ResponseStrategy.Accept }
@@ -171,6 +183,39 @@ public sealed class RiskRegister
 
     public Dictionary<RiskStatus, int> StatusCounts() =>
         System.Enum.GetValues<RiskStatus>().ToDictionary(s => s, s => Risks.Count(r => r.Status == s));
+
+    // ------------------------------------------------------------------ assessing risks (step 03 Assess)
+
+    /// <summary>Every action across the register: open actions past their due date first, then open ones by due date
+    /// (undated last), then done or cancelled ones.</summary>
+    public List<ActionRow> ActionList(DateOnly today) => Risks
+        .SelectMany(r => r.Actions.Select(a => new ActionRow(r, a, a.Overdue(today))))
+        .OrderBy(x => x.Overdue ? 0 : x.Action.Status == ActionStatus.Open ? 1 : 2)
+        .ThenBy(x => x.Action.Due ?? DateOnly.MaxValue)
+        .ToList();
+
+    /// <summary>Things to look at in a risk's assessment. All are warnings: an assessment that gets worse, an approved
+    /// risk not yet assessed or without an owner, and a risk rated above Green today with no response chosen.</summary>
+    public List<RegisterIssue> AssessmentIssues(RegisterRisk r)
+    {
+        var issues = new List<RegisterIssue>();
+        void Warn(string t) => issues.Add(new RegisterIssue(false, $"{r.Id}: {t}"));
+        if (r.Status == RiskStatus.Approved && !r.Current.Complete)
+            Warn("it has no current assessment yet, so it cannot be rated or promoted.");
+        if (r.Status == RiskStatus.Approved && string.IsNullOrWhiteSpace(r.Owner))
+            Warn("give the risk an owner.");
+        void Compare(AssessmentPoint earlier, AssessmentPoint later)
+        {
+            Assessment a = r.At(earlier), b = r.At(later);
+            if (a.Complete && b.Complete && (b.Probability > a.Probability || b.OverallSeverity > a.OverallSeverity))
+                Warn($"the {later.ToString().ToLowerInvariant()} assessment is more likely or more severe than the {earlier.ToString().ToLowerInvariant()} one.");
+        }
+        Compare(AssessmentPoint.Inherent, AssessmentPoint.Current);
+        Compare(AssessmentPoint.Current, AssessmentPoint.Target);
+        if (Matrix.Rate(r.Current) is RiskRating rating && rating != RiskRating.Green && r.Response == ResponseStrategy.None)
+            Warn($"it is rated {rating} today: choose a response.");
+        return issues;
+    }
 
     // ------------------------------------------------------------------ editing the matrix (step 01 Setup)
     // Structural edits go through the register so that the rating grid, every area's bands and the risks'
@@ -615,4 +660,61 @@ public sealed class RegisterFilter
     }
 
     public IEnumerable<RegisterRisk> Apply(IEnumerable<RegisterRisk> risks) => risks.Where(Matches);
+}
+
+public sealed record ActionRow(RegisterRisk Risk, RiskAction Action, bool Overdue);
+
+/// <summary>One point of a risk's path across the matrix, e.g. current at V.B (Amber).</summary>
+public sealed record PathStep(AssessmentPoint Point, int Probability, int Severity, RiskRating Rating);
+
+/// <summary>
+/// The approved risks placed on the matrix at one assessment point: which risks sit in each cell, how many are Red,
+/// Amber and Green, and which approved risks are not assessed at that point yet. Proposed, rejected and closed risks
+/// are left out.
+/// </summary>
+public sealed class HeatMap
+{
+    private readonly List<RegisterRisk>[][] cells;
+
+    public AssessmentPoint Point { get; }
+    public int Placed { get; private set; }
+    public List<RegisterRisk> NotAssessed { get; } = new();
+    public Dictionary<RiskRating, int> ByRating { get; } = System.Enum.GetValues<RiskRating>().ToDictionary(r => r, _ => 0);
+
+    private HeatMap(MatrixSettings m, AssessmentPoint point)
+    {
+        Point = point;
+        cells = Enumerable.Range(0, m.Probability.Count)
+            .Select(_ => Enumerable.Range(0, m.SeverityLevels.Count).Select(_ => new List<RegisterRisk>()).ToArray()).ToArray();
+    }
+
+    public IReadOnlyList<RegisterRisk> Risks(int probability, int severity) =>
+        probability >= 0 && probability < cells.Length && severity >= 0 && severity < cells[probability].Length
+            ? cells[probability][severity] : Array.Empty<RegisterRisk>();
+
+    public static HeatMap Build(RiskRegister reg, AssessmentPoint point, RegisterFilter? filter = null)
+    {
+        var m = reg.Matrix;
+        var map = new HeatMap(m, point);
+        foreach (var r in reg.Risks.Where(r => r.Status == RiskStatus.Approved && (filter == null || filter.Matches(r))))
+        {
+            var a = r.At(point);
+            if (a.Probability is int p && a.OverallSeverity is int s && m.Rate(a) is RiskRating rating && p < map.cells.Length && s < map.cells[p].Length)
+            {
+                map.cells[p][s].Add(r);
+                map.Placed++;
+                map.ByRating[rating]++;
+            }
+            else map.NotAssessed.Add(r);
+        }
+        return map;
+    }
+
+    /// <summary>A risk's assessed points in order (inherent, current, target), for drawing its movement across the matrix.</summary>
+    public static List<PathStep> Path(MatrixSettings m, RegisterRisk r) =>
+        new[] { AssessmentPoint.Inherent, AssessmentPoint.Current, AssessmentPoint.Target }
+            .Select(p => (Point: p, A: r.At(p)))
+            .Where(x => m.Rate(x.A) != null)
+            .Select(x => new PathStep(x.Point, x.A.Probability!.Value, x.A.OverallSeverity!.Value, m.Rate(x.A)!.Value))
+            .ToList();
 }
