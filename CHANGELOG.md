@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Changed
+
+- The reports (PDF, Word, PowerPoint and HTML) follow a new order: a table of contents (page numbers in the PDF, a
+  contents field Word fills in, slide numbers in PowerPoint, links in HTML); the schedule health check; Summary &
+  Charts (the finish and spread tables with the bell curve and the S-curve); Risk & Activity Breakdown (top risk
+  drivers and every critical and near-critical activity); Analysis of the Result (formerly "What the results mean",
+  now a Parameter, Value and Analysis Statement table); Sensitivity & Criticality (the risk tornado and the
+  criticality index); Finish-Driving Activities; then confidence levels, cost-benefit, the register, risk drivers
+  and the terms used; and an annexure holding only the milestones.
+
 ### Added
 
 - The risk register as an Excel workbook. Open... in steps 01 to 03 and Promote reads an Excel workbook (.xlsx) or a

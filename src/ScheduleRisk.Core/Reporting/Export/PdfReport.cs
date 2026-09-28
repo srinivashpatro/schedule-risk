@@ -34,6 +34,10 @@ internal sealed class PdfLayout
     private readonly List<Page> pages = new();
     private Page page = null!;
     private double y;
+    // The table of contents: where its lines go, and the page each section starts on, filled in once laid out.
+    private (Page Page, double Y)? contents;
+    private readonly List<(string Title, int Page)> sectionPages = new();
+    private const double ContentsLineH = 17;
 
     private sealed class Page
     {
@@ -56,6 +60,7 @@ internal sealed class PdfLayout
         NewPage();
         TitleBlock();
         foreach (var section in doc.Sections) SectionBlock(section);
+        ContentsLines();
 
         int pagesId = pdf.Reserve();
         var kids = new List<int>();
@@ -123,6 +128,7 @@ internal sealed class PdfLayout
         Ensure(headH + first);
         Line(Left, Left + W, y, 1.5, pal.Divider);
         y += 12;
+        if (s.Title != ReportContent.ContentsTitle) sectionPages.Add((s.Title, pages.Count));
         Text(Left, y + 13, s.Title, FontWeight.ExtraBold, 14, pal.Ink);
         y += 20;
         foreach (var line in lead)
@@ -143,8 +149,39 @@ internal sealed class PdfLayout
                 case ChartBlock c: ChartAt(c.Chart, charts > 1 || c.Chart.Title != s.Title); break;
                 case TextBlock t: Paragraph(t.Text, t.Muted); break;
                 case NotesBlock n: Notes(n); break;
+                case ContentsBlock:
+                    // Room for one line per section; the lines are written once every section's page is known.
+                    contents = (page, y);
+                    y += (doc.Sections.Count - 1) * ContentsLineH;
+                    NewPage();                                  // the contents page stands on its own
+                    break;
             }
         }
+    }
+
+    /// <summary>The table of contents: each section's title and page number, joined by a dotted leader.</summary>
+    private void ContentsLines()
+    {
+        if (contents is not var (tocPage, top)) return;
+        var keep = page;
+        page = tocPage;
+        double at = top;
+        foreach (var (title, number) in sectionPages)
+        {
+            string num = number.ToString(Inv);
+            double numW = faces[FontWeight.Regular].Width(num, Body + 1);
+            Text(Left, at + 11, title, FontWeight.Bold, Body + 1, pal.Ink);
+            double titleW = faces[FontWeight.Bold].Width(title, Body + 1);
+            string dots = "";
+            double dotW = faces[FontWeight.Regular].Width(".", Body + 1);
+            int n = (int)Math.Max(0, (W - titleW - numW - 12) / dotW);
+            if (n > 0) dots = new string('.', n);
+            TextIn(Left, W - numW - 4, at + 11, dots, FontWeight.Regular, Body + 1, pal.Muted, Align.Right, 0);
+            TextIn(Left, W, at + 11, num, FontWeight.Regular, Body + 1, pal.Ink, Align.Right, 0);
+            Line(Left, Left + W, at + ContentsLineH - 1, 0.4, pal.Divider);
+            at += ContentsLineH;
+        }
+        page = keep;
     }
 
     /// <summary>How much of the block must follow its heading on the same page.</summary>

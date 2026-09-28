@@ -50,6 +50,8 @@ public abstract record Block;
 public sealed record TableBlock(Table Table) : Block;
 public sealed record ChartBlock(Chart Chart) : Block;
 public sealed record TextBlock(string Text, bool Muted = true) : Block;
+/// <summary>The table of contents: every other section's title with its page (or slide) number, filled in by each format.</summary>
+public sealed record ContentsBlock : Block;
 /// <summary>The app's two Summary columns: on a portrait page one after the other (as the app stacks them on a narrow
 /// screen), in slides one slide per column with its tables side by side.</summary>
 public sealed record ColumnsBlock(IReadOnlyList<Block> Left, IReadOnlyList<Block> Right, string LeftTitle = "", string RightTitle = "") : Block;
@@ -64,7 +66,7 @@ public sealed class Section
     public required string Title { get; init; }
     /// <summary>The line under the heading, as the app's sub text.</summary>
     public string? Lead { get; init; }
-    public List<Block> Blocks { get; } = new();
+    public List<Block> Blocks { get; init; } = new();
 }
 
 /// <summary>What was simulated and how, for <see cref="ReportContent.Build"/>.</summary>
@@ -90,6 +92,7 @@ public sealed class ReportContent
     /// <summary>"Generated … by …", for the footers.</summary>
     public required string Generated { get; init; }
     public required DateTime GeneratedAt { get; init; }
+    public const string ContentsTitle = "Table of Contents";
     public List<Section> Sections { get; } = new();
 
     public IEnumerable<Chart> Charts => Sections.SelectMany(s => Flatten(s.Blocks)).OfType<ChartBlock>().Select(c => c.Chart);
@@ -116,37 +119,139 @@ public sealed class ReportContent
             GeneratedAt = when,
         };
 
-        // Summary: finish and spread on the left, what drives them on the right, as in the app.
-        var summary = new Section { Title = "Summary" };
-        summary.Blocks.Add(new ColumnsBlock(
-            new Block[] { new TableBlock(Stats("Finish", sum.Finish, both, pct)), new TableBlock(Stats("Spread of the duration", sum.Spread, both, pct)) },
-            new Block[]
+        // The order the owner set: contents, the schedule health check, the summary with the bell curve and S-curve, the
+        // risk and activity breakdown, the analysis of the result, sensitivity and criticality, the finish-driving
+        // activities, the rest of the results, and the milestones in the annexure.
+        doc.Sections.Add(new Section { Title = ContentsTitle, Blocks = { new ContentsBlock() } });
+        if (input.Health is { } health)
+        {
+            void HealthSection(string title, string lead, IEnumerable<HealthItem> items)
             {
-                new TableBlock(Named("Top risk drivers", "Sensitivity", sum.Drivers.Select(d => (d.Id, d.Title, N(d.Sensitivity, 2))).ToList(), -1,
-                    "Nothing in the model varies the finish.")),
-                new TableBlock(Named("Critical activities", "Criticality", sum.Critical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))).ToList(),
-                    sum.Critical.Count, "None.")),
-                new TableBlock(Named("Near-critical activities", "Criticality", sum.NearCritical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))).ToList(),
-                    sum.NearCritical.Count, "None.")),
-            },
-            "Finish dates and their spread", "What drives the finish"));
-        doc.Sections.Add(summary);
-
-        // What the results mean: the Summary's figures in plain words, then the terms they use.
-        var notes = new Section { Title = "What the results mean", Lead = ResultsNarrative.Lead };
-        notes.Blocks.Add(new NotesBlock(null, ResultsNarrative.Build(pre, post, pct, sum).Findings.Select(f => new Note(f.Label, f.Text)).ToList()));
-        notes.Blocks.Add(new NotesBlock("Terms used", ResultsNarrative.Terms.Select(t => new Note(t.Name, t.Meaning)).ToList()));
-        doc.Sections.Add(notes);
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                var sec = new Section { Title = title, Lead = $"{lead} {p} passed, {f} failed, {na} not applicable." };
+                var t = new Table
+                {
+                    Header = Heads("Check", "Status", "Actual", "Target", "Count", "Notes"),
+                    Widths = new[] { 1.9, 0.8, 0.7, 0.7, 0.9, 2.2 },
+                    Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right, Align.Left },
+                };
+                foreach (var i in list)
+                {
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    t.Rows.Add(new Row(new Cell[]
+                    {
+                        new((i.Number != null ? i.Number + ". " : "") + i.Label, Tone: Tone.Strong),
+                        new(i.StatusText, Tone: i.Status == HealthStatus.Pass ? Tone.Normal : i.Status == HealthStatus.NotApplicable ? Tone.Muted : Tone.Accent),
+                        new(i.ActualText), new(i.TargetText), new(i.CountText), new(note, Tone: Tone.Muted),
+                    }));
+                }
+                sec.Blocks.Add(new TableBlock(t));
+                doc.Sections.Add(sec);
+            }
+            HealthSection("Schedule Health Check: P6 Check Schedule", "The parameters of P6's Check Schedule dialog.", health.P6);
+            HealthSection("Schedule Health Check: DCMA 14-Point Assessment", "The DCMA 14-Point schedule assessment.", health.Dcma);
+        }
+        if (input.Verify is { Compared: > 0 } v)
+        {
+            var ec = new Section { Title = "Engine check against P6" };
+            ec.Blocks.Add(new TextBlock($"{v.FieldsMatched.ToString("N0", Inv)} of {v.FieldsCompared.ToString("N0", Inv)} date and float fields match the "
+                + $"values P6 stored in the file ({v.ActivitiesMatched.ToString("N0", Inv)} of {v.Compared.ToString("N0", Inv)} activities fully match).", Muted: false));
+            doc.Sections.Add(ec);
+        }
 
         long cut = Statistics.PercentileSorted(pre.SortedFinish, pct);
-        var dist = new Section
+        var summary = new Section
         {
-            Title = "Finish date distribution",
-            Lead = $"Project finish dates over {pre.Iterations.ToString("N0", Inv)} iterations; P{pct} is {Day(cut)}. Dashed line: the deterministic finish.",
+            Title = "Summary & Charts",
+            Lead = $"Finish dates and their spread over {pre.Iterations.ToString("N0", Inv)} iterations; P{pct} is {Day(cut)}. Dashed line on the charts: the deterministic finish.",
         };
-        dist.Blocks.Add(new ChartBlock(ReportCharts.Distribution("histogram", "Finish date distribution", pre, post, s, pct, histogram: true, fonts)));
-        dist.Blocks.Add(new ChartBlock(ReportCharts.Distribution("cumulative", "Cumulative probability of finish", pre, post, s, pct, histogram: false, fonts)));
-        doc.Sections.Add(dist);
+        summary.Blocks.Add(new TableBlock(Stats("Finish", sum.Finish, both, pct)));
+        summary.Blocks.Add(new TableBlock(Stats("Spread of the duration", sum.Spread, both, pct)));
+        summary.Blocks.Add(new ChartBlock(ReportCharts.Distribution("histogram", "Bell curve: finish date distribution", pre, post, s, pct, histogram: true, fonts)));
+        summary.Blocks.Add(new ChartBlock(ReportCharts.Distribution("cumulative", "Risk analysis: cumulative probability of finish", pre, post, s, pct, histogram: false, fonts)));
+        doc.Sections.Add(summary);
+
+        var breakdown = new Section { Title = "Risk & Activity Breakdown", Lead = "What drives the finish: the top risk drivers, and the critical and near-critical activities." };
+        breakdown.Blocks.Add(new TableBlock(Named("Top risk drivers", "Sensitivity", sum.Drivers.Select(d => (d.Id, d.Title, N(d.Sensitivity, 2))).ToList(), -1,
+            "Nothing in the model varies the finish.")));
+        breakdown.Blocks.Add(new TableBlock(Named("Critical activities", "Criticality", sum.Critical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))).ToList(),
+            sum.Critical.Count, "None.", all: true)));
+        breakdown.Blocks.Add(new TableBlock(Named("Near-critical activities", "Criticality", sum.NearCritical.Select(a => (a.Code, a.Name, ResultsSummary.Pct(a.Criticality))).ToList(),
+            sum.NearCritical.Count, "None.", all: true)));
+        doc.Sections.Add(breakdown);
+
+        // Analysis of the result: each figure, its value and what it means, as a three-column table.
+        var analysis = new Section { Title = "Analysis of the Result", Lead = ResultsNarrative.Lead };
+        var analysisTable = new Table
+        {
+            Header = Heads("Parameter", "Value", "Analysis Statement"),
+            Widths = new[] { 1.0, 1.3, 3.6 },
+            Aligns = new[] { Align.Left, Align.Left, Align.Left },
+        };
+        foreach (var f in ResultsNarrative.Build(pre, post, pct, sum).Findings)
+            analysisTable.Rows.Add(new Row(new Cell[] { new(f.Label, Tone: Tone.Strong), new(f.Value), new(f.Text) }));
+        analysis.Blocks.Add(new TableBlock(analysisTable));
+        doc.Sections.Add(analysis);
+
+        Section sensCrit = null!;
+        if (pre.Risks.Count > 0)
+        {
+            var ranking = new Section { Title = "Sensitivity & Criticality", Lead = "Sensitivity tornado: rank correlation of each risk's impact with the project finish"
+                + (post != null ? ", before and after mitigation." : ".") + " Bars to the left shorten the finish." };
+            ranking.Blocks.Add(new ChartBlock(ReportCharts.Tornado("risks", "Risk tornado", RiskTornado.Build(pre, post, 12), fonts)));
+            var detail = new Table
+            {
+                Header = Heads("ID", "Risk", "Occurred", "Sensitivity", "Finish delta (working days)"),
+                Widths = new[] { 0.6, 2.6, 0.8, 0.8, 1.2 },
+                Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right },
+                Note = "Finish delta: the mean finish when the risk occurs minus the mean finish when it does not.",
+            };
+            foreach (var r in pre.Risks)
+                detail.Rows.Add(new Row(new Cell[]
+                {
+                    new(r.Id, Tone: Tone.Muted), new(r.Title, Tone: Tone.Strong), new(ResultsSummary.Pct(r.Occurrence)), new(N(r.Sensitivity, 2)),
+                    new(r.MeanFinishDeltaDays is double dd ? N(dd, 1) : ""),
+                }));
+            ranking.Blocks.Add(new TableBlock(detail));
+            sensCrit = ranking;
+        }
+        else
+        {
+            var bySens = pre.Activities.OrderByDescending(a => Math.Abs(a.Sensitivity)).Take(12).ToList();
+            double top = Math.Max(0.01, bySens.Select(a => Math.Abs(a.Sensitivity)).DefaultIfEmpty(0).Max());
+            var sens = new Section { Title = "Sensitivity & Criticality", Lead = "Duration sensitivity: correlation of activity duration with the project finish." };
+            sens.Blocks.Add(new ChartBlock(ReportCharts.Bars("sensitivity", "Duration sensitivity",
+                bySens.Select(a => new ReportCharts.Bar(a.Code, a.Name, Math.Abs(a.Sensitivity) / top, N(a.Sensitivity, 2))).ToList(), false, fonts)));
+            sensCrit = sens;
+        }
+        sensCrit.Blocks.Add(new TextBlock("Criticality index: share of iterations in which the activity sits on the critical path."));
+        sensCrit.Blocks.Add(new ChartBlock(ReportCharts.Bars("criticality", "Criticality index",
+            pre.Activities.OrderByDescending(a => a.Criticality).ThenByDescending(a => a.Cruciality).Take(12)
+                .Select(a => new ReportCharts.Bar(a.Code, a.Name, a.Criticality, ResultsSummary.Pct(a.Criticality))).ToList(), true, fonts)));
+        doc.Sections.Add(sensCrit);
+
+        var acts = new Section
+        {
+            Title = "Finish-Driving Activities",
+            Lead = "Criticality: share of iterations in which the activity was critical. Sensitivity: how closely its duration tracks "
+                 + "the finish date. Cruciality: both together; start here.",
+        };
+        var actTable = new Table
+        {
+            Header = Heads("ID", "Activity", "Criticality", "Sensitivity", "Cruciality"),
+            Widths = new[] { 0.8, 3.0, 0.9, 0.9, 0.9 },
+            Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right },
+            Note = pre.Activities.Count > 25 ? $"The top 25 of {pre.Activities.Count.ToString("N0", Inv)} activities, by cruciality." : null,
+        };
+        foreach (var a in pre.Activities.Take(25))
+            actTable.Rows.Add(new Row(new Cell[]
+            {
+                new(a.Code, Tone: Tone.Muted), new(a.Name, Tone: Tone.Strong), new(ResultsSummary.Pct(a.Criticality)), new(N(a.Sensitivity, 2)), new(N(a.Cruciality, 3)),
+            }));
+        acts.Blocks.Add(new TableBlock(actTable));
+        doc.Sections.Add(acts);
 
         var conf = new Section
         {
@@ -179,36 +284,6 @@ public sealed class ReportContent
         conf.Blocks.Add(new TableBlock(levels));
         doc.Sections.Add(conf);
 
-        if (pre.Risks.Count > 0)
-        {
-            var ranking = new Section { Title = "Risk ranking", Lead = "Rank correlation of each risk's impact with the project finish"
-                + (post != null ? ", before and after mitigation." : ".") + " Bars to the left shorten the finish." };
-            ranking.Blocks.Add(new ChartBlock(ReportCharts.Tornado("risks", "Risk tornado", RiskTornado.Build(pre, post, 12), fonts)));
-            var detail = new Table
-            {
-                Header = Heads("ID", "Risk", "Occurred", "Sensitivity", "Finish delta (working days)"),
-                Widths = new[] { 0.6, 2.6, 0.8, 0.8, 1.2 },
-                Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right },
-                Note = "Finish delta: the mean finish when the risk occurs minus the mean finish when it does not.",
-            };
-            foreach (var r in pre.Risks)
-                detail.Rows.Add(new Row(new Cell[]
-                {
-                    new(r.Id, Tone: Tone.Muted), new(r.Title, Tone: Tone.Strong), new(ResultsSummary.Pct(r.Occurrence)), new(N(r.Sensitivity, 2)),
-                    new(r.MeanFinishDeltaDays is double dd ? N(dd, 1) : ""),
-                }));
-            ranking.Blocks.Add(new TableBlock(detail));
-            doc.Sections.Add(ranking);
-        }
-        else
-        {
-            var bySens = pre.Activities.OrderByDescending(a => Math.Abs(a.Sensitivity)).Take(12).ToList();
-            double top = Math.Max(0.01, bySens.Select(a => Math.Abs(a.Sensitivity)).DefaultIfEmpty(0).Max());
-            var sens = new Section { Title = "Duration sensitivity", Lead = "Correlation of activity duration with the project finish." };
-            sens.Blocks.Add(new ChartBlock(ReportCharts.Bars("sensitivity", "Duration sensitivity",
-                bySens.Select(a => new ReportCharts.Bar(a.Code, a.Name, Math.Abs(a.Sensitivity) / top, N(a.Sensitivity, 2))).ToList(), false, fonts)));
-            doc.Sections.Add(sens);
-        }
         if (input.CostBenefit is { Rows.Count: > 0 } cb)
         {
             string cur = cb.Currency.Length > 0 ? cb.Currency + " " : "";
@@ -284,12 +359,6 @@ public sealed class ReportContent
             }
         }
 
-        var crit = new Section { Title = "Criticality index", Lead = "Share of iterations in which the activity sits on the critical path." };
-        crit.Blocks.Add(new ChartBlock(ReportCharts.Bars("criticality", "Criticality index",
-            pre.Activities.OrderByDescending(a => a.Criticality).ThenByDescending(a => a.Cruciality).Take(12)
-                .Select(a => new ReportCharts.Bar(a.Code, a.Name, a.Criticality, ResultsSummary.Pct(a.Criticality))).ToList(), true, fonts)));
-        doc.Sections.Add(crit);
-
         if (pre.Drivers.Count > 0)
         {
             double top = Math.Max(0.01, pre.Drivers.Max(d => Math.Abs(d.Sensitivity)));
@@ -299,30 +368,14 @@ public sealed class ReportContent
             doc.Sections.Add(drivers);
         }
 
-        var acts = new Section
-        {
-            Title = "Activities that drive the finish",
-            Lead = "Criticality: share of iterations in which the activity was critical. Sensitivity: how closely its duration tracks "
-                 + "the finish date. Cruciality: both together; start here.",
-        };
-        var actTable = new Table
-        {
-            Header = Heads("ID", "Activity", "Criticality", "Sensitivity", "Cruciality"),
-            Widths = new[] { 0.8, 3.0, 0.9, 0.9, 0.9 },
-            Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right },
-            Note = pre.Activities.Count > 25 ? $"The top 25 of {pre.Activities.Count.ToString("N0", Inv)} activities, by cruciality." : null,
-        };
-        foreach (var a in pre.Activities.Take(25))
-            actTable.Rows.Add(new Row(new Cell[]
-            {
-                new(a.Code, Tone: Tone.Muted), new(a.Name, Tone: Tone.Strong), new(ResultsSummary.Pct(a.Criticality)), new(N(a.Sensitivity, 2)), new(N(a.Cruciality, 3)),
-            }));
-        acts.Blocks.Add(new TableBlock(actTable));
-        doc.Sections.Add(acts);
+
+        var terms = new Section { Title = "Terms used" };
+        terms.Blocks.Add(new NotesBlock(null, ResultsNarrative.Terms.Select(t => new Note(t.Name, t.Meaning)).ToList()));
+        doc.Sections.Add(terms);
 
         if (pre.Milestones.Count > 0)
         {
-            var ms = new Section { Title = "Milestones" };
+            var ms = new Section { Title = "Annexure: Milestones", Lead = "P-dates of the project milestones." };
             var t = new Table
             {
                 Header = Heads("ID", "Milestone", "Deterministic", "P10", "P50", "P80", "P90"),
@@ -338,43 +391,6 @@ public sealed class ReportContent
             doc.Sections.Add(ms);
         }
 
-        if (input.Health is { } health)
-        {
-            void HealthSection(string title, string lead, IEnumerable<HealthItem> items)
-            {
-                var list = items.ToList();
-                var (p, f, na) = health.Score(list);
-                var sec = new Section { Title = title, Lead = $"{lead} {p} passed, {f} failed, {na} not applicable." };
-                var t = new Table
-                {
-                    Header = Heads("Check", "Status", "Actual", "Target", "Count", "Notes"),
-                    Widths = new[] { 1.9, 0.8, 0.7, 0.7, 0.9, 2.2 },
-                    Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right, Align.Left },
-                };
-                foreach (var i in list)
-                {
-                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
-                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
-                    t.Rows.Add(new Row(new Cell[]
-                    {
-                        new((i.Number != null ? i.Number + ". " : "") + i.Label, Tone: Tone.Strong),
-                        new(i.StatusText, Tone: i.Status == HealthStatus.Pass ? Tone.Normal : i.Status == HealthStatus.NotApplicable ? Tone.Muted : Tone.Accent),
-                        new(i.ActualText), new(i.TargetText), new(i.CountText), new(note, Tone: Tone.Muted),
-                    }));
-                }
-                sec.Blocks.Add(new TableBlock(t));
-                doc.Sections.Add(sec);
-            }
-            HealthSection("Schedule health: P6 Check Schedule", "The parameters of P6's Check Schedule dialog.", health.P6);
-            HealthSection("Schedule health: DCMA 14-Point Assessment", "The DCMA 14-Point schedule assessment.", health.Dcma);
-        }
-        if (input.Verify is { Compared: > 0 } v)
-        {
-            var ec = new Section { Title = "Engine check against P6" };
-            ec.Blocks.Add(new TextBlock($"{v.FieldsMatched.ToString("N0", Inv)} of {v.FieldsCompared.ToString("N0", Inv)} date and float fields match the "
-                + $"values P6 stored in the file ({v.ActivitiesMatched.ToString("N0", Inv)} of {v.Compared.ToString("N0", Inv)} activities fully match).", Muted: false));
-            doc.Sections.Add(ec);
-        }
         return doc;
     }
 
@@ -404,9 +420,9 @@ public sealed class ReportContent
     }
 
     /// <summary>A short list (top drivers, critical activities): ID, name and value, the top five, and how many more.</summary>
-    private static Table Named(string title, string valueHead, List<(string Id, string Name, string Value)> items, int count, string none)
+    private static Table Named(string title, string valueHead, List<(string Id, string Name, string Value)> items, int count, string none, bool all = false)
     {
-        const int top = 5;
+        int top = all ? int.MaxValue : 5;
         var t = new Table
         {
             Header = new[] { new Cell(count >= 0 ? $"{title} ({count.ToString("N0", Inv)})" : title, 2), new Cell(valueHead) },
