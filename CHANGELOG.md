@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- A qualitative risk register in the core library, not yet in the app: a probability-severity matrix
+  (5 x 5 by default, probability A to E, severity I to V on schedule, cost, quality, health and safety,
+  environment and regulatory, rated Red, Amber or Green from a grid), risks with three assessments
+  (inherent, current, target), responses, owners and actions, saved as a JSON file
+  (docs/RISK_REGISTER.md). It does not change the simulation.
+
 ### Changed
 
 - The app is laid out as the seven-step risk workflow: 01 Setup, 02 Identify, 03 Assess, Promote,
