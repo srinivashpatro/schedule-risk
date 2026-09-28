@@ -11,9 +11,15 @@ seven-step risk workflow (qualitative risk register -> Promote -> P6 and DCMA sc
 Changes by release are in [CHANGELOG.md](CHANGELOG.md).
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
 and the site can be hosted as plain static files. Try it at
-<https://srinivashpatro.github.io/schedule-risk/>. Earlier releases stay online: 0.4.0 at
-<https://srinivashpatro.github.io/schedule-risk/v0.4/> (built from the `v0.4.0` tag) and 0.3.0 at
-<https://srinivashpatro.github.io/schedule-risk/v0.3/> (built from the `release/0.3` branch).
+<https://srinivashpatro.github.io/schedule-risk/>. Each release also stays online at its own address:
+
+| Release | Address | Built from |
+| --- | --- | --- |
+| 0.7.0 | <https://srinivashpatro.github.io/schedule-risk/v0.7/> | tag `v0.7.0` |
+| 0.6.0 | <https://srinivashpatro.github.io/schedule-risk/v0.6/> | tag `V0.6.0` |
+| 0.4.0 | <https://srinivashpatro.github.io/schedule-risk/v0.4/> | tag `v0.4.0` |
+| 0.3.0 | <https://srinivashpatro.github.io/schedule-risk/v0.3/> | branch `release/0.3` |
+
 A second copy of the site can run on Cloudflare Pages behind Cloudflare Access, open only to invited
 email addresses that sign in with a one-time PIN; the app itself is the same and still uploads nothing
 (set-up and privacy notes in [docs/HOSTING.md](docs/HOSTING.md)).

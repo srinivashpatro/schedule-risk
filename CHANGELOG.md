@@ -1,6 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Releases 0.7.0 and 0.6.0 stay online next to the current app, at
+  <https://srinivashpatro.github.io/schedule-risk/v0.7/> (tag `v0.7.0`) and
+  <https://srinivashpatro.github.io/schedule-risk/v0.6/> (tag `V0.6.0`), in the GitHub Pages and Cloudflare
+  copies, like 0.4.0 and 0.3.0.
+
 ## 0.7.0 - 2026-09-28
+
+Still online at <https://srinivashpatro.github.io/schedule-risk/v0.7/> (tag `v0.7.0`).
 
 ### Added
 
@@ -67,6 +78,8 @@
   and try again, instead of showing the browser's own error. The tab keeps its schedule and results.
 
 ## 0.6.0 - 2026-09-27
+
+Still online at <https://srinivashpatro.github.io/schedule-risk/v0.6/> (tag `V0.6.0`).
 
 ### Added
 
