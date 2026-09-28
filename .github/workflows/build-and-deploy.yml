@@ -36,8 +36,26 @@ jobs:
       - name: Publish web app
         run: dotnet publish src/ScheduleRisk.Web -c Release -o publish
 
-      # Earlier releases stay online next to the current app, each in its own folder: v0.4/ from the v0.4.0 tag and
-      # v0.3/ from the release/0.3 branch.
+      # Earlier releases stay online next to the current app, each in its own folder: v0.7/ from the v0.7.0 tag,
+      # v0.6/ from the V0.6.0 tag, v0.4/ from the v0.4.0 tag and v0.3/ from the release/0.3 branch.
+      - name: Check out release 0.7.0
+        uses: actions/checkout@v7
+        with:
+          ref: v0.7.0
+          path: previous/v0.7
+
+      - name: Publish release 0.7.0
+        run: dotnet publish previous/v0.7/src/ScheduleRisk.Web -c Release -o previous/publish-v0.7
+
+      - name: Check out release 0.6.0
+        uses: actions/checkout@v7
+        with:
+          ref: V0.6.0
+          path: previous/v0.6
+
+      - name: Publish release 0.6.0
+        run: dotnet publish previous/v0.6/src/ScheduleRisk.Web -c Release -o previous/publish-v0.6
+
       - name: Check out release 0.4.0
         uses: actions/checkout@v7
         with:
@@ -65,7 +83,7 @@ jobs:
             cp -r publish/wwwroot "$1"
             sed -i "s|<base href=\"/\" />|<base href=\"$2\" />|" "$1/index.html"
             grep -q "<base href=\"$2\" />" "$1/index.html"
-            for v in v0.4 v0.3; do
+            for v in v0.7 v0.6 v0.4 v0.3; do
               cp -r "previous/publish-$v/wwwroot" "$1/$v"
               sed -i "s|<base href=\"/\" />|<base href=\"$2$v/\" />|" "$1/$v/index.html"
               grep -q "<base href=\"$2$v/\" />" "$1/$v/index.html"

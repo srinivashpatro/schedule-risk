@@ -11,9 +11,9 @@ site on every push to `main` once the build and tests pass, and publishes two co
 | GitHub Pages | <https://srinivashpatro.github.io/schedule-risk/> | Anyone (public) |
 | Cloudflare Pages behind Cloudflare Access | `https://<project>.pages.dev/` | Only invited email addresses |
 
-Both copies carry the current app plus the earlier releases in `v0.4/` and `v0.3/`. They differ only in their
-`<base href>`: GitHub Pages serves the site under `/schedule-risk/`, and Cloudflare Pages serves it at the root
-of its address.
+Both copies carry the current app plus the earlier releases in `v0.7/`, `v0.6/`, `v0.4/` and `v0.3/`. They
+differ only in their `<base href>`: GitHub Pages serves the site under `/schedule-risk/`, and Cloudflare Pages
+serves it at the root of its address.
 
 The GitHub Pages copy stays public for now, and so does the repository. Anyone can use that copy or build the
 app from source, so Cloudflare Access controls who can open the Cloudflare copy, not who can use the app.
@@ -75,7 +75,7 @@ for Pages and Access describe the same steps.
 8. **Check it from a private browser window** before you share the address:
    - Signed out, each of these must show Cloudflare's sign-in page and no app file:
      `/`, `/index.html`, `/_framework/blazor.boot.json`, `/sample/sample-project.xer`,
-     `/fonts/archivo-doc-400.ttf`, `/v0.4/` and `/v0.3/`, plus one deployment address
+     `/fonts/archivo-doc-400.ttf`, `/v0.7/`, `/v0.6/`, `/v0.4/` and `/v0.3/`, plus one deployment address
      (`<hash>.<project>.pages.dev`, listed under the project's Deployments).
    - An address that is not invited never receives a PIN.
    - Signed in with an invited address, the app loads. Then open the sample project, run a simulation, and
