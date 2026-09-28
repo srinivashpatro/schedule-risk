@@ -4,6 +4,15 @@
 
 ### Added
 
+- The risk register as an Excel workbook. Open... in steps 01 to 03 and Promote reads an Excel workbook (.xlsx) or a
+  JSON file; Save as Excel and Save as JSON write either; Excel template gives an empty workbook on the register's
+  matrix to fill in. The workbook has a Guide, the Risks one per row (the risk, inherent, current and target
+  assessments with a severity column per area and a Red, Amber or Green rating worked out by an Excel formula, the
+  response and the model link), their Actions, and the Matrix, which can be edited there too. Dropdowns on every
+  coded column come from the matrix. Columns are found by their header, empty IDs are numbered, and a value that
+  cannot be read is reported with its sheet, row and column. The file is read and written in the browser and never
+  uploaded. From the command line, every `--register` reads either format, and `sra register` converts between
+  them or writes a template (docs/RISK_REGISTER.md).
 - Releases 0.7.0 and 0.6.0 stay online next to the current app, at
   <https://srinivashpatro.github.io/schedule-risk/v0.7/> (tag `v0.7.0`) and
   <https://srinivashpatro.github.io/schedule-risk/v0.6/> (tag `V0.6.0`), in the GitHub Pages and Cloudflare

@@ -1,7 +1,9 @@
-# Risk register file (JSON)
+# Risk register file (Excel or JSON)
 
 The qualitative risk register: a probability-severity matrix and the risks scored on it. The app saves
 and opens it as a file on your device, like the risk model (docs/RISK_MODEL.md); nothing is uploaded.
+The file is an Excel workbook (.xlsx, [below](#excel-workbook)) or JSON; both hold the whole register, and
+the app and every `--register` option read either.
 Approved risks that meet the promote rule become quantified risks in the model (step "Promote").
 Read and written by `ScheduleRisk.Core.Risk.Register.RiskRegister`.
 
@@ -99,6 +101,62 @@ defaults, and a file without `matrix` uses the default matrix below.
   activity's remaining duration) applies to the impacts set by hand. `always: true` promotes the risk
   whatever its rating (it must still be approved); risks moved from a model get it, so moving them does
   not change the model.
+
+## Excel workbook
+
+The register as a workbook, for filling in and reviewing in Excel. In the app, the register file control
+(steps 01 to 03 and Promote) has **Open...** (.xlsx or .json), **Save as Excel**, **Save as JSON**, **Excel
+template** (an empty workbook on the register's matrix) and **New**. Opening a file replaces the register.
+Read and written by `ScheduleRisk.Core.Risk.Register.RegisterWorkbook`, with nothing but .NET's own zip and
+XML readers, so the file never leaves the browser. From the command line:
+
+```
+sra register template --out register.xlsx              # empty workbook on the default matrix
+sra register register.json --out register.xlsx         # JSON to Excel, or the other way round
+```
+
+A blank template on the default matrix is also in the repository: [risk-register-template.xlsx](risk-register-template.xlsx).
+
+The workbook has four sheets:
+
+| Sheet | Holds |
+| --- | --- |
+| **Guide** | How to fill it in, what the app checks, and every column. Not read back. |
+| **Risks** | One row per risk, under a row of group headings: the risk; Inherent, Current and Target (probability, a severity column per area, and a Rating); the response; the model link. |
+| **Actions** | One row per action: Risk ID, Action, Owner, Due, Status. |
+| **Matrix** | The matrix in blocks, each a title in column A, a header row and its rows: Settings, Probability bands, Severity levels, Rating grid, Severity areas, Severity ranges, Rating guidance, Categories. |
+
+Columns of the Risks sheet: ID, Title, Cause, Event, Effect, Category, Type (Threat or Opportunity), Status,
+Raised by, Raised, Owner; then for each of Inherent, Current and Target: Probability (a band letter), one
+column per severity area (a level I, II... or empty), and Rating; then Response, Response description,
+Response cost; then the model link, all optional: Model activities (IDs separated by commas), Always promote
+(Yes), Impact units (days or percent), Probability (by hand), Impact distribution (triangle, pert or
+uniform), Impact min, most likely and max, and the same four for Mitigated.
+
+What the workbook does for the person filling it in:
+
+- Dropdowns on every coded column: type, status, response, the probability letters, the severity levels
+  and the categories come from the Matrix sheet (defined names `ProbabilityLetters`, `SeverityLevels`,
+  `Categories`, `RiskGrid`, `RiskGridLetters`, `RiskIds`). Wrong entries get a warning, not a block.
+- Each Rating column is an Excel formula (`INDEX` and `MATCH` on the rating grid, the worst area setting the
+  column) coloured Red, Amber or Green, saved with the app's own rating as its value, so it shows before
+  Excel recalculates. The app ignores these columns and works every rating out again.
+- Frozen group and header rows and ID and Title columns, filters, 200 empty rows ready for new risks, and
+  the app's look: ink headers, the red accent, thin rules.
+
+Reading it back:
+
+- Columns are found by their header (any capitals and spacing), so they can be moved, and columns of your
+  own are ignored. Assessment columns belong to the group heading above them; a header such as
+  `Current schedule` works without one. Severity columns match an area's name or id.
+- Empty rows are skipped. An empty ID gets the next free one (R01, R02...).
+- Enumerations accept any capitals. Dates are date cells or text `yyyy-mm-dd` (also `dd-MMM-yyyy`).
+  Probabilities read 30%, 0.3 and 30 alike.
+- A workbook without a Matrix sheet, or without one of its blocks, uses the default matrix for that part;
+  only the Risks sheet is required.
+- A value that cannot be read stops the file opening, with its sheet, row and column, for example
+  `Risks, row 4, column Status: "Maybe" is not one of: Proposed, Approved, Rejected, Closed.`
+- A register written as Excel and read back is the same register: saving it as JSON gives the same file.
 
 ## Promote
 

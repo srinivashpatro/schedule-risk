@@ -55,8 +55,9 @@ report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
 The app is laid out as a seven-step risk workflow in a column beside the page: 01 Setup, 02
 Identify, 03 Assess, Promote, 04 Schedule check, 05 Model, 06 Results and 07 Review (the report
 formats). Step 01 sets up the risk register's probability-severity matrix (5 x 5 by default, rated
-Red, Amber or Green cell by cell, all editable) and saves the register as a JSON file on your device
-(docs/RISK_REGISTER.md). Step 02 proposes risks as cause, event and effect, approves or rejects them,
+Red, Amber or Green cell by cell, all editable) and saves the register as an Excel workbook or a JSON file
+on your device; an Excel template, one risk per row with dropdowns and rating formulas, can be filled in
+in Excel and opened again (docs/RISK_REGISTER.md; a blank one is in docs/risk-register-template.xlsx). Step 02 proposes risks as cause, event and effect, approves or rejects them,
 and searches and filters the register. Step 03 assesses approved risks at three points (inherent,
 current, target) on a heat map that draws each risk's movement, with responses, owners, costs and
 actions. Promote turns the register's approved Red and Amber risks into risks in the model: the
@@ -116,6 +117,7 @@ sra validate  project.xer --json health.json   # P6 Check Schedule + DCMA 14-Poi
 sra verify    project.xer                      # our CPM dates vs the dates P6 saved in the file
 sra cpm       project.xer --csv dates.csv
 sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model
+sra register  register.xlsx --out register.json      # Excel <-> JSON; `sra register template --out r.xlsx` for a blank
 sra simulate  project.xer --risk model.json --out results   # pre + post mitigation, HTML report
                                                              # add --register register.json to promote first,
                                                              # --cost-benefit for each response's days saved

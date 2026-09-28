@@ -534,6 +534,21 @@ public sealed class RiskRegister
         w.WriteEndObject();
     }
 
+    /// <summary>Opens a register file of either kind: an Excel workbook (.xlsx, see <see cref="RegisterWorkbook"/>) or
+    /// JSON. A file that is neither is refused with a FormatException.</summary>
+    public static RiskRegister Open(byte[] data)
+    {
+        if (data.Length >= 2 && data[0] == (byte)'P' && data[1] == (byte)'K') return RegisterWorkbook.Read(data);
+        try
+        {
+            return FromJson(Encoding.UTF8.GetString(data).TrimStart('﻿'));
+        }
+        catch (JsonException e)
+        {
+            throw new FormatException($"The file is neither an Excel workbook (.xlsx) nor a register JSON file: {e.Message}", e);
+        }
+    }
+
     /// <summary>Reads a register file. Missing fields take their defaults and a missing matrix is the default matrix;
     /// a file from a newer version, or a value that cannot be read, is refused with a FormatException.</summary>
     public static RiskRegister FromJson(string json)
