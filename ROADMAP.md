@@ -599,3 +599,10 @@ To decide before the first item (the plan assumes the choice in brackets):
 - [x] v0.6: the Results Summary panel, plain-language notes on what the results mean, report
       exports as PDF, Word and PowerPoint, the rename to Project Risk Analysis, Expand all /
       Collapse all in the Gantt, and the searchable activity picker (see CHANGELOG.md)
+- [x] v0.7: the seven-step risk workflow: the qualitative risk register (Setup, Identify, Assess),
+      Promote, the P6 Check Schedule and DCMA 14-Point schedule check, the model's risks from the register,
+      the risk tornado and response cost-benefit, and the register in every report (see CHANGELOG.md)
+- [x] v0.8: the risk register as an Excel workbook with a template, the reports in the owner's order with a
+      table of contents, the combined finish chart (histogram and S-curve on two axes, daily or weekly
+      bars), a build and test workflow for pull requests, and releases 0.6.0 and 0.7.0 kept online
+      (see CHANGELOG.md)
