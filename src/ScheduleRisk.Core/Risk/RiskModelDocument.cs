@@ -165,7 +165,13 @@ public sealed class UncertaintyRow
 
 public sealed class RiskRow
 {
+    /// <summary><see cref="Source"/> of a risk written by Promote from the qualitative register (same id there).</summary>
+    public const string RegisterSource = "register";
+
     public string Id { get; set; } = "";
+    /// <summary>Where the risk came from: "" when typed into the model, "register" when promoted from the risk register
+    /// (promoting again updates or removes it). Written as "source"; the simulation ignores it.</summary>
+    public string Source { get; set; } = "";
     public string Title { get; set; } = "";
     public double Probability { get; set; } = 0.3;
     public DistSpec Impact { get; set; } = new() { Distribution = "triangle", Min = 5, MostLikely = 10, Max = 20 };
@@ -260,6 +266,7 @@ public sealed class RiskModelDocument
                 w.WriteStartObject();
                 w.WriteString("id", r.Id);
                 w.WriteString("title", r.Title);
+                if (r.Source.Length > 0) w.WriteString("source", r.Source);
                 w.WriteNumber("probability", r.Probability);
                 w.WriteStartObject("impact");
                 r.Impact.WriteFields(w);
@@ -358,6 +365,7 @@ public sealed class RiskModelDocument
                     Filter = F(r),
                 };
                 row.Title = S(r, "title", row.Id);
+                row.Source = S(r, "source", "");
                 if (r.TryGetProperty("impact", out var imp))
                 {
                     row.Impact = DistSpec.From(imp);

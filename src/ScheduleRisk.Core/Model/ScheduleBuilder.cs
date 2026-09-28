@@ -54,6 +54,7 @@ public static class ScheduleBuilder
         var st = s.Settings;
         st.DataDate = Time.ParseP6(proj["last_recalc_date"]);
         if (st.DataDate == Time.None) st.DataDate = Time.ParseP6(proj["plan_start_date"]);
+        s.PlanStart = Time.TryParseP6(proj["plan_start_date"]);
         if (st.DataDate == Time.None) throw new InvalidDataException("project has no data date (last_recalc_date) or planned start");
         // P6 "Must Finish By". scd_end_date is P6's calculated scheduled finish, not a constraint.
         st.MustFinishBy = Time.ParseP6(proj["plan_end_date"]);
@@ -189,10 +190,14 @@ public static class ScheduleBuilder
             if (t["cstr_type"].Length > 0) a.Constraint1 = new Constraint(t["cstr_type"], Time.ParseP6(t["cstr_date"]));
             if (t["cstr_type2"].Length > 0) a.Constraint2 = new Constraint(t["cstr_type2"], Time.ParseP6(t["cstr_date2"]));
             foreach (var k in new[] { "early_start_date", "early_end_date", "late_start_date", "late_end_date",
-                                      "restart_date", "reend_date", "rem_late_start_date", "rem_late_end_date" })
+                                      "restart_date", "reend_date", "rem_late_start_date", "rem_late_end_date",
+                                      "target_start_date", "target_end_date" })
                 a.P6Dates[k] = Time.TryParseP6(t[k]);
             string tf = t["total_float_hr_cnt"];
             a.P6TotalFloatHours = tf.Length > 0 ? F(tf) : null;
+            a.P6StatusCode = t["status_code"];
+            string dp = t.Has("driving_path_flag") ? t["driving_path_flag"] : "";
+            a.P6DrivingPath = dp.Length == 0 ? null : dp.Equals("Y", StringComparison.OrdinalIgnoreCase);
             if (taskCodes.TryGetValue(a.TaskId, out var codes))
                 foreach (var kv in codes) a.Codes[kv.Key] = kv.Value;
             idxByTid[a.TaskId] = a.Index;
@@ -206,7 +211,14 @@ public static class ScheduleBuilder
         foreach (var t in tasksAll) if (t["proj_id"] != pid) extTasks[t["task_id"]] = t;
         foreach (var r in doc.Rows("TASKPRED"))
         {
-            if (!idxByTid.TryGetValue(r["task_id"], out int succ)) continue;
+            if (!idxByTid.TryGetValue(r["task_id"], out int succ))
+            {
+                // A successor in another project: kept for the health checks only.
+                if (idxByTid.TryGetValue(r["pred_task_id"], out int from) && extTasks.TryGetValue(r["task_id"], out var st2))
+                    s.ExternalSuccessors.Add(new ExternalSuccessor(from, RelCodes.TryGetValue(r["pred_type"], out var xt) ? xt : RelType.FS,
+                        MathX.RoundHalfUp(F(r["lag_hr_cnt"]) * 60), st2["task_code"], st2["task_name"]));
+                continue;
+            }
             if (!RelCodes.TryGetValue(r["pred_type"], out var rtype))
             {
                 s.Warnings.Add($"relationship {r["task_pred_id"]}: unknown type '{r["pred_type"]}', FS assumed");
@@ -224,7 +236,7 @@ public static class ScheduleBuilder
                 if (es == Time.None) es = Time.ParseP6(et["early_start_date"]);
                 long ef = Time.ParseP6(et["act_end_date"]);
                 if (ef == Time.None) ef = Time.ParseP6(et["early_end_date"]);
-                s.Relationships.Add(new Relationship(-1, succ, rtype, lag, es, ef));
+                s.Relationships.Add(new Relationship(-1, succ, rtype, lag, es, ef) { ExternalCode = et["task_code"], ExternalName = et["task_name"] });
                 s.Warnings.Add($"{s.Activities[succ].Code}: external predecessor {et["task_code"]} held at its P6 dates");
                 continue;
             }
@@ -235,6 +247,11 @@ public static class ScheduleBuilder
             }
             s.Relationships.Add(new Relationship(pred, succ, rtype, lag));
         }
+
+        // ---- resource and expense assignments: only whether each activity has one (health checks)
+        s.HasResourceTable = doc.Table("TASKRSRC") != null;
+        foreach (var r in doc.Rows("TASKRSRC"))
+            if (idxByTid.TryGetValue(r["task_id"], out int ai)) s.Activities[ai].HasAssignment = true;
 
         int n = s.Activities.Count;
         s.Preds = new List<int>[n];

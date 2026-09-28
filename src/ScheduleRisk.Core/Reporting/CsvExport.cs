@@ -3,6 +3,7 @@ using System.Text;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 
 namespace ScheduleRisk.Core.Reporting;
@@ -48,6 +49,28 @@ public static class CsvExport
         foreach (var r in sum.Risks)
             sb.Append(Q(r.Id)).Append(',').Append(Q(r.Title)).Append(',').Append(N(r.Occurrence)).Append(',')
               .Append(N(r.Sensitivity)).Append(',').Append(r.MeanFinishDeltaDays.HasValue ? N(r.MeanFinishDeltaDays.Value) : "").Append("\r\n");
+        return sb.ToString();
+    }
+
+    /// <summary>The risk register: one row per risk with its description, status, the cell and rating at each
+    /// assessment point, its response and how many of its actions are open and overdue on <paramref name="today"/>.</summary>
+    public static string Register(RiskRegister reg, DateOnly today)
+    {
+        var m = reg.Matrix;
+        var sb = new StringBuilder("risk_id,title,cause,event,effect,category,kind,status,raised_by,raised,owner,inherent_cell,inherent_rating,"
+            + "current_cell,current_rating,target_cell,target_rating,response,response_description,response_cost,open_actions,overdue_actions\r\n");
+        string Cell(Assessment a) => m.Rate(a) is RiskRating r ? $"{m.CellName(a)},{r}" : ",";
+        foreach (var r in reg.Risks)
+        {
+            sb.Append(Q(r.Id)).Append(',').Append(Q(r.Title)).Append(',').Append(Q(r.Cause)).Append(',').Append(Q(r.Event)).Append(',')
+              .Append(Q(r.Effect)).Append(',').Append(Q(r.Category)).Append(',').Append(r.Kind.ToString().ToLowerInvariant()).Append(',')
+              .Append(r.Status.ToString().ToLowerInvariant()).Append(',').Append(Q(r.RaisedBy)).Append(',')
+              .Append(r.Raised?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "").Append(',').Append(Q(r.Owner)).Append(',')
+              .Append(Cell(r.Inherent)).Append(',').Append(Cell(r.Current)).Append(',').Append(Cell(r.Target)).Append(',')
+              .Append(r.Response.ToString().ToLowerInvariant()).Append(',').Append(Q(r.ResponseDescription)).Append(',')
+              .Append(r.ResponseCost is double c ? N(c) : "").Append(',')
+              .Append(r.Actions.Count(a => a.Status == ActionStatus.Open)).Append(',').Append(r.Actions.Count(a => a.Overdue(today))).Append("\r\n");
+        }
         return sb.ToString();
     }
 

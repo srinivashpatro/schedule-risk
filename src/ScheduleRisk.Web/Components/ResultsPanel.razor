@@ -101,20 +101,9 @@
     <section class="two-col rule-b">
         @if (pre.Risks.Count > 0)
         {
-            var top = Math.Max(0.01, pre.Risks.Max(r => Math.Abs(r.Sensitivity)));
             <div class="stack">
-                <div><h4>Risk ranking</h4><span class="sub">Rank correlation of each risk's impact with the project finish</span></div>
-                <div class="barlist">
-                    @foreach (var (r, i) in pre.Risks.Take(12).Select((r, i) => (r, i)))
-                    {
-                        <div class="barrow" title="@($"{r.Id} {r.Title}: occurred in {Pct(r.Occurrence)} of iterations" + (r.MeanFinishDeltaDays.HasValue ? $", finish {Num(r.MeanFinishDeltaDays.Value)} working days later on average when it does" : ""))">
-                            <span class="id">@r.Id</span>
-                            <span class="nm">@r.Title</span>
-                            <div class="track"><div class="fill @(i == 0 ? "top" : "")" style="width:@W(Math.Abs(r.Sensitivity), top)"></div></div>
-                            <span class="val">@Num(r.Sensitivity, 2)</span>
-                        </div>
-                    }
-                </div>
+                <div><h4>Risk tornado</h4><span class="sub">Rank correlation of each risk's impact with the project finish@(post != null ? ", before and after mitigation" : ""). Bars to the left shorten the finish.</span></div>
+                <div class="tornado">@((MarkupString)HtmlReport.Tornado(RiskTornado.Build(pre, post, 12)))</div>
             </div>
         }
         else
@@ -151,6 +140,55 @@
             </div>
         </div>
     </section>
+
+    @if (State.RunModel is { } rm && CostBenefit.Candidates(rm).Any())
+    {
+        var cb = State.CostBenefit;
+        var matrix = State.Register.Matrix;
+        string cur = matrix.Currency.Length > 0 ? matrix.Currency + " " : "";
+        <section class="pad rule-b stack">
+            <div class="headrow">
+                <div><h4>Cost-benefit of responses</h4>
+                    <span class="sub">For each risk with a response: a run with only that risk mitigated, on the same seed and iterations as the pre-mitigation run, so the difference is the response alone. The days saved at P80 are valued at the cost of delay.</span></div>
+                @if (State.CostBenefitRunning)
+                {
+                    <div class="btn-row"><span class="sub">@State.CostBenefitLabel · @State.Done.ToString("N0") / @State.Total.ToString("N0")</span><button class="btn btn-secondary btn-sm" @onclick="State.Cancel">Cancel</button></div>
+                }
+                else
+                {
+                    <button class="btn btn-primary" disabled="@State.Running" @onclick="State.RunCostBenefitAsync">@(cb == null ? "Work out cost-benefit" : "Work it out again")</button>
+                }
+            </div>
+            @if (matrix.CostOfDelayPerDay <= 0)
+            {
+                <p class="hint">Set a cost of delay per working day in 01 · Setup to value the days saved; response costs come from 03 · Assess.</p>
+            }
+            @if (cb != null)
+            {
+                <div class="wrap">
+                    <table class="table">
+                        <thead><tr><th>Risk</th><th class="n">Response cost</th><th class="n">Days saved at P80</th><th class="n">at P@(cb.Level)</th><th class="n">on average</th><th class="n">Value of P80 days</th><th class="n">Net benefit</th><th class="n">Benefit / cost</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in cb.Rows)
+                            {
+                                <tr>
+                                    <td><span class="strong">@r.Id</span> @r.Title</td>
+                                    <td class="n">@Money(r.ResponseCost, cur)</td>
+                                    <td class="n strong">@Num(r.SavedP80, 1)</td>
+                                    <td class="n">@Num(r.SavedAtLevel, 1)</td>
+                                    <td class="n">@Num(r.SavedMean, 1)</td>
+                                    <td class="n">@Money(r.Value, cur)</td>
+                                    <td class="n @(r.Net < 0 ? "neg" : "")">@Money(r.Net, cur)</td>
+                                    <td class="n">@(r.Ratio is double x ? Num(x, 1) + "×" : "–")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="hint">Working days of the project calendar. @cb.Iterations.ToString("N0") iterations, seed @cb.Seed@(cb.CostOfDelayPerDay > 0 ? $", cost of delay {cur}{cb.CostOfDelayPerDay:N0} per working day" : "").</p>
+            }
+        </section>
+    }
 
     @if (pre.Drivers.Count > 0)
     {
@@ -230,9 +268,9 @@ else if (!State.Running)
 {
     <section class="hero rule-b">
         <div class="hero-text">
-            <span class="kicker">Step 03</span>
+            <span class="kicker">@Workflow.Get(WorkflowStep.Results).Kicker</span>
             <h1>Ready to simulate</h1>
-            <p class="lede">Uses the risk model from step 2. Everything runs in this browser tab; larger schedules take longer.</p>
+            <p class="lede">Uses the risk model from step 05. Everything runs in this browser tab; larger schedules take longer.</p>
         </div>
         <div class="hero-drop ready">
             <button class="btn btn-primary btn-wide" disabled="@(State.Cpm == null)" @onclick="State.RunAsync">Run simulation →</button>
@@ -242,6 +280,8 @@ else if (!State.Running)
 
 @code {
     private bool histogram;
+
+    private static string Money(double? v, string cur) => v is double x ? cur + x.ToString("N0", CultureInfo.InvariantCulture) : "–";
     private bool showAll;
 
     private string ProgressPct => State.Total > 0

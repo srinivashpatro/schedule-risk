@@ -1,0 +1,315 @@
+@inherits StateComponent
+
+@* Step 03 Assess: place each approved risk on the matrix at three points (inherent, current, target), see them on the
+   heat map with each risk's path, and record the response, owner, cost and actions. Needs no schedule. *@
+
+@{
+    var reg = State.Register; var m = reg.Matrix;
+    var approved = reg.Risks.Where(r => r.Status == RiskStatus.Approved).ToList();
+    var map = HeatMap.Build(reg, point, filter);
+    var listed = cell is { } c ? map.Risks(c.P, c.S).ToList() : filter.Apply(approved).ToList();
+    var sel = selected != null && approved.Contains(selected) ? selected : null;
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var actions = reg.ActionList(today).Where(a => !openOnly || a.Action.Status == ActionStatus.Open).ToList();
+}
+
+<div class="split">
+    <aside class="side">
+        <div class="stack-sm">
+            <span class="kicker">@Info.Kicker</span>
+            <h2>Assess</h2>
+            <p class="sub">@Info.Description. Place each approved risk on the matrix before any controls (inherent), with today's controls (current) and once the response is done (target).</p>
+        </div>
+        <div class="field">
+            <label for="a-search">Approved risks · @approved.Count</label>
+            <input id="a-search" class="input" type="search" placeholder="Search" @bind="filter.Search" @bind:event="oninput" />
+            @if (cell is { } cc)
+            {
+                <div class="btn-row"><span class="small">In cell @m.CellName(cc.P, cc.S) (@point.ToString().ToLowerInvariant())</span><button class="btn btn-ghost btn-sm" @onclick="@(() => cell = null)">Show all</button></div>
+            }
+        </div>
+        @if (approved.Count == 0)
+        {
+            <p class="empty">No approved risks yet. Propose and approve them in step 02 · Identify.</p>
+        }
+        else
+        {
+            <ul class="risk-list">
+                @foreach (var r in listed)
+                {
+                    var risk = r;
+                    var rating = m.Rate(risk.Current);
+                    <li>
+                        <button class="risk-pick @(sel == risk ? "on" : "")" aria-current="@(sel == risk ? "true" : null)" @onclick="@(() => selected = risk)">
+                            <span class="strong">@risk.Id</span>
+                            <span class="rp-title">@risk.Title</span>
+                            @if (rating is RiskRating rr)
+                            {
+                                <span class="chip-rating @Rag(rr)">@m.CellName(risk.Current)</span>
+                            }
+                            else
+                            {
+                                <span class="chip-rating none">not rated</span>
+                            }
+                        </button>
+                    </li>
+                }
+            </ul>
+            @if (listed.Count == 0)
+            {
+                <p class="small dim">No approved risk matches.</p>
+            }
+        }
+        <RegisterFile />
+    </aside>
+
+    <div class="main-col">
+        <div class="block">
+            <div class="headrow">
+                <h4>Heat map</h4>
+                <div class="seg" role="radiogroup" aria-label="Assessment shown">
+                    @foreach (var pt in Points)
+                    {
+                        var ptt = pt;
+                        <label class="seg-opt"><input type="radio" name="hm-point" checked="@(point == ptt)" @onchange="@(() => { point = ptt; cell = null; })" />@ptt</label>
+                    }
+                </div>
+            </div>
+            <p class="sub">
+                @map.Placed placed: <span class="chip-rating rag-red">Red @map.ByRating[RiskRating.Red]</span>
+                <span class="chip-rating rag-amber">Amber @map.ByRating[RiskRating.Amber]</span>
+                <span class="chip-rating rag-green">Green @map.ByRating[RiskRating.Green]</span>
+                @if (map.NotAssessed.Count > 0)
+                {
+                    <span> · @map.NotAssessed.Count not assessed at this point</span>
+                }
+                · Click a cell to list its risks@(sel != null ? $"; the numbers show {sel.Id}'s path: 1 inherent, 2 current, 3 target" : "").
+            </p>
+            <div class="heatmap-wrap">
+                <HeatMapView Matrix="m" Map="map" Path="@(sel == null ? null : HeatMap.Path(m, sel))" Selected="cell" OnSelect="@(v => cell = v)" />
+            </div>
+        </div>
+
+        @if (sel != null)
+        {
+            var risk = sel;
+            <div class="block">
+                <div class="headrow">
+                    <h4>@risk.Id · @risk.Title</h4>
+                    <span class="sub">@(risk.Kind == RiskKind.Threat ? "Threat" : "Opportunity")@(risk.Category.Length > 0 ? " · " + risk.Category : "")</span>
+                </div>
+                @if (risk.Statement.Length > 0)
+                {
+                    <p class="statement">@risk.Statement</p>
+                }
+                <div class="wrap">
+                    <table class="table assess">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                @foreach (var pt in Points)
+                                {
+                                    var ptt = pt;
+                                    <th>
+                                        <span class="pt-num">@((int)ptt + 1)</span> @ptt
+                                        @if (ptt != AssessmentPoint.Inherent)
+                                        {
+                                            var from = ptt - 1;
+                                            <button class="btn btn-ghost btn-sm" title="Start from the @from.ToString().ToLowerInvariant() assessment" @onclick="@(() => risk.CopyAssessment(from, ptt))">Copy @from.ToString().ToLowerInvariant()</button>
+                                        }
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <th class="rowhead">Probability</th>
+                                @foreach (var pt in Points)
+                                {
+                                    var a = risk.At(pt);
+                                    <td>
+                                        <select class="input sm" aria-label="@pt probability" value="@(a.Probability?.ToString() ?? "")" @onchange="@(e => a.Probability = int.TryParse(e.Value?.ToString(), out var v) ? v : null)">
+                                            <option value="">—</option>
+                                            @for (int p = m.Probability.Count - 1; p >= 0; p--)
+                                            {
+                                                <option value="@p">@m.Probability[p].Letter · @m.Probability[p].Label (@Pct(m.Probability[p].Min)–@Pct(m.Probability[p].Max))</option>
+                                            }
+                                        </select>
+                                        @if (a.Probability is int pi && pi < m.Probability.Count && m.Probability[pi].Guidance.Length > 0)
+                                        {
+                                            <span class="band-text">@m.Probability[pi].Guidance</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                            @foreach (var d in m.Dimensions)
+                            {
+                                var dim = d;
+                                <tr>
+                                    <th class="rowhead">@dim.Name</th>
+                                    @foreach (var pt in Points)
+                                    {
+                                        var a = risk.At(pt);
+                                        int? level = a.Severity.TryGetValue(dim.Id, out var lv) ? lv : null;
+                                        <td>
+                                            <select class="input sm" aria-label="@pt @dim.Name severity" value="@(level?.ToString() ?? "")" @onchange="@(e => SetSeverity(a, dim.Id, e))">
+                                                <option value="">— does not apply</option>
+                                                @for (int s = 0; s < m.SeverityLevels.Count; s++)
+                                                {
+                                                    <option value="@s">@MatrixSettings.Roman(s) · @m.SeverityLevels[s]</option>
+                                                }
+                                            </select>
+                                            @if (level is int li && li < dim.Bands.Count && dim.Bands[li].Text.Length > 0)
+                                            {
+                                                <span class="band-text">@dim.Bands[li].Text</span>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                            <tr class="result">
+                                <th class="rowhead">Cell</th>
+                                @foreach (var pt in Points)
+                                {
+                                    var a = risk.At(pt);
+                                    <td>
+                                        @if (m.Rate(a) is RiskRating rr)
+                                        {
+                                            <span class="chip-rating @Rag(rr)">@m.CellName(a) · @rr</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small dim">Pick a probability and at least one severity</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="edit-grid">
+                    <div class="field">
+                        <label for="a-resp">Response</label>
+                        <select id="a-resp" class="input" value="@risk.Response" @onchange="@(e => risk.Response = Enum.Parse<ResponseStrategy>(e.Value?.ToString() ?? "None"))">
+                            <option value="@ResponseStrategy.None">Not chosen</option>
+                            @foreach (var s in RegisterRisk.Responses(risk.Kind))
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field"><label for="a-owner">Owner</label><input id="a-owner" class="input" @bind="risk.Owner" /></div>
+                    <div class="field">
+                        <label for="a-cost">Response cost@(m.Currency.Length > 0 ? $" ({m.Currency})" : "")</label>
+                        <input id="a-cost" class="input" type="number" min="0" step="any" value="@(risk.ResponseCost?.ToString(CultureInfo.InvariantCulture) ?? "")"
+                               @onchange="@(e => risk.ResponseCost = double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null)" />
+                    </div>
+                    <div class="field wide"><label for="a-desc">What the response is</label><textarea id="a-desc" class="input" rows="2" @bind="risk.ResponseDescription"></textarea></div>
+                </div>
+
+                <h4 class="sub-head">Actions</h4>
+                @if (risk.Actions.Count > 0)
+                {
+                    <div class="wrap">
+                        <table class="table">
+                            <thead><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th><th></th></tr></thead>
+                            <tbody>
+                                @foreach (var act in risk.Actions.ToList())
+                                {
+                                    var a = act;
+                                    <tr class="@(a.Overdue(today) ? "overdue" : "")">
+                                        <td><input class="input sm w-wide" aria-label="Action" @bind="a.Text" /></td>
+                                        <td><input class="input sm w-text" aria-label="Owner" @bind="a.Owner" /></td>
+                                        <td><input class="input sm" type="date" aria-label="Due" @bind="a.Due" /></td>
+                                        <td>
+                                            <select class="input sm" aria-label="Status" value="@a.Status" @onchange="@(e => a.Status = Enum.Parse<ActionStatus>(e.Value?.ToString() ?? "Open"))">
+                                                @foreach (var s in Enum.GetValues<ActionStatus>())
+                                                {
+                                                    <option value="@s">@s</option>
+                                                }
+                                            </select>
+                                            @if (a.Overdue(today))
+                                            {
+                                                <span class="tag tag-accent">Overdue</span>
+                                            }
+                                        </td>
+                                        <td><button class="btn btn-ghost btn-x" title="Remove action" aria-label="Remove action" @onclick="@(() => risk.Actions.Remove(a))">✕</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                <button class="btn btn-ghost add" @onclick="@(() => risk.Actions.Add(new RiskAction { Owner = risk.Owner }))">+ Add action</button>
+
+                @{ var issues = reg.AssessmentIssues(risk); }
+                @if (issues.Count > 0)
+                {
+                    <ul class="issues">
+                        @foreach (var i in issues)
+                        {
+                            <li>@i.Text</li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+        else if (approved.Count > 0)
+        {
+            <p class="empty">Pick a risk on the left to assess it.</p>
+        }
+
+        <div class="block">
+            <div class="headrow">
+                <h4>All actions</h4>
+                <label class="check"><input type="checkbox" @bind="openOnly" /> Open only</label>
+            </div>
+            @if (actions.Count == 0)
+            {
+                <p class="small dim">No actions yet. Add them to a risk above.</p>
+            }
+            else
+            {
+                <div class="wrap">
+                    <table class="table">
+                        <thead><tr><th>Risk</th><th>Action</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
+                        <tbody>
+                            @foreach (var row in actions)
+                            {
+                                var rr = row;
+                                <tr class="@(rr.Overdue ? "overdue" : "")">
+                                    <td><button class="btn btn-ghost btn-sm" @onclick="@(() => selected = rr.Risk)">@rr.Risk.Id</button></td>
+                                    <td>@rr.Action.Text</td>
+                                    <td>@rr.Action.Owner</td>
+                                    <td class="nowrap">@rr.Action.Due?.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)</td>
+                                    <td class="nowrap">@rr.Action.Status @if (rr.Overdue) {<span class="tag tag-accent">Overdue</span>}</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly WorkflowStepInfo Info = Workflow.Get(WorkflowStep.Assess);
+    private static readonly AssessmentPoint[] Points = { AssessmentPoint.Inherent, AssessmentPoint.Current, AssessmentPoint.Target };
+
+    private AssessmentPoint point = AssessmentPoint.Current;
+    private (int P, int S)? cell;
+    private RegisterRisk? selected;
+    private bool openOnly = true;
+    private readonly RegisterFilter filter = new() { Status = RiskStatus.Approved };
+
+    private static string Rag(RiskRating r) => r switch { RiskRating.Red => "rag-red", RiskRating.Amber => "rag-amber", _ => "rag-green" };
+    private static string Pct(double f) => (f * 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
+    private static void SetSeverity(Assessment a, string area, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int level)) a.Severity[area] = level;
+        else a.Severity.Remove(area);
+    }
+}

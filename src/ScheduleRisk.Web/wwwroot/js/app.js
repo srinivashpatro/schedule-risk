@@ -321,3 +321,9 @@ window.sraPicker = {
         if (active && !active.box.contains(e.target)) active.hide();
     });
 })();
+
+// Scrolls a section into view below the sticky top bar (step 04: an activity picked in the health check).
+window.sraScrollToId = function (id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};

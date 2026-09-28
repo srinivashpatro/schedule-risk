@@ -1,5 +1,4 @@
 @inherits StateComponent
-@inject ReportExporter Exporter
 
 <nav class="nav topnav">
     <div class="brandcell">
@@ -10,15 +9,9 @@
         <span class="eyebrow">Project</span>
         <span class="projname" title="@State.FileName">@ProjectLabel</span>
     </div>
-    <div class="steps">
-        @foreach (var (n, label) in Steps)
-        {
-            <button class="step @(tab == n ? "on" : "")" disabled="@(n > 1 && State.Cpm == null)" aria-current="@(tab == n ? "step" : null)"
-                    @onclick="@(() => Go(n))"><span class="n">0@(n)</span>@label</button>
-        }
-    </div>
+    <span class="spacer"></span>
     <div class="navactions" title="Runs locally · no data leaves this device">
-        <button class="btn btn-primary" disabled="@(State.Pre == null)" @onclick="@(() => reportOpen = true)">Report ↓</button>
+        <button class="btn btn-primary" disabled="@(State.Pre == null)" @onclick="@(() => Go(WorkflowStep.Review))">Report ↓</button>
     </div>
 </nav>
 
@@ -30,47 +23,52 @@
     </div>
 }
 
-<main class="page">
-    @if (tab == 1)
-    {
-        <SchedulePanel OnNext="@(() => Go(2))" />
-    }
-    else if (tab == 2)
-    {
-        <RiskModelPanel OnRun="RunFromModel" />
-    }
-    else
-    {
-        <ResultsPanel />
-    }
-</main>
+<div class="shell">
+    <nav class="workflow" aria-label="Risk workflow">
+        <ol>
+            @foreach (var s in Workflow.Steps)
+            {
+                <li>
+                    <button class="wf-step @(Current == s.Step ? "on" : "") @(s.Bridge ? "bridge" : "")" disabled="@(!Enabled(s.Step))"
+                            aria-current="@(Current == s.Step ? "step" : null)" @onclick="@(() => Go(s.Step))">
+                        <span class="wf-n" aria-hidden="@(s.Bridge ? "true" : null)">@(s.Bridge ? "→" : s.Number)</span>
+                        <span class="wf-text"><span class="wf-title">@s.Title</span><span class="wf-desc">@s.Description</span></span>
+                    </button>
+                </li>
+            }
+        </ol>
+    </nav>
 
-@if (reportOpen && State.Pre != null)
-{
-    <div class="dialog-backdrop" @onclick="@(() => reportOpen = false)">
-        <div class="dialog report-dialog" role="dialog" aria-modal="true" aria-labelledby="report-title" @onclick:stopPropagation="true">
-            <div class="dialog-title" id="report-title">Export risk report</div>
-            <div class="field">
-                <label id="fmt-label">Format</label>
-                <div class="fmt-list" role="radiogroup" aria-labelledby="fmt-label">
-                @foreach (var (f, ext, note) in Formats)
-                {
-                    <label class="radio fmt-opt">
-                        <input type="radio" name="fmt" checked="@(format == f)" @onchange="@(() => format = f)" />
-                        <span class="dot"></span>
-                        <span class="fmt-text"><b>@ReportExporter.Name(f)</b> <span class="fmt-ext">@ext</span><span class="fmt-note">@note</span></span>
-                    </label>
-                }
-                </div>
-            </div>
-            <div class="dialog-note">@ReportSummary</div>
-            <div class="dialog-actions">
-                <button class="btn btn-secondary" @onclick="@(() => reportOpen = false)">Cancel</button>
-                <button class="btn btn-primary btn-wide" @onclick="Export">Download</button>
-            </div>
-        </div>
-    </div>
-}
+    <main class="page">
+        @switch (Current)
+        {
+            case null or WorkflowStep.ScheduleCheck:
+                <SchedulePanel OnNext="@(() => Go(WorkflowStep.Model))" />
+                break;
+            case WorkflowStep.Setup:
+                <SetupPanel />
+                break;
+            case WorkflowStep.Identify:
+                <IdentifyPanel />
+                break;
+            case WorkflowStep.Assess:
+                <AssessPanel />
+                break;
+            case WorkflowStep.Model:
+                <RiskModelPanel OnRun="RunFromModel" OnGo="Go" />
+                break;
+            case WorkflowStep.Results:
+                <ResultsPanel />
+                break;
+            case WorkflowStep.Review:
+                <ReviewPanel />
+                break;
+            case WorkflowStep.Promote:
+                <PromotePanel OnNext="@(() => Go(WorkflowStep.Model))" />
+                break;
+        }
+    </main>
+</div>
 
 @if (State.Busy)
 {
@@ -78,60 +76,38 @@
 }
 
 @code {
-    private static readonly (int N, string Label)[] Steps = { (1, "Schedule"), (2, "Risk model"), (3, "Results") };
+    // No step is chosen until the user picks one: the landing page (where a schedule is opened) shows, and once a
+    // schedule is open it counts as step 04 · Schedule check.
+    private WorkflowStep? step;
 
-    private static readonly (ReportFormat Format, string Ext, string Note)[] Formats =
-    {
-        (ReportFormat.Pdf, ".pdf", "A4 document with the summary, charts and tables, ready to print or send."),
-        (ReportFormat.Word, ".docx", "The same A4 document to edit in Word; tables stay tables."),
-        (ReportFormat.PowerPoint, ".pptx", "16:9 slides: the summary, one slide per chart, tables that stay editable."),
-        (ReportFormat.Html, ".html", "One self-contained page that opens in any browser."),
-        (ReportFormat.Csv, ".csv", "Three files for a spreadsheet: activities, risks and every iteration's finish."),
-    };
-
-    private int tab = 1;
-    private bool reportOpen;
-    private ReportFormat format = ReportFormat.Pdf;
+    private WorkflowStep? Current => step ?? (State.Schedule != null ? WorkflowStep.ScheduleCheck : null);
 
     private string ProjectLabel => State.Schedule == null ? "No schedule loaded"
         : State.FileName is { } f ? $"{State.Schedule.ProjectCode} · {f}" : State.Schedule.ProjectCode;
 
-    private string ReportSummary
+    // Setup, Identify and Assess do not need a schedule; Promote maps risks to activities, the model and results
+    // need the calculated schedule, and the reports need a run.
+    private bool Enabled(WorkflowStep s) => s switch
     {
-        get
-        {
-            var pre = State.Pre!;
-            long q = Statistics.PercentileSorted(pre.SortedFinish, State.Percentile);
-            return $"{State.Schedule?.ProjectCode} · {pre.Iterations:N0} iterations · seed {pre.Seed} · P{State.Percentile} {AppState.Day(q)}"
-                + (State.Post != null ? " · pre- and post-mitigation" : "");
-        }
-    }
-
-    private async Task Export()
-    {
-        reportOpen = false;
-        switch (format)
-        {
-            case ReportFormat.Csv: await DownloadTables(); break;
-            case ReportFormat.Html: await DownloadReport(); break;
-            default: await Exporter.ExportAsync(format); break;
-        }
-    }
+        WorkflowStep.Promote or WorkflowStep.Model or WorkflowStep.Results => State.Cpm != null,
+        WorkflowStep.Review => State.Pre != null,
+        _ => true,
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender) await JS.InvokeVoidAsync("sraWatchNav");
     }
 
-    private async Task Go(int n)
+    private async Task Go(WorkflowStep s)
     {
-        tab = n;
+        step = s;
         await JS.InvokeVoidAsync("scrollTo", 0, 0);
     }
 
     private async Task RunFromModel()
     {
-        await Go(3);
+        await Go(WorkflowStep.Results);
         StateHasChanged();
         await State.RunAsync();
     }

@@ -4,6 +4,8 @@ using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Model;
 using ScheduleRisk.Core.Simulation;
 
+using ScheduleRisk.Core.Risk.Register;
+
 namespace ScheduleRisk.Core.Reporting.Export;
 
 public enum Align { Left, Right, Center }
@@ -67,14 +69,15 @@ public sealed class Section
 
 /// <summary>What was simulated and how, for <see cref="ReportContent.Build"/>.</summary>
 public sealed record ReportInput(Schedule Schedule, SimulationSummary Pre, SimulationSummary? Post = null,
-                                 IReadOnlyList<ValidationCheck>? Checks = null, VerifyReport? Verify = null,
-                                 string? ModelName = null, int Percentile = 80, DateTime? Generated = null);
+                                 HealthReport? Health = null, VerifyReport? Verify = null,
+                                 string? ModelName = null, int Percentile = 80, DateTime? Generated = null,
+                                 CostBenefitResult? CostBenefit = null, RiskRegister? Register = null);
 
 /// <summary>
 /// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary and what the
 /// results mean, the finish date distribution (histogram and cumulative curve), the confidence levels, the risk
 /// ranking (or duration sensitivity), the criticality index, the risk drivers, the activities that drive the finish
-/// and the milestones; then, as in the HTML report, the schedule health checks and the engine check against P6.
+/// and the milestones; then, as in the HTML report, the schedule health checks (P6 Check Schedule and DCMA 14-Point) and the engine check against P6.
 /// </summary>
 public sealed class ReportContent
 {
@@ -178,10 +181,9 @@ public sealed class ReportContent
 
         if (pre.Risks.Count > 0)
         {
-            double top = Math.Max(0.01, pre.Risks.Max(r => Math.Abs(r.Sensitivity)));
-            var ranking = new Section { Title = "Risk ranking", Lead = "Rank correlation of each risk's impact with the project finish." };
-            ranking.Blocks.Add(new ChartBlock(ReportCharts.Bars("risks", "Risk ranking",
-                pre.Risks.Take(12).Select(r => new ReportCharts.Bar(r.Id, r.Title, Math.Abs(r.Sensitivity) / top, N(r.Sensitivity, 2))).ToList(), false, fonts)));
+            var ranking = new Section { Title = "Risk ranking", Lead = "Rank correlation of each risk's impact with the project finish"
+                + (post != null ? ", before and after mitigation." : ".") + " Bars to the left shorten the finish." };
+            ranking.Blocks.Add(new ChartBlock(ReportCharts.Tornado("risks", "Risk tornado", RiskTornado.Build(pre, post, 12), fonts)));
             var detail = new Table
             {
                 Header = Heads("ID", "Risk", "Occurred", "Sensitivity", "Finish delta (working days)"),
@@ -206,6 +208,80 @@ public sealed class ReportContent
             sens.Blocks.Add(new ChartBlock(ReportCharts.Bars("sensitivity", "Duration sensitivity",
                 bySens.Select(a => new ReportCharts.Bar(a.Code, a.Name, Math.Abs(a.Sensitivity) / top, N(a.Sensitivity, 2))).ToList(), false, fonts)));
             doc.Sections.Add(sens);
+        }
+        if (input.CostBenefit is { Rows.Count: > 0 } cb)
+        {
+            string cur = cb.Currency.Length > 0 ? cb.Currency + " " : "";
+            string M(double? v) => v is double x ? cur + x.ToString("N0", Inv) : "–";
+            var sec = new Section
+            {
+                Title = "Cost-benefit of responses",
+                Lead = "For each risk with a response, a run with only that risk mitigated on the same seed and iterations: the days it saves and their value"
+                       + (cb.CostOfDelayPerDay > 0 ? $" at {cur}{cb.CostOfDelayPerDay.ToString("N0", Inv)} per working day of delay." : " (no cost of delay set)."),
+            };
+            var t = new Table
+            {
+                Header = Heads("Risk", "Response cost", "Days saved at P80", $"at P{cb.Level}", "on average", "Value", "Net benefit", "Benefit / cost"),
+                Widths = new[] { 2.2, 1, 0.8, 0.7, 0.7, 1, 1, 0.7 },
+                Aligns = new[] { Align.Left, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right },
+                Note = "Working days of the project calendar. Value: days saved at P80 times the cost of delay; net benefit: value minus response cost.",
+            };
+            foreach (var r in cb.Rows)
+                t.Rows.Add(new Row(new Cell[]
+                {
+                    new(r.Id + " " + r.Title, Tone: Tone.Strong), new(M(r.ResponseCost)), new(N(r.SavedP80, 1), Tone: Tone.Strong),
+                    new(N(r.SavedAtLevel, 1)), new(N(r.SavedMean, 1)), new(M(r.Value)),
+                    new(M(r.Net), Tone: r.Net < 0 ? Tone.Accent : Tone.Normal), new(r.Ratio is double x ? N(x, 1) + "×" : "–"),
+                }));
+            sec.Blocks.Add(new TableBlock(t));
+            doc.Sections.Add(sec);
+        }
+        if (input.Register is { } register && RegisterReport.Listed(register).Count > 0)
+        {
+            var m = register.Matrix;
+            var today = DateOnly.FromDateTime(input.Generated ?? DateTime.Now);
+            var sec = new Section { Title = "Risk register", Lead = RegisterReport.Lead(register) };
+            sec.Blocks.Add(new ChartBlock(ReportCharts.HeatMap("heatmap-current", "Heat map now (current assessment)", m, HeatMap.Build(register, AssessmentPoint.Current))));
+            sec.Blocks.Add(new ChartBlock(ReportCharts.HeatMap("heatmap-target", "Heat map after the responses (target assessment)", m, HeatMap.Build(register, AssessmentPoint.Target))));
+            var t = new Table
+            {
+                Header = Heads("ID", "Risk", "Category", "Owner", "Now", "After response", "Response"),
+                Widths = new[] { 0.5, 2.4, 0.9, 0.9, 0.9, 0.9, 1.6 },
+                Aligns = new[] { Align.Left, Align.Left, Align.Left, Align.Left, Align.Left, Align.Left, Align.Left },
+                Note = "Now: the current assessment, with today's controls; after response: the target assessment. Cells are severity.probability.",
+            };
+            foreach (var r in RegisterReport.Listed(register))
+            {
+                var rating = m.Rate(r.Current);
+                t.Rows.Add(new Row(new Cell[]
+                {
+                    new(r.Id, Tone: Tone.Muted), new(r.Statement.Length > 0 ? $"{r.Title}. {r.Statement}" : r.Title, Tone: Tone.Strong), new(r.Category), new(r.Owner),
+                    new(RegisterReport.Cell(m, r.Current), Tone: rating == RiskRating.Red ? Tone.Accent : Tone.Normal),
+                    new(RegisterReport.Cell(m, r.Target)), new(RegisterReport.Response(r), Tone: Tone.Muted),
+                }));
+            }
+            sec.Blocks.Add(new TableBlock(t));
+            doc.Sections.Add(sec);
+
+            var actions = register.ActionList(today);
+            if (actions.Count > 0)
+            {
+                var asec = new Section { Title = "Risk actions", Lead = $"{actions.Count(a => a.Overdue)} overdue and {actions.Count(a => a.Action.Status == ActionStatus.Open)} open, as of {today:dd-MMM-yyyy}." };
+                var at = new Table
+                {
+                    Header = Heads("Risk", "Action", "Owner", "Due", "Status"),
+                    Widths = new[] { 0.6, 3, 1, 0.9, 0.8 },
+                    Aligns = new[] { Align.Left, Align.Left, Align.Left, Align.Left, Align.Left },
+                };
+                foreach (var a in actions)
+                    at.Rows.Add(new Row(new Cell[]
+                    {
+                        new(a.Risk.Id, Tone: Tone.Muted), new(a.Action.Text), new(a.Action.Owner),
+                        new(a.Action.Due?.ToString("dd-MMM-yyyy", Inv) ?? ""), new(RegisterReport.ActionStatus(a), Tone: a.Overdue ? Tone.Accent : Tone.Normal),
+                    }));
+                asec.Blocks.Add(new TableBlock(at));
+                doc.Sections.Add(asec);
+            }
         }
 
         var crit = new Section { Title = "Criticality index", Lead = "Share of iterations in which the activity sits on the critical path." };
@@ -262,23 +338,35 @@ public sealed class ReportContent
             doc.Sections.Add(ms);
         }
 
-        if (input.Checks is { Count: > 0 } checks)
+        if (input.Health is { } health)
         {
-            var hc = new Section { Title = "Schedule health checks", Lead = "DCMA-style checks of the schedule's logic, float and constraints." };
-            var t = new Table
+            void HealthSection(string title, string lead, IEnumerable<HealthItem> items)
             {
-                Header = Heads("Check", "Result", "Count", "Notes"),
-                Widths = new[] { 2.2, 0.8, 0.9, 2.6 },
-                Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Left },
-            };
-            foreach (var c in checks)
-                t.Rows.Add(new Row(new Cell[]
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                var sec = new Section { Title = title, Lead = $"{lead} {p} passed, {f} failed, {na} not applicable." };
+                var t = new Table
                 {
-                    new(c.Title, Tone: Tone.Strong), new(c.Passed ? "Pass" : "Review", Tone: c.Passed ? Tone.Normal : Tone.Accent),
-                    new($"{c.Count.ToString("N0", Inv)} / {c.Total.ToString("N0", Inv)}"), new(c.Note, Tone: Tone.Muted),
-                }));
-            hc.Blocks.Add(new TableBlock(t));
-            doc.Sections.Add(hc);
+                    Header = Heads("Check", "Status", "Actual", "Target", "Count", "Notes"),
+                    Widths = new[] { 1.9, 0.8, 0.7, 0.7, 0.9, 2.2 },
+                    Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right, Align.Left },
+                };
+                foreach (var i in list)
+                {
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    t.Rows.Add(new Row(new Cell[]
+                    {
+                        new((i.Number != null ? i.Number + ". " : "") + i.Label, Tone: Tone.Strong),
+                        new(i.StatusText, Tone: i.Status == HealthStatus.Pass ? Tone.Normal : i.Status == HealthStatus.NotApplicable ? Tone.Muted : Tone.Accent),
+                        new(i.ActualText), new(i.TargetText), new(i.CountText), new(note, Tone: Tone.Muted),
+                    }));
+                }
+                sec.Blocks.Add(new TableBlock(t));
+                doc.Sections.Add(sec);
+            }
+            HealthSection("Schedule health: P6 Check Schedule", "The parameters of P6's Check Schedule dialog.", health.P6);
+            HealthSection("Schedule health: DCMA 14-Point Assessment", "The DCMA 14-Point schedule assessment.", health.Dcma);
         }
         if (input.Verify is { Compared: > 0 } v)
         {

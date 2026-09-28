@@ -1,0 +1,84 @@
+@inherits StateComponent
+@inject ReportExporter Exporter
+
+@* Step 07: the risk report in each format, written in this browser (it replaces the Report dialog). *@
+
+@if (State.Pre == null)
+{
+    <section class="hero rule-b">
+        <div class="hero-text">
+            <span class="kicker">@Info.Kicker</span>
+            <h1>Nothing to report yet</h1>
+            <p class="lede">Run the simulation in step 06 · Results first.</p>
+        </div>
+    </section>
+}
+else
+{
+    <section class="hero rule-b">
+        <div class="hero-text">
+            <span class="kicker">@Info.Kicker</span>
+            <h1>Export the risk report</h1>
+            <p class="lede">Written on this device from the results on screen. Nothing is uploaded.</p>
+            <p class="dialog-note">@ReportSummary</p>
+            <ul class="steps-list">
+                <li>Summary, what the results mean, finish date distribution, confidence levels and the risk tornado</li>
+                @if (State.CostBenefit != null) { <li>Cost-benefit of the responses</li> }
+                else { <li class="dim">Cost-benefit: work it out in 06 · Results to include it</li> }
+                @if (State.Register.Risks.Count > 0) { <li>Risk register: heat maps now and after the responses, the approved risks and their actions</li> }
+                <li>Criticality, drivers, milestones, the schedule check (P6 and DCMA) and the engine check against P6</li>
+            </ul>
+        </div>
+        <div class="hero-drop review-body">
+            <div class="fmt-list" role="radiogroup" aria-label="Format">
+            @foreach (var (f, ext, note) in Formats)
+            {
+                <label class="radio fmt-opt">
+                    <input type="radio" name="fmt" checked="@(format == f)" @onchange="@(() => format = f)" />
+                    <span class="dot"></span>
+                    <span class="fmt-text"><b>@ReportExporter.Name(f)</b> <span class="fmt-ext">@ext</span><span class="fmt-note">@note</span></span>
+                </label>
+            }
+            </div>
+            <div class="actions-end">
+                <button class="btn btn-primary btn-wide" @onclick="Export">Download</button>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private static readonly WorkflowStepInfo Info = Workflow.Get(WorkflowStep.Review);
+
+    private static readonly (ReportFormat Format, string Ext, string Note)[] Formats =
+    {
+        (ReportFormat.Pdf, ".pdf", "A4 document with the summary, charts and tables, ready to print or send."),
+        (ReportFormat.Word, ".docx", "The same A4 document to edit in Word; tables stay tables."),
+        (ReportFormat.PowerPoint, ".pptx", "16:9 slides: the summary, one slide per chart, tables that stay editable."),
+        (ReportFormat.Html, ".html", "One self-contained page that opens in any browser."),
+        (ReportFormat.Csv, ".csv", "Files for a spreadsheet: activities, risks, every iteration's finish and the risk register."),
+    };
+
+    private ReportFormat format = ReportFormat.Pdf;
+
+    private string ReportSummary
+    {
+        get
+        {
+            var pre = State.Pre!;
+            long q = Statistics.PercentileSorted(pre.SortedFinish, State.Percentile);
+            return $"{State.Schedule?.ProjectCode} · {pre.Iterations:N0} iterations · seed {pre.Seed} · P{State.Percentile} {AppState.Day(q)}"
+                + (State.Post != null ? " · pre- and post-mitigation" : "");
+        }
+    }
+
+    private async Task Export()
+    {
+        switch (format)
+        {
+            case ReportFormat.Csv: await DownloadTables(); break;
+            case ReportFormat.Html: await DownloadReport(); break;
+            default: await Exporter.ExportAsync(format); break;
+        }
+    }
+}

@@ -5,6 +5,7 @@ using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
 using ScheduleRisk.Core.Reporting;
 using ScheduleRisk.Core.Risk;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 using ScheduleRisk.Core.Xer;
 
@@ -17,13 +18,23 @@ public static class Program
 usage:
   sra info      <file.xer>
   sra cpm       <file.xer> [--project ID] [--csv out.csv]
-  sra validate  <file.xer> [--project ID]
+  sra validate  <file.xer> [--project ID] [--json health.json]
+                [--long-lag-hr 352] [--large-float-hr 352] [--large-duration-hr 352]
   sra verify    <file.xer> [--project ID] [--tolerance-min N]
   sra simulate  <file.xer> --risk model.json [--project ID] [--iterations N] [--seed N]
-                [--scenario pre|post|both] [--out folder] [--threads N]
+                [--scenario pre|post|both] [--out folder] [--threads N] [--register register.json]
+                [--cost-benefit [--level 80]]
+  sra promote   <file.xer> --register register.json [--risk model.json] [--out model.json]
+                [--import [--register-out register.json]] [--project ID]
 
 simulate writes to --out (default: ./sra-output):
-  report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv";
+  report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv
+  register.csv (with --register)
+
+promote turns the register's approved risks that meet its promote rule into risks in the model
+(--risk, or an empty model) and writes it to --out (default: promoted.risk.json). --import first moves
+the model's typed-in risks to the register (written to --register-out, default promoted.register.json).
+simulate --register promotes the register into the model before simulating, as the app does.";
 
     public static int Main(string[] args)
     {
@@ -50,9 +61,10 @@ simulate writes to --out (default: ./sra-output):
             switch (cmd)
             {
                 case "cpm": return Cpm(s, r, opts, sw.Elapsed);
-                case "validate": return Validate(s, r);
+                case "validate": return Validate(s, r, path, opts);
                 case "verify": return Verify(s, r, opts);
                 case "simulate": return Simulate(s, engine, r, opts);
+                case "promote": return Promote(s, engine, r, opts);
                 default:
                     Console.Error.WriteLine($"unknown command '{cmd}'\n\n{Usage}");
                     return 2;
@@ -118,12 +130,42 @@ simulate writes to --out (default: ./sra-output):
         return 0;
     }
 
-    private static int Validate(Schedule s, CpmResult r)
+    /// <summary>Health check: P6 Check Schedule parameters and the DCMA 14-Point Assessment (docs/SCHEDULE_CHECK.md).</summary>
+    private static int Validate(Schedule s, CpmResult r, string path, Dictionary<string, string> o)
     {
-        var checks = ScheduleValidator.Validate(s, r);
-        foreach (var c in checks)
-            Console.WriteLine($"{(c.Passed ? "PASS  " : "REVIEW")} {c.Title,-50} {c.Count,6}/{c.Total,-6} {c.Pct,6:F1}%  {c.Note}");
-        return checks.All(c => c.Passed) ? 0 : 1;
+        var settings = new HealthCheckSettings();
+        double Hours(string key, double dflt) => o.TryGetValue(key, out var v) ? double.Parse(v, System.Globalization.CultureInfo.InvariantCulture) : dflt;
+        settings.LongLagHours = Hours("long-lag-hr", settings.LongLagHours);
+        settings.LargeFloatHours = Hours("large-float-hr", settings.LargeFloatHours);
+        settings.LargeDurationHours = Hours("large-duration-hr", settings.LargeDurationHours);
+        var h = HealthCheck.Run(s, r, settings);
+        static string Val(HealthItem i) => i.ActualBool is bool b ? (b ? "yes" : "no")
+            : i.Actual is not double a ? "-" : i.Unit == "%" ? $"{a:F1}%" : i.Unit == "index" ? $"{a:F2}" : $"{a:0}";
+        static string Target(HealthItem i) => i.Target is double t ? $"{i.Operator} {t:0.##}{(i.Unit == "%" ? "%" : "")}" : "";
+        void Section(string title, IEnumerable<HealthItem> items)
+        {
+            var list = items.ToList();
+            var (pass, fail, na) = h.Score(list);
+            Console.WriteLine($"{title}: {pass} pass, {fail} fail, {na} n/a");
+            foreach (var i in list)
+            {
+                string count = i.Count is int c && i.Denominator is int d ? $"{c}/{d}" : "";
+                string name = i.Number != null ? $"{i.Number,2} {i.Label}" : i.Label;
+                string conv = i.StatusConventional is HealthStatus sc ? $" (conventional: {HealthCheck.StatusText(sc)})" : "";
+                Console.WriteLine($"  {i.StatusText,-20} {name,-42} {Val(i),8} {Target(i),-9} {count,-11}{conv}");
+            }
+        }
+        Console.WriteLine($"{h.ProjectCode}: {h.Schedulable} activities, {h.TotalRelationships} relationships, data date {Time.Format(h.DataDate)}"
+                          + (h.Unstarted ? " (no progress: baseline)" : ""));
+        Section("P6 Check Schedule", h.P6);
+        Section("DCMA 14-Point", h.Dcma);
+        foreach (var n in h.AppNotes) Console.WriteLine("note: " + n);
+        if (o.TryGetValue("json", out var json))
+        {
+            File.WriteAllText(json, h.ToJson(Path.GetFileName(path)));
+            Console.WriteLine($"json: {Path.GetFullPath(json)}");
+        }
+        return h.P6.Concat(h.Dcma).Any(i => i.Status == HealthStatus.Fail) ? 1 : 0;
     }
 
     private static int Verify(Schedule s, CpmResult r, Dictionary<string, string> o)
@@ -146,10 +188,66 @@ simulate writes to --out (default: ./sra-output):
         return rep.Outcome == VerifyOutcome.Differences ? 1 : 0;
     }
 
+    /// <summary>Promote the register's risks into a risk model (docs/RISK_REGISTER.md), as step "Promote" in the app.</summary>
+    private static int Promote(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
+    {
+        if (!o.TryGetValue("register", out var regPath)) throw new ArgumentException("promote needs --register register.json");
+        var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+        var issues = reg.Validate();
+        foreach (var i in issues) Console.Error.WriteLine((i.Error ? "error: " : "warning: ") + i.Text);
+        if (issues.Any(i => i.Error)) return 4;
+        var doc = o.TryGetValue("risk", out var riskPath) ? RiskModelDocument.FromJson(File.ReadAllText(riskPath)) : new RiskModelDocument();
+        var planned = RegisterPromoter.PlannedDuration(s, det);
+        Console.WriteLine($"planned duration: {planned.WorkingDays:F1} working days ({Time.Format(planned.Start)} to {Time.Format(planned.Finish)})");
+        if (o.ContainsKey("import"))
+        {
+            // Move the model's typed-in risks to the register first; they promote back unchanged.
+            var imp = RegisterImporter.MoveToRegister(doc, reg, s, engine.CriticalToProjectFinish(), planned.WorkingDays);
+            Console.WriteLine($"import: {imp}");
+            foreach (var (from, to) in imp.Renamed) Console.WriteLine($"  {from} renamed {to}: the register already had {from}");
+            foreach (var n in imp.NotMoved) Console.WriteLine($"  {n.Id} not moved: {n.Reason}");
+            foreach (var n in imp.Notes) Console.WriteLine($"  {n}");
+            string regOut = o.GetValueOrDefault("register-out", "promoted.register.json");
+            File.WriteAllText(regOut, reg.ToJson());
+            Console.WriteLine($"register -> {regOut}");
+        }
+        var report = RegisterPromoter.Apply(doc, reg, planned.WorkingDays);
+        foreach (var row in doc.Risks.Where(x => x.Source == RiskRow.RegisterSource))
+        {
+            string how = report.Added.Contains(row.Id) ? "added" : "updated";
+            string post = row.Mitigated ? $", after mitigation {row.MitigatedProbability:P1} {Days(row.MitigatedImpact)}" : "";
+            var ids = row.Filter.Value.Split(", ");
+            string on = ids.Length <= 5 ? row.Filter.Value : string.Join(", ", ids.Take(5)) + $" and {ids.Length - 5} more";
+            Console.WriteLine($"  {how} {row.Id} {row.Title}: {row.Probability:P1} {Days(row.Impact)}{(row.ImpactUnits == "percent" ? " (%)" : "")}{post} on {on}");
+        }
+        foreach (var id in report.Removed) Console.WriteLine($"  removed {id}: no longer promoted");
+        foreach (var sk in report.Skipped) Console.WriteLine($"  skipped {sk.Id}: {sk.Reason}");
+        // Check the result the way simulate will read it (activity ids, distributions).
+        var model = RiskModelLoader.LoadJson(s, doc.ToJson(), engine.CriticalToProjectFinish());
+        foreach (var w in model.Warnings) Console.Error.WriteLine("warning: " + w);
+        string outPath = o.GetValueOrDefault("out", "promoted.risk.json");
+        File.WriteAllText(outPath, doc.ToJson());
+        Console.WriteLine($"{report} -> {outPath}");
+        return 0;
+
+        static string Days(DistSpec d) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{d.Min:0.#}/{d.MostLikely:0.#}/{d.Max:0.#}d");
+    }
+
     private static int Simulate(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
     {
         if (!o.TryGetValue("risk", out var riskPath)) throw new ArgumentException("simulate needs --risk model.json");
-        var model = RiskModelLoader.Load(s, riskPath, engine.CriticalToProjectFinish());
+        RiskModel model;
+        if (o.TryGetValue("register", out var regPath))
+        {
+            // The model's discrete risks come from the register: promote it first, as the app does before every run.
+            var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+            var doc = RiskModelDocument.FromJson(File.ReadAllText(riskPath));
+            var rep = RegisterPromoter.Apply(doc, reg, RegisterPromoter.PlannedDuration(s, det).WorkingDays);
+            Console.WriteLine($"register: {rep}");
+            foreach (var sk in rep.Skipped) Console.Error.WriteLine($"warning: register risk {sk.Id} is not in the run: {sk.Reason}");
+            model = RiskModelLoader.LoadJson(s, doc.ToJson(), engine.CriticalToProjectFinish());
+        }
+        else model = RiskModelLoader.Load(s, riskPath, engine.CriticalToProjectFinish());
         foreach (var w in model.Warnings) Console.Error.WriteLine("warning: " + w);
         int? iters = o.TryGetValue("iterations", out var it) ? int.Parse(it) : null;
         long? seed = o.TryGetValue("seed", out var sd) ? long.Parse(sd) : null;
@@ -184,10 +282,25 @@ simulate writes to --out (default: ./sra-output):
         File.WriteAllText(Path.Combine(outDir, "activities.csv"), CsvExport.Activities(main));
         File.WriteAllText(Path.Combine(outDir, "risks.csv"), CsvExport.Risks(main));
         if (preRes != null) File.WriteAllText(Path.Combine(outDir, "iterations.csv"), CsvExport.Iterations(preRes));
-        var checks = ScheduleValidator.Validate(s, det);
+        CostBenefitResult? cb = null;
+        if (o.ContainsKey("cost-benefit") && pre != null)
+        {
+            // Paired runs, one per risk with a response; costs and the cost of delay from the register when given.
+            RiskRegister? reg = o.TryGetValue("register", out var rp2) ? RiskRegister.FromJson(File.ReadAllText(rp2)) : null;
+            int level = o.TryGetValue("level", out var lv) ? int.Parse(lv) : 80;
+            cb = CostBenefit.Run(s, model, engine, pre, level, id => reg?.Risks.FirstOrDefault(r => r.Id == id)?.ResponseCost,
+                reg?.Matrix.CostOfDelayPerDay ?? 0, reg?.Matrix.Currency ?? "");
+            Console.WriteLine($"cost-benefit ({cb.Iterations} iterations, seed {cb.Seed}): days saved at P80 / P{level} / mean, value, net");
+            foreach (var r in cb.Rows)
+                Console.WriteLine($"  {r.Id,-6} {r.SavedP80,7:F1} {r.SavedAtLevel,7:F1} {r.SavedMean,7:F1}  {r.Value?.ToString("N0") ?? "-",14} {r.Net?.ToString("N0") ?? "-",14}  {r.Title}");
+        }
+        RiskRegister? reportRegister = o.TryGetValue("register", out var rp3) ? RiskRegister.FromJson(File.ReadAllText(rp3)) : null;
+        if (reportRegister is { Risks.Count: > 0 })
+            File.WriteAllText(Path.Combine(outDir, "register.csv"), CsvExport.Register(reportRegister, DateOnly.FromDateTime(DateTime.Today)));
+        var checks = HealthCheck.Run(s, det);
         var verify = P6Verifier.Verify(s, det);
         File.WriteAllText(Path.Combine(outDir, "report.html"),
-            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name));
+            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name, cb, reportRegister));
         Console.WriteLine($"report: {Path.GetFullPath(Path.Combine(outDir, "report.html"))}");
         return 0;
     }

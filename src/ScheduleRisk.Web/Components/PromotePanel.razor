@@ -1,0 +1,230 @@
+@inherits StateComponent
+
+@* Promote: the register's approved risks that meet the promote rule become discrete risks in the model. The matrix
+   gives the numbers (probability band midpoint, schedule band x planned duration); each can be set by hand here, and
+   each risk is mapped to the activities it hits. The work is done by RegisterPromoter in Core, as `sra promote`. *@
+
+@{
+    var reg = State.Register; var m = reg.Matrix;
+    var planned = State.Schedule != null && State.Cpm != null ? RegisterPromoter.PlannedDuration(State.Schedule, State.Cpm) : null;
+    var approved = reg.Risks.Where(r => r.Status == RiskStatus.Approved).ToList();
+    var eligible = approved.Where(r => RegisterPromoter.Ineligibility(reg, r, honourAlways: true) == null).ToList();
+    var others = approved.Where(r => RegisterPromoter.Ineligibility(reg, r, honourAlways: true) != null).ToList();
+    string cur = m.Currency;
+}
+
+<div class="split">
+    <aside class="side">
+        <div class="stack-sm">
+            <span class="kicker">@Info.Kicker</span>
+            <h2>Promote</h2>
+            <p class="sub">@Info.Description. Approved risks that meet the rule become risks in the model: the current assessment before mitigation, the target after it.</p>
+        </div>
+        @if (planned != null)
+        {
+            <div class="field">
+                <label>Planned duration</label>
+                <span class="big">@planned.WorkingDays.ToString("N1", CultureInfo.InvariantCulture) working days</span>
+                <span class="hint">From the project start @AppState.Day(planned.Start) to the deterministic finish @AppState.Day(planned.Finish). The schedule bands are shares of it.</span>
+            </div>
+        }
+        <div class="field">
+            <label>Rule</label>
+            <span class="small">@(m.Promote.MinRating switch { RiskRating.Red => "Red", RiskRating.Amber => "Red and Amber", _ => "All rated" }) risks with a @(m.Dimension(m.Promote.ScheduleDimension)?.Name.ToLowerInvariant() ?? m.Promote.ScheduleDimension) severity of @MatrixSettings.Roman(m.Promote.MinScheduleSeverity) or more, on their current assessment. Change it in step 01 · Setup.</span>
+        </div>
+        <button class="btn btn-primary btn-block" disabled="@(planned == null || eligible.Count == 0)" @onclick="@(() => Promote(planned!))">Promote @eligible.Count to the model</button>
+        @if (report != null)
+        {
+            <div class="stack-sm" role="status">
+                <span class="small strong">@report</span>
+                @foreach (var s in report.Skipped)
+                {
+                    <span class="small">Skipped @s.Id: @s.Reason</span>
+                }
+                <button class="btn btn-secondary" @onclick="() => OnNext.InvokeAsync()">Go to 05 · Model →</button>
+            </div>
+        }
+        <RegisterFile />
+    </aside>
+
+    <div class="main-col">
+        <div class="block">
+            <div class="headrow">
+                <h4>To promote · @eligible.Count</h4>
+                <span class="sub">Worked out from the matrix; type a value to set it by hand.</span>
+            </div>
+            @if (eligible.Count == 0)
+            {
+                <p class="empty">No approved risk meets the rule yet. Assess risks in step 03, or change the rule in step 01.</p>
+            }
+            else
+            {
+                <div class="wrap">
+                    <table class="table promote">
+                        <thead>
+                            <tr><th>Risk</th><th class="n">Probability</th><th>Impact, working days<br /><span class="dim">min / likely / max</span></th><th>After mitigation</th><th>Activities it affects</th><th>In the model</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in eligible)
+                            {
+                                var risk = r;
+                                var q = planned == null ? null : RegisterPromoter.Quantify(m, risk, planned.WorkingDays);
+                                var auto = planned == null ? null : RegisterPromoter.Quantify(m, Plain(risk), planned.WorkingDays);
+                                var p6 = risk.Promotion;
+                                <tr>
+                                    <td>
+                                        <div class="risk-cell">
+                                            <span><span class="strong">@risk.Id</span> @risk.Title</span>
+                                            <span>
+                                                @if (m.Rate(risk.Current) is RiskRating rr) { <span class="chip-rating @Rag(rr)">@m.CellName(risk.Current)</span> }
+                                                @if (risk.Kind == RiskKind.Opportunity) { <span class="small dim"> opportunity: days saved</span> }
+                                            </span>
+                                        </div>
+                                    </td>
+                                    @if (q?.Problem is string problem)
+                                    {
+                                        <td colspan="3"><ul class="issues"><li class="err">@problem</li></ul></td>
+                                    }
+                                    else if (q != null && auto != null)
+                                    {
+                                        <td class="n">
+                                            <span class="unit"><input class="input sm w-pct @(p6.Probability != null ? "set" : "")" type="number" min="0" max="100" step="any" aria-label="@risk.Id probability %"
+                                                   value="@Num(q.Probability * 100)" @onchange="@(e => p6.Probability = Pct(e, auto.Probability))" />%</span>
+                                            <span class="hint block">band midpoint @Num(auto.Probability * 100)%</span>
+                                        </td>
+                                        <td>
+                                            <div class="tri">
+                                                <input class="input sm w-pct @(p6.Impact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact min days" value="@Num(q.Impact.Min)" @onchange="@(e => SetImpact(risk, false, 0, e, q.Impact))" />
+                                                <input class="input sm w-pct @(p6.Impact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact most likely days" value="@Num(q.Impact.MostLikely)" @onchange="@(e => SetImpact(risk, false, 1, e, q.Impact))" />
+                                                <input class="input sm w-pct @(p6.Impact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact max days" value="@Num(q.Impact.Max)" @onchange="@(e => SetImpact(risk, false, 2, e, q.Impact))" />
+                                            </div>
+                                            <span class="hint block">@(p6.Impact != null && p6.ImpactUnits == "percent" ? "% of each activity's duration · " : "")matrix: @Tri(auto.Impact) days (schedule @SevText(risk.Current))</span>
+                                        </td>
+                                        <td>
+                                            @if (q.Mitigated)
+                                            {
+                                                <div class="tri">
+                                                    <span class="unit"><input class="input sm w-pct @(p6.MitigatedProbability != null ? "set" : "")" type="number" min="0" max="100" step="any" aria-label="@risk.Id probability after mitigation %"
+                                                           value="@Num(q.MitigatedProbability * 100)" @onchange="@(e => p6.MitigatedProbability = Pct(e, auto.MitigatedProbability))" />%</span>
+                                                    <input class="input sm w-pct @(p6.MitigatedImpact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact after mitigation min" value="@Num(q.MitigatedImpact.Min)" @onchange="@(e => SetImpact(risk, true, 0, e, q.MitigatedImpact))" />
+                                                    <input class="input sm w-pct @(p6.MitigatedImpact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact after mitigation most likely" value="@Num(q.MitigatedImpact.MostLikely)" @onchange="@(e => SetImpact(risk, true, 1, e, q.MitigatedImpact))" />
+                                                    <input class="input sm w-pct @(p6.MitigatedImpact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact after mitigation max" value="@Num(q.MitigatedImpact.Max)" @onchange="@(e => SetImpact(risk, true, 2, e, q.MitigatedImpact))" />
+                                                </div>
+                                                <span class="hint block">target @m.CellName(risk.Target): @Num(auto.MitigatedProbability * 100)%, @Tri(auto.MitigatedImpact)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="small dim">No target assessment: no mitigation.</span>
+                                            }
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td colspan="3" class="small dim">Open a schedule to work out the days.</td>
+                                    }
+                                    <td class="picker-cell">
+                                        @if (State.Schedule != null)
+                                        {
+                                            <ActivityPicker Value="@string.Join(", ", p6.Activities)" ValueChanged="@(v => SetActivities(risk, v))" />
+                                        }
+                                        @if (p6.Activities.Count == 0)
+                                        {
+                                            <span class="hint block">Pick the activities this risk would delay.</span>
+                                        }
+                                    </td>
+                                    <td class="nowrap">
+                                        <span class="small">@InModel(risk)</span>
+                                        @if (p6.Always)
+                                        {
+                                            <label class="check small block" title="Moved from a model: kept in the model whatever its rating, so moving it did not change the results">
+                                                <input type="checkbox" checked @onchange="@(e => p6.Always = e.Value is true)" /> Always in the model
+                                            </label>
+                                        }
+                                        @if (!p6.IsEmpty && (p6.Probability != null || p6.Impact != null || p6.MitigatedProbability != null || p6.MitigatedImpact != null))
+                                        {
+                                            <button class="btn btn-ghost btn-sm" title="Use the matrix's values again" @onclick="@(() => ResetValues(risk))">Use matrix values</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="sub">Promoting again updates these risks in the model and removes those that no longer meet the rule. Risks typed into the model are left alone.</p>
+            }
+        </div>
+
+        @if (others.Count > 0)
+        {
+            <div class="block">
+                <div class="headrow"><h4>Not promoted · @others.Count</h4></div>
+                <ul class="plain">
+                    @foreach (var r in others)
+                    {
+                        <li><span class="strong">@r.Id</span> @r.Title: <span class="dim">@RegisterPromoter.Ineligibility(reg, r)</span></li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private static readonly WorkflowStepInfo Info = Workflow.Get(WorkflowStep.Promote);
+
+    [Parameter] public EventCallback OnNext { get; set; }
+
+    private PromoteReport? report;
+
+    private static string Rag(RiskRating r) => r switch { RiskRating.Red => "rag-red", RiskRating.Amber => "rag-amber", _ => "rag-green" };
+    private static string Num(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+    private static string Tri(DistSpec d) => $"{Num(d.Min)} / {Num(d.MostLikely)} / {Num(d.Max)}";
+
+    private string SevText(Assessment a)
+    {
+        var m = State.Register.Matrix;
+        return a.Severity.TryGetValue(m.Promote.ScheduleDimension, out int l) ? MatrixSettings.Roman(l) : "none";
+    }
+
+    /// <summary>The risk without values set by hand, to show what the matrix gives.</summary>
+    private static RegisterRisk Plain(RegisterRisk r) => new()
+    {
+        Id = r.Id, Kind = r.Kind, Status = r.Status, Current = r.Current, Target = r.Target,
+        Promotion = new Promotion { Activities = r.Promotion.Activities },
+    };
+
+    private static double? Pct(ChangeEventArgs e, double auto) =>
+        double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && Math.Abs(v / 100 - auto) > 1e-9
+            ? Math.Clamp(v / 100, 0, 1) : null;
+
+    private static void SetImpact(RegisterRisk r, bool mitigated, int field, ChangeEventArgs e, DistSpec current)
+    {
+        if (!double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v)) return;
+        var d = current.Clone();
+        if (field == 0) d.Min = v; else if (field == 1) d.MostLikely = v; else d.Max = v;
+        if (mitigated) r.Promotion.MitigatedImpact = d; else r.Promotion.Impact = d;
+    }
+
+    private static void ResetValues(RegisterRisk r)
+    {
+        var p = r.Promotion;
+        p.Probability = p.MitigatedProbability = null;
+        p.Impact = p.MitigatedImpact = null;
+    }
+
+    private static void SetActivities(RegisterRisk r, string value) =>
+        r.Promotion.Activities = value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private string InModel(RegisterRisk r)
+    {
+        var row = State.Model.Risks.FirstOrDefault(x => x.Id == r.Id);
+        return row == null ? "Not yet" : row.Source == RiskRow.RegisterSource ? "Promoted" : "Id taken by a model risk";
+    }
+
+    private void Promote(PlannedDuration planned)
+    {
+        report = RegisterPromoter.Apply(State.Model, State.Register, planned.WorkingDays);
+        if (report.Added.Count + report.Updated.Count + report.Removed.Count > 0) State.ClearResults();
+        State.Notify();
+    }
+}

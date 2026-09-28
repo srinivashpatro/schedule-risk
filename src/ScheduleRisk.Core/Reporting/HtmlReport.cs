@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Model;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 
 namespace ScheduleRisk.Core.Reporting;
@@ -19,7 +20,8 @@ public static class HtmlReport
     private static string F(double x, int d = 1) => x.ToString("F" + d, Inv);
 
     public static string Build(Schedule s, SimulationSummary pre, SimulationSummary? post = null,
-                               IReadOnlyList<ValidationCheck>? checks = null, VerifyReport? verify = null, string? modelName = null)
+                               HealthReport? health = null, VerifyReport? verify = null, string? modelName = null,
+                               CostBenefitResult? costBenefit = null, RiskRegister? register = null, DateTime? generated = null)
     {
         var pcal = s.Settings.ProjectCalendar;
         double mpd = pcal.MinutesPerDay;
@@ -83,7 +85,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         if (pre.Risks.Count > 0)
         {
             sb.Append("<h2>Risk ranking</h2><p class=\"muted\">Sorted by rank correlation between the risk's realised impact and the project finish. The delta is the mean finish when the risk occurs minus when it does not.</p>");
-            sb.Append("<div class=\"card\">").Append(Tornado(pre.Risks.Select(r => (r.Id + " " + r.Title, r.Sensitivity)).Take(15).ToList())).Append("</div>");
+            sb.Append("<div class=\"card\">").Append(Tornado(RiskTornado.Build(pre, post, 15))).Append("</div>");
             sb.Append("<div class=\"wrap\" style=\"margin-top:10px\"><table><tr><th>Risk</th><th>Occurred</th><th>Sensitivity</th><th>Finish delta (working days)</th></tr>");
             foreach (var r in pre.Risks)
                 sb.Append("<tr><td>").Append(E(r.Id)).Append(" ").Append(E(r.Title)).Append("</td><td class=\"n\">").Append(F(r.Occurrence * 100, 0))
@@ -115,13 +117,73 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
             sb.Append("</table></div>");
         }
 
-        if (checks != null)
+        if (costBenefit is { Rows.Count: > 0 } cb)
         {
-            sb.Append("<h2>Schedule health checks</h2><div class=\"wrap\"><table><tr><th>Check</th><th>Result</th><th>Count</th><th>Notes</th></tr>");
-            foreach (var c in checks)
-                sb.Append("<tr><td>").Append(E(c.Title)).Append("</td><td class=\"").Append(c.Passed ? "pass\">Pass" : "fail\">Review")
-                  .Append("</td><td class=\"n\">").Append(c.Count).Append(" / ").Append(c.Total).Append("</td><td>").Append(E(c.Note)).Append("</td></tr>");
+            string cur = cb.Currency.Length > 0 ? cb.Currency + " " : "";
+            string M(double? v) => v is double x ? cur + x.ToString("N0", Inv) : "–";
+            sb.Append("<h2>Cost-benefit of responses</h2><p class=\"muted\">For each risk with a response, a run with only that risk mitigated on the same seed and iterations")
+              .Append(cb.CostOfDelayPerDay > 0 ? $"; days saved valued at {E(cur)}{cb.CostOfDelayPerDay.ToString("N0", Inv)} per working day." : ".")
+              .Append("</p><div class=\"wrap\"><table><tr><th>Risk</th><th>Response cost</th><th>Days saved at P80</th><th>at P").Append(cb.Level)
+              .Append("</th><th>on average</th><th>Value</th><th>Net benefit</th><th>Benefit / cost</th></tr>");
+            foreach (var r in cb.Rows)
+                sb.Append("<tr><td>").Append(E(r.Id + " " + r.Title)).Append("</td><td class=\"n\">").Append(E(M(r.ResponseCost)))
+                  .Append("</td><td class=\"n\">").Append(F(r.SavedP80, 1)).Append("</td><td class=\"n\">").Append(F(r.SavedAtLevel, 1))
+                  .Append("</td><td class=\"n\">").Append(F(r.SavedMean, 1)).Append("</td><td class=\"n\">").Append(E(M(r.Value)))
+                  .Append("</td><td class=\"n\">").Append(E(M(r.Net))).Append("</td><td class=\"n\">").Append(r.Ratio is double x ? F(x, 1) + "×" : "–")
+                  .Append("</td></tr>");
             sb.Append("</table></div>");
+        }
+        if (register != null && RegisterReport.Listed(register).Count > 0)
+        {
+            var m = register.Matrix;
+            var today = DateOnly.FromDateTime(generated ?? DateTime.Now);
+            sb.Append("<h2>Risk register</h2><p class=\"muted\">").Append(E(RegisterReport.Lead(register))).Append("</p>");
+            sb.Append("<div class=\"card\"><h3>Heat map now (current assessment)</h3>")
+              .Append(RegisterReport.HeatMapSvg(m, HeatMap.Build(register, AssessmentPoint.Current), "Heat map now"))
+              .Append("</div><div class=\"card\"><h3>Heat map after the responses (target assessment)</h3>")
+              .Append(RegisterReport.HeatMapSvg(m, HeatMap.Build(register, AssessmentPoint.Target), "Heat map after the responses")).Append("</div>");
+            sb.Append("<div class=\"wrap\"><table><tr><th>ID</th><th>Risk</th><th>Category</th><th>Owner</th><th>Now</th><th>After response</th><th>Response</th></tr>");
+            foreach (var r in RegisterReport.Listed(register))
+                sb.Append("<tr><td>").Append(E(r.Id)).Append("</td><td><b>").Append(E(r.Title)).Append("</b>")
+                  .Append(r.Statement.Length > 0 ? "<br><span class=\"muted\">" + E(r.Statement) + "</span>" : "").Append("</td><td>").Append(E(r.Category))
+                  .Append("</td><td>").Append(E(r.Owner)).Append("</td><td>").Append(E(RegisterReport.Cell(m, r.Current))).Append("</td><td>")
+                  .Append(E(RegisterReport.Cell(m, r.Target))).Append("</td><td>").Append(E(RegisterReport.Response(r))).Append("</td></tr>");
+            sb.Append("</table></div>");
+            var actions = register.ActionList(today);
+            if (actions.Count > 0)
+            {
+                sb.Append("<h2>Risk actions</h2><p class=\"muted\">").Append(actions.Count(a => a.Overdue)).Append(" overdue and ")
+                  .Append(actions.Count(a => a.Action.Status == ActionStatus.Open)).Append(" open, as of ").Append(today.ToString("dd-MMM-yyyy", Inv)).Append(".</p>")
+                  .Append("<div class=\"wrap\"><table><tr><th>Risk</th><th>Action</th><th>Owner</th><th>Due</th><th>Status</th></tr>");
+                foreach (var a in actions)
+                    sb.Append("<tr><td>").Append(E(a.Risk.Id)).Append("</td><td>").Append(E(a.Action.Text)).Append("</td><td>").Append(E(a.Action.Owner))
+                      .Append("</td><td>").Append(a.Action.Due?.ToString("dd-MMM-yyyy", Inv) ?? "").Append("</td><td class=\"").Append(a.Overdue ? "fail" : "")
+                      .Append("\">").Append(E(RegisterReport.ActionStatus(a))).Append("</td></tr>");
+                sb.Append("</table></div>");
+            }
+        }
+        if (health != null)
+        {
+            void HealthTable(string title, IEnumerable<HealthItem> items)
+            {
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                sb.Append("<h2>").Append(E(title)).Append("</h2><p class=\"muted\">").Append(p).Append(" passed, ").Append(f).Append(" failed, ")
+                  .Append(na).Append(" not applicable.</p><div class=\"wrap\"><table><tr><th>Check</th><th>Status</th><th>Actual</th><th>Target</th><th>Count</th><th>Notes</th></tr>");
+                foreach (var i in list)
+                {
+                    bool pass = i.Status == HealthStatus.Pass, na1 = i.Status == HealthStatus.NotApplicable;
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    sb.Append("<tr><td>").Append(E((i.Number != null ? i.Number + ". " : "") + i.Label)).Append("</td><td class=\"")
+                      .Append(pass ? "pass" : na1 ? "muted" : "fail").Append("\">").Append(E(i.StatusText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.ActualText)).Append("</td><td class=\"n\">").Append(E(i.TargetText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.CountText)).Append("</td><td>").Append(E(note)).Append("</td></tr>");
+                }
+                sb.Append("</table></div>");
+            }
+            HealthTable("Schedule health: P6 Check Schedule", health.P6);
+            HealthTable("Schedule health: DCMA 14-Point Assessment", health.Dcma);
         }
         if (verify != null)
         {
@@ -129,7 +191,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
               .Append(" date and float fields match the values P6 stored in the file (").Append(verify.ActivitiesMatched).Append(" of ")
               .Append(verify.Compared).Append(" activities fully match).</p>");
         }
-        sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm", Inv))
+        sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append((generated ?? DateTime.Now).ToString("yyyy-MM-dd HH:mm", Inv))
           .Append(" by ").Append(Brand.Name).Append(' ').Append(Brand.Version).Append(".</p>");
         sb.Append("</main></body></html>");
         return sb.ToString();
@@ -359,6 +421,48 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
         long margin = (hi - lo) / 5;
         if (mfb < lo - margin || mfb > hi + margin) return (lo, hi, false);
         return (Math.Min(lo, mfb), Math.Max(hi, mfb), true);
+    }
+
+    /// <summary>The risk tornado with pre- (ink) and post-mitigation (accent) bars side by side for each risk.</summary>
+    public static string Tornado(IReadOnlyList<TornadoRow> rows)
+    {
+        if (rows.Count == 0) return "";
+        bool both = rows.Any(r => r.Post != null);
+        const int W = 960, labelW = 380;
+        int rowH = both ? 44 : 32;
+        int H = rows.Count * rowH + 34;
+        double mid = labelW + (W - labelW) / 2.0;
+        double scale = (W - labelW) / 2.0 - 50;
+        var sb = new StringBuilder();
+        sb.Append($"<svg viewBox=\"0 0 {W} {H}\" width=\"100%\" role=\"img\" aria-label=\"Tornado chart of the risk ranking\">");
+        sb.Append($"<line x1=\"{F(mid)}\" x2=\"{F(mid)}\" y1=\"0\" y2=\"{H - 24}\" stroke=\"var(--line)\"/>");
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            double y = 5 + i * rowH;
+            string lab = r.Id + " " + r.Title;
+            if (lab.Length > 36) lab = lab.Substring(0, 35) + "…";
+            sb.Append($"<text x=\"{labelW - 10}\" y=\"{F(y + (both ? 25 : 20))}\" text-anchor=\"end\" font-size=\"18\" style=\"fill:var(--fg)\">{E(lab)}</text>");
+            void Bar(double v, double top, double h, string fill)
+            {
+                double w = Math.Abs(v) * scale, x = v >= 0 ? mid : mid - w;
+                sb.Append($"<rect x=\"{F(x)}\" y=\"{F(top)}\" width=\"{F(Math.Max(w, 1))}\" height=\"{F(h)}\" fill=\"{fill}\"/>");
+                double tx = v >= 0 ? x + w + 6 : x - 6;
+                sb.Append($"<text x=\"{F(tx)}\" y=\"{F(top + h - 2)}\" text-anchor=\"{(v >= 0 ? "start" : "end")}\" font-size=\"15\">{F(v, 2)}</text>");
+            }
+            if (both)
+            {
+                Bar(r.Pre, y + 4, 16, "var(--a)");
+                if (r.Post is double p) Bar(p, y + 22, 16, "var(--b)");
+            }
+            else Bar(r.Pre, y + 4, rowH - 9, "var(--a)");
+        }
+        double ly = H - 8;
+        sb.Append($"<rect x=\"{labelW}\" y=\"{F(ly - 9)}\" width=\"12\" height=\"10\" fill=\"var(--a)\"/><text x=\"{labelW + 18}\" y=\"{F(ly)}\" font-size=\"15\">Pre-mitigation</text>");
+        if (both)
+            sb.Append($"<rect x=\"{labelW + 200}\" y=\"{F(ly - 9)}\" width=\"12\" height=\"10\" fill=\"var(--b)\"/><text x=\"{labelW + 218}\" y=\"{F(ly)}\" font-size=\"15\">Post-mitigation</text>");
+        sb.Append("</svg>");
+        return sb.ToString();
     }
 
     public static string Tornado(List<(string Label, double Value)> rows)

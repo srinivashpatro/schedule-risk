@@ -4,13 +4,64 @@
 
 ### Added
 
+- A qualitative risk register: a probability-severity matrix
+  (5 x 5 by default, probability A to E, severity I to V on schedule, cost, quality, health and safety,
+  environment and regulatory, rated Red, Amber or Green from a grid), risks with three assessments
+  (inherent, current, target), responses, owners and actions, saved as a JSON file
+  (docs/RISK_REGISTER.md). It does not change the simulation.
+- Step 01 Setup in the app: the risk matrix drawn with its Red, Amber and Green cells (click a cell to change
+  it), the rating guidance, the probability bands, the severity levels and areas, the categories, which
+  risks are promoted to the model and the cost of delay per day. Open and save the register as a file on
+  your device.
+- Step 02 Identify: propose risks as cause, event and effect (the app writes them as one sentence), approve,
+  reject, close or reopen them, and find them in the register by search, status, category and type.
+  Approval needs a title and an event; approved risks are closed, not deleted, so the register keeps
+  its history.
+- Step 03 Assess: place each approved risk on the matrix before any controls, with today's controls and
+  after the response, choosing from the matrix's guidance; the heat map shows the risks per cell with
+  Red, Amber and Green counts and draws a risk's movement as numbered arrows. Record the response, owner,
+  cost and actions per risk, and see every action across the register with overdue ones marked.
+- Promote: approved Red and Amber risks with a schedule severity of II or more become risks in the model.
+  The probability is the middle of the probability band and the impact a range of working days from the
+  schedule band times the planned duration (project start to deterministic finish); the current
+  assessment is before mitigation and the target after it. Values can be set by hand, and each risk is
+  mapped to the activities it would delay. Promoting again updates them. Also `sra promote` on the
+  command line (docs/RISK_REGISTER.md).
 - A second copy of the browser app on Cloudflare Pages behind Cloudflare Access, for invited email addresses
   only: they sign in with a one-time PIN sent by email, and a sign-in lasts 48 hours. The workflow deploys it
   once the repository has the Cloudflare settings; the GitHub Pages copy stays public. The app has no sign-in
   code and still sends nothing anywhere. Set-up steps and privacy notes are in docs/HOSTING.md.
 
+- Results: the cost-benefit of each risk response. For each risk with a response, a run with only that risk
+  mitigated on the same seed and iterations as the pre-mitigation run gives the working days it saves at P80,
+  at the chosen level and on average; the P80 days are valued at the cost of delay from Setup and set against
+  the response cost from Assess (value, net benefit, benefit / cost). In the reports too, and from the command
+  line with `sra simulate --cost-benefit [--register register.json]`.
+
+- Step 07 Review: the reports (HTML, PDF, Word, PowerPoint) carry the risk register: heat maps now and after
+  the responses, the approved risks with their owners, cells and responses, and the actions with overdue
+  ones first. The CSV export adds `register.csv`. The Review page lists what the report will hold.
+
 ### Changed
 
+- Results: the risk ranking is drawn as a tornado, each risk's rank correlation with the finish before and
+  after mitigation side by side (bars to the left shorten the finish), in the app and in every report.
+- Step 05 Model: the model's discrete risks come from the risk register. Every run promotes the register
+  first, and step 05 lists the risks read-only, with links to Assess and Promote. A model whose risks were
+  typed into it offers "Move to the register": each becomes an approved register risk with the same
+  numbers and activities, so the results do not change (also `sra promote --import`). `sra simulate
+  --register` promotes before simulating. The sample project's risks now start in its register.
+- Step 04 Schedule check: the schedule health checks are now P6 Professional's Check Schedule parameters
+  (17, in the dialog's three tabs) and the DCMA 14-Point Assessment side by side, each with its target,
+  result, PASS / FAIL / N/A and the activities or relationships it flagged (click an ID to show it in the
+  Gantt). Two P6 operators that read against their description (Positive Lags, Relationship Types) are
+  reported as configured and in the conventional reading. The Critical Path Test and CPLI use the DCMA
+  method on the recalculated schedule. The same checks are in every report and `sra validate`, which
+  writes them as JSON (`--json`) in the owner's health-check format (docs/SCHEDULE_CHECK.md). They replace
+  the 12 checks of earlier versions.
+- The app is laid out as the seven-step risk workflow: 01 Setup, 02 Identify, 03 Assess, Promote,
+  04 Schedule check, 05 Model, 06 Results, 07 Review, listed in a column beside the page. The schedule,
+  model and results are steps 04-06, and the report formats are now a page, step 07, instead of a dialog.
 - When the sample project or the report fonts cannot be fetched from the site (a dropped connection, or an
   ended sign-in on the Cloudflare copy), the message now says to open the app in a new tab, sign in if asked,
   and try again, instead of showing the browser's own error. The tab keeps its schedule and results.

@@ -20,6 +20,11 @@ public sealed class ExportFixture
     public static readonly DateTime When = new(2026, 9, 27, 9, 30, 0);
     public ReportFonts Fonts { get; } = LoadFonts();
     public ReportContent Doc { get; }
+    public ScheduleRisk.Core.Model.Schedule Schedule { get; }
+    public SimulationSummary Pre { get; }
+    public SimulationSummary Post { get; }
+    /// <summary>The example model's risks moved to a register, with owners, a response and actions, as a full report has.</summary>
+    public ScheduleRisk.Core.Risk.Register.RiskRegister Register { get; } = new();
     public Dictionary<string, ReportImage> Images { get; } = new();
 
     public ExportFixture()
@@ -29,8 +34,25 @@ public sealed class ExportFixture
         var res = cpm.Run();
         var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), cpm.CriticalToProjectFinish());
         SimulationSummary One(Scenario sc) { var mc = new MonteCarloEngine(s, m, sc); return SimulationSummary.Build(mc, mc.Run(300, 7)); }
-        Doc = ReportContent.Build(new ReportInput(s, One(Scenario.PreMitigation), One(Scenario.PostMitigation),
-            ScheduleValidator.Validate(s, res), P6Verifier.Verify(s, res), "Example model", 80, When), Fonts);
+        Schedule = s;
+        Pre = One(Scenario.PreMitigation);
+        Post = One(Scenario.PostMitigation);
+        var doc = RiskModelDocument.FromJson(File.ReadAllText(TestData.PathOf("synth_500.risk.json")));
+        ScheduleRisk.Core.Risk.Register.RegisterImporter.MoveToRegister(doc, Register, s, cpm.CriticalToProjectFinish(),
+            ScheduleRisk.Core.Risk.Register.RegisterPromoter.PlannedDuration(s, res).WorkingDays);
+        var r01 = Register.Risks.Single(r => r.Id == "R01");
+        r01.Title = "Late vendor data, again";
+        r01.Owner = "Procurement lead";
+        r01.Response = ScheduleRisk.Core.Risk.Register.ResponseStrategy.Mitigate;
+        r01.ResponseDescription = "Second supplier";
+        r01.ResponseCost = 2_000_000;
+        r01.Actions.Add(new() { Text = "Chase the second supplier", Owner = "Procurement lead", Due = new DateOnly(2026, 9, 1) });
+        r01.Actions.Add(new() { Text = "Get a second quote", Owner = "Procurement lead", Due = new DateOnly(2026, 10, 15) });
+        Register.Risks.Single(r => r.Id == "R04").Actions.Add(new()
+            { Text = "Agree the commissioning plan", Owner = "Site manager", Due = new DateOnly(2026, 8, 1), Status = ScheduleRisk.Core.Risk.Register.ActionStatus.Done });
+        var cb = CostBenefit.Run(s, m, cpm, Pre, 80, id => id == "R01" ? 2_000_000 : null, 150_000, "INR");
+        Doc = ReportContent.Build(new ReportInput(s, Pre, Post,
+            HealthCheck.Run(s, res), P6Verifier.Verify(s, res), "Example model", 80, When, cb, Register), Fonts);
         // stand-ins for the pictures the browser draws: 8 x 4 pixels, as PNG and as zlib-compressed RGB rows
         foreach (var c in Doc.Charts)
         {
@@ -109,10 +131,10 @@ public class ReportExportTests : IClassFixture<ExportFixture>
     {
         Assert.Equal(new[]
         {
-            "Summary", "What the results mean", "Finish date distribution", "Confidence levels", "Risk ranking", "Criticality index", "Risk drivers",
-            "Activities that drive the finish", "Milestones", "Schedule health checks", "Engine check against P6",
+            "Summary", "What the results mean", "Finish date distribution", "Confidence levels", "Risk ranking", "Cost-benefit of responses", "Risk register", "Risk actions", "Criticality index", "Risk drivers",
+            "Activities that drive the finish", "Milestones", "Schedule health: P6 Check Schedule", "Schedule health: DCMA 14-Point Assessment", "Engine check against P6",
         }, fx.Doc.Sections.Select(s => s.Title));
-        Assert.Equal(new[] { "histogram", "cumulative", "risks", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
+        Assert.Equal(new[] { "histogram", "cumulative", "risks", "heatmap-current", "heatmap-target", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
         Assert.Equal("Project risk analysis: SYN500", fx.Doc.Title);
         Assert.Equal($"Generated 27-Sep-2026 09:30 by {Brand.Name} {Brand.Version}", fx.Doc.Generated);
     }
@@ -201,7 +223,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Contains("Duration sensitivity", titles);
         Assert.DoesNotContain("Risk ranking", titles);
         Assert.DoesNotContain("Risk drivers", titles);
-        Assert.DoesNotContain("Schedule health checks", titles);
+        Assert.DoesNotContain(titles, t => t.StartsWith("Schedule health", StringComparison.Ordinal));
         var finish = ((TableBlock)((ColumnsBlock)doc.Sections[0].Blocks[0]).Left[0]).Table;
         Assert.Equal(2, finish.Columns);                               // no post-mitigation column
     }
@@ -282,7 +304,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Empty(Validate(docx, word: true));
         using var zip = new ZipArchive(new MemoryStream(docx));
         string body = Part(zip, "word/document.xml");
-        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health checks" })
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health: P6 Check Schedule", "DCMA 14-Point Assessment" })
             Assert.Contains(expected, body);
         Assert.Equal(fx.Doc.Charts.Count(), zip.Entries.Count(e => e.FullName.StartsWith("word/media/") && e.Name != "logo.png"));
         Assert.Contains("<w:tblHeader/>", body);                     // table heads repeat on each page
@@ -310,7 +332,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Empty(Validate(pptx, word: false));
         using var zip = new ZipArchive(new MemoryStream(pptx));
         var slides = zip.Entries.Where(e => Regex.IsMatch(e.FullName, @"^ppt/slides/slide\d+\.xml$")).ToList();
-        Assert.InRange(slides.Count, 12, 20);
+        Assert.InRange(slides.Count, 12, 30);
         string all = string.Concat(slides.Select(s => Part(zip, s.FullName)));
         Assert.Contains("<a:tbl>", all);
         Assert.Contains("P80 − deterministic", all);

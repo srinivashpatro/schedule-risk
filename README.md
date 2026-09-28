@@ -5,7 +5,9 @@ read a P6 XER file, recalculate it with a CPM engine that follows P6's rules,
 check the schedule's health, apply a risk model, run a Monte Carlo simulation,
 and report P-dates, criticality, sensitivity and risk rankings.
 
-Status: **v0.6 - engine core, command line, and a browser app (Blazor WebAssembly).**
+Status: **v0.6 - engine core, command line, and a browser app (Blazor WebAssembly); unreleased: the
+seven-step risk workflow (qualitative risk register -> Promote -> P6 and DCMA schedule check -> model
+-> results with tornado and cost-benefit -> reports).**
 Changes by release are in [CHANGELOG.md](CHANGELOG.md).
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
 and the site can be hosted as plain static files. Try it at
@@ -32,15 +34,34 @@ and [docs/HOSTING.md](docs/HOSTING.md)).
     run-web.cmd        # start locally, then open the address it prints
     publish-web.cmd    # static site in publish\wwwroot - copy to any web host
 
-Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
-health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (uncertainty, risk
-register with mitigation, drivers, correlation, each applied to activities picked from a searchable
+The quantitative steps: **04 Schedule check** (open or drop an XER, or use the sample project; the
+engine check against P6, the P6 Check Schedule and DCMA 14-Point health checks with every flagged
+activity, a P6-style Gantt chart or the activity table) -> **05 Model** (the risks promoted from the register,
+duration uncertainty, drivers and correlation, each applied to activities picked from a searchable
 list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
-**Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
+**06 Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
 it, what those results mean in plain words, with a glossary; then the finish distribution as
-histogram or S-curve, confidence table, risk ranking, criticality, milestones; export the report as
-PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+histogram or S-curve, confidence table, the risk tornado before and after mitigation, criticality,
+milestones, and on request the cost-benefit of each response from paired runs) -> **07 Review** (the
+report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+
+The app is laid out as a seven-step risk workflow in a column beside the page: 01 Setup, 02
+Identify, 03 Assess, Promote, 04 Schedule check, 05 Model, 06 Results and 07 Review (the report
+formats). Step 01 sets up the risk register's probability-severity matrix (5 x 5 by default, rated
+Red, Amber or Green cell by cell, all editable) and saves the register as a JSON file on your device
+(docs/RISK_REGISTER.md). Step 02 proposes risks as cause, event and effect, approves or rejects them,
+and searches and filters the register. Step 03 assesses approved risks at three points (inherent,
+current, target) on a heat map that draws each risk's movement, with responses, owners, costs and
+actions. Promote turns the register's approved Red and Amber risks into risks in the model: the
+probability band's midpoint, and a range of working days from the schedule band on the planned
+duration, mapped to the activities they would delay (also `sra promote`, see docs/RISK_REGISTER.md).
+The model takes its discrete risks from the register: every run promotes it first, and a model
+whose risks were typed into it can move them to the register without changing its results.
+Step 07 exports the reports, which now carry the risk register (heat maps now and after the
+responses, the approved risks, the actions with overdue ones first) and the cost-benefit; the CSVs
+add `register.csv`. Not yet in the register: P6's own risk register (XER `PROJRISK`) import, cost
+impacts in the simulation (the model is schedule-only), and who approved a risk and when.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
@@ -85,10 +106,13 @@ To host the site in a sub-folder anywhere else, change `<base href="/" />` in
 
 ```
 sra info      project.xer
-sra validate  project.xer                      # DCMA-style schedule health checks
+sra validate  project.xer --json health.json   # P6 Check Schedule + DCMA 14-Point (docs/SCHEDULE_CHECK.md)
 sra verify    project.xer                      # our CPM dates vs the dates P6 saved in the file
 sra cpm       project.xer --csv dates.csv
+sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model
 sra simulate  project.xer --risk model.json --out results   # pre + post mitigation, HTML report
+                                                             # add --register register.json to promote first,
+                                                             # --cost-benefit for each response's days saved
 ```
 
 From source: `dotnet run --project src\ScheduleRisk.Cli -c Release -- <command> ...`
@@ -132,8 +156,8 @@ their P6 dates; the project Must Finish By (`plan_end_date`; P6's calculated sch
 `scd_end_date`, is not treated as a constraint); finish, start or smallest float.
 
 **Not yet:** ALAP constraints, expected finish dates, resource levelling, "make open-ended activities
-critical", P6 XML / MS Project import. Only ALAP is flagged by `validate` (under unsupported
-constraints); a file using the others is not detected yet.
+critical", P6 XML / MS Project import. Only ALAP is noted by `validate` (as a constraint the engine
+does not model); a file using the others is not detected yet.
 
 **Risk:** three-point uncertainty (triangle, Beta-PERT, uniform) in percent or days; risk register
 with probability, impact and mitigated values; risk drivers; correlation groups; Latin Hypercube

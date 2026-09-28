@@ -1,0 +1,50 @@
+@inherits StateComponent
+
+@* Open, save or start a register file (the matrix and every risk), kept on this device. Used by Setup and Identify. *@
+
+<div class="field">
+    <label>Register file</label>
+    <div class="btn-row">
+        <label class="btn btn-secondary">Open… <InputFile OnChange="OnOpen" accept=".json" style="display:none" /></label>
+        <button class="btn btn-secondary" @onclick="Save">Save</button>
+        <button class="btn btn-secondary" @onclick="New">New</button>
+    </div>
+    <span class="hint">A JSON file you keep on this device: the matrix and every risk. Nothing is uploaded.</span>
+    @if (message != null)
+    {
+        <ul class="issues"><li class="err">@message</li></ul>
+    }
+</div>
+
+@code {
+    private string? message;
+
+    private void New()
+    {
+        State.Register = new RiskRegister();
+        message = null;
+        State.Notify();
+    }
+
+    private async Task Save()
+    {
+        string name = string.Concat((State.Register.Name ?? "risk-register").Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
+        await Download(name + ".register.json", "application/json", State.Register.ToJson());
+    }
+
+    private async Task OnOpen(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            State.Register = RiskRegister.FromJson(await reader.ReadToEndAsync());
+            message = null;
+            State.Notify();
+        }
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException or IOException)
+        {
+            message = $"Could not open {e.File.Name}: {ex.Message}";
+        }
+    }
+}

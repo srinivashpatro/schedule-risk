@@ -23,8 +23,8 @@ public abstract class StateComponent : ComponentBase, IDisposable
     protected async Task DownloadReport()
     {
         if (State.Pre == null || State.Schedule == null || State.Cpm == null) return;
-        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Checks,
-            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name);
+        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Health,
+            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name, State.CostBenefit, State.Register.Risks.Count > 0 ? State.Register : null);
         await Download($"{State.Schedule.ProjectCode}-risk-report.html", "text/html", html);
     }
 
@@ -35,6 +35,8 @@ public abstract class StateComponent : ComponentBase, IDisposable
         await Download($"{code}-activities.csv", "text/csv", CsvExport.Activities(State.Pre));
         await Download($"{code}-risks.csv", "text/csv", CsvExport.Risks(State.Pre));
         if (State.PreResult != null) await Download($"{code}-iterations.csv", "text/csv", CsvExport.Iterations(State.PreResult));
+        if (State.Register.Risks.Count > 0)
+            await Download($"{code}-register.csv", "text/csv", CsvExport.Register(State.Register, DateOnly.FromDateTime(DateTime.Today)));
     }
 
     protected static string Pct(double x, int digits = 0) => (x * 100).ToString("F" + digits, System.Globalization.CultureInfo.InvariantCulture) + "%";

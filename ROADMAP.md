@@ -282,6 +282,257 @@ not detected yet.
       boundaries, and the edge cases (no spread, no risks, lumpy results, a deadline, shorter
       durations).
 
+## Risk workflow (design: seven steps from register to report)
+
+The Claude design `design/workflow/steps.png` turns the app's three steps (Schedule, Risk model,
+Results) into a guided risk process: 01 Setup, 02 Identify, 03 Assess, then Promote (a bridge, not a
+numbered step), 04 Schedule check, 05 Model, 06 Results, 07 Review. Steps 01-03 and Promote are new: a
+qualitative risk register (probability-impact matrix) whose approved risks above a threshold become
+the quantified risks the Monte Carlo already uses. Steps 04-07 reorganise what exists, plus a tornado
+and a mitigation cost-benefit in Results. Everything stays in the browser; the register is saved and
+opened as a local JSON file like the risk model. Register logic and the promotion rules live in Core
+(UI-agnostic, tested, shared with the CLI); the scheduling engine and simulation are not changed, so
+seeds give the same results as today for the same risk model.
+
+To decide before the first item (the plan assumes the choice in brackets):
+- Where the XER is opened: on the landing page before step 01, as today, with steps 02-03 usable
+  without a schedule and activities picked at Promote [assumed]; or as part of Setup.
+- Where the Gantt and activity table go: step 04 Schedule check, with the engine check and health
+  checks [assumed].
+- Default matrix (decided from the user's reference, an owner's corporate risk guideline; its
+  wording is proprietary, so only the structure and numbers below go in the repo and the default
+  wording is our own):
+  - Probability A-E: A Remote 0-5%, B Unlikely 5-25%, C Occasional 25-50%, D Likely 50-70%,
+    E Most likely 70-95%. At or near 100% the risk is a certainty: Setup warns and suggests putting
+    it in the base schedule instead of the register.
+  - Severity I-V (Insignificant, Minor, Significant, Major, Very high), one scale per dimension:
+    schedule as % of the planned project duration (I: none, absorbed by float; II <3%; III 3-6%;
+    IV 6-10%; V >10%), cost as % of the approved control budget (<=0.25, 0.25-0.5, 0.5-1, 1-2, >2%),
+    and descriptive scales for quality/performance, health and safety, environment and regulatory.
+    A risk is scored on each dimension that applies and its severity is the worst of them (confirmed).
+  - Cells are named severity.probability (IV.D) and rated by a lookup table, not a score (rows E to A,
+    columns I to V): E G A A R R; D G G A A R; C G G A A A; B G G G A A; A G G G A A.
+    Red: intolerable, report regularly to senior management, focused intervention. Amber: major or
+    significant, tighten controls, track the remedial actions. Green: low, monitor and escalate if it
+    worsens.
+  - Promote: Red and Amber risks with a schedule severity of II or more (confirmed).
+  - Every scale, band, colour, text and the lookup table stay editable in Setup and are saved with
+    the register, so another organisation's matrix can be entered.
+- Cost-benefit method: per risk, days of P80 saved by its response (a paired run with only that risk
+  mitigated, same seed) against the response cost, and value of those days at a cost of delay per day
+  set in Setup [assumed]; or the cheaper expected-value method (probability x mean impact, no extra
+  runs).
+- Review lists PDF, Word, PowerPoint and CSV: keep the HTML report as a fifth format [assumed].
+- Import of P6's own risk register (XER `PROJRISK`/`RISKTYPE`): later, not in this list.
+
+- [x] Workflow shell. The seven steps and the Promote bridge in a column beside the page, as in the
+      design (number, title and one-line description; Promote with an arrow), mapped for now to the
+      existing panels: 01-03 and Promote show what they will hold, 04 the schedule panel, 05 the risk
+      model, 06 results, 07 the report formats as a page instead of the Report dialog (the top bar's
+      Report button opens it). The landing page shows until a step is picked or a schedule opens,
+      which counts as 04. Setup, Identify, Assess and Schedule check are always open; Promote, Model
+      and Results need a schedule, Review a run. Up to 1400px the descriptions go, and on a phone the
+      column becomes a scrolling row. The step list is `Reporting/Workflow` in Core (text only, for
+      the app and later the reports); the panels' kickers and the landing cards use the new numbers.
+      In the app's own tokens (the red accent, light and dark), not the mock-up's blue. 4 tests.
+- [x] Core: risk register and matrix. `Risk/Register` in Core: matrix settings (probability scale with
+      letters, labels and % ranges; severity dimensions, each with five bands of text and, for
+      schedule and cost, % ranges; the cell rating lookup; rating colours and guidance text; promote
+      rule; categories), risks (ID, title, cause-event-effect description, category, threat or opportunity,
+      status Proposed / Approved / Rejected / Closed, raised by and date), probability letter and a
+      severity per dimension at each assessment point (inherent, current with existing controls,
+      target after the response, as the arrows 5 -> 6 -> 7 in the reference; confirmed), response (avoid / transfer / mitigate / accept; exploit / share /
+      enhance / accept for opportunities), owner, response cost, actions (text, owner, due date,
+      status). JSON load and save with a version field (docs/RISK_REGISTER.md), validation messages,
+      overall severity (worst dimension), cell and rating by lookup. Tests first. Needs approval: engine core.
+      Done (approved): `ScheduleRisk.Core.Risk.Register` (`MatrixSettings`, `RiskRegister`,
+      `RegisterRisk`, `Assessment`, `RiskAction`), the default matrix above with our own wording, any
+      matrix size from 2x2 to 10x10, file format version 1 in docs/RISK_REGISTER.md (probability as band
+      letters, severity as I, II...), validation (overlapping or near-certain bands, grid and band
+      counts, duplicate ids, unknown areas or levels, responses that do not suit a threat or an
+      opportunity, unknown categories), overdue actions. C# only: the register does not change the
+      simulation, so there is no Python twin. The model and the simulation do not read it yet (Promote).
+      19 tests.
+- [x] 01 Setup. Edit the probability scale, the severity dimensions and their bands, the cell ratings
+      (click a cell to cycle Red / Amber / Green), the rating guidance, the promote rule and the
+      categories, with the defaults above and a live preview of the matrix; cost of delay per day. Open and save
+      the register file.
+      Done: `SetupPanel` in the app, the matrix drawn as in the reference (probability rows from E at the
+      top, severity columns I to V, cell names, Red / Amber / Green from `--rag-*` tokens in light and
+      dark), guidance cards under it, tables for probability bands, severity levels and each area
+      (measured areas with ranges), categories as editable chips, the promote rule and cost of delay in
+      the side column with the register's check messages as you edit. Adding or removing a band, a
+      level or an area, renaming an area's id and resetting the matrix go through `RiskRegister`, so the
+      grid, the areas' bands, the promote rule and the risks' assessments stay in step (10 tests). The
+      register lives in `AppState` for the tab, needs no schedule, and is opened and saved as
+      `*.register.json`.
+- [x] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
+      and edit their descriptions; a register table with search, category and status filters.
+      Done: `IdentifyPanel`, with the proposal form in the side column (title, threat or opportunity,
+      category, cause / event / effect with a live one-sentence statement, raised by and date; who raised
+      it and the category stay for the next proposal) and the register beside it (status tabs with
+      counts, search, category and type filters, the statement under each title, an edit row per risk).
+      Workflow in `RiskRegister`: proposed -> approved or rejected, approved -> closed, rejected ->
+      proposed and closed -> approved (reopen); approval needs a title and an event, and suggests a cause
+      and an effect; only risks never approved can be deleted, approved ones are closed so the register
+      keeps its history. `RegisterFilter` for search (every word, any field, ignoring case) and filters.
+      The register file's Open / Save / New are shared with Setup (`RegisterFile`). 18 tests.
+- [x] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
+      band text shown, as in the reference) at each assessment point; a heat map in the reference's
+      layout (probability rows E to A, severity columns I to V, cell names, Red / Amber / Green, counts
+      per cell, click a cell to filter the register) with a risk's path drawn as arrows between its
+      assessment points; response, owner, cost and
+      actions per risk; an action list across risks with overdue actions marked.
+      Done: `AssessPanel`: approved risks listed in the side column with their current cell, the heat
+      map (`HeatMapView`, SVG) for the inherent, current or target point with Red / Amber / Green counts
+      and a count and ids per cell, clicking a cell lists its risks, and the selected risk's path drawn as
+      markers 1-2-3 joined by arrows (spread apart when two points share a cell). Per risk: probability
+      and a severity per area at each point, chosen from the matrix with the band's guidance shown under
+      each choice, "Copy inherent" / "Copy current" to start a point from the one before, the cell and
+      rating per point; response (threat or opportunity strategies), owner, cost and description;
+      actions with owner, due date and status, overdue ones marked; and all actions across the register
+      (open only by default, overdue first). Core: `HeatMap` (approved risks only, placed or not
+      assessed, counts by rating, paths), `RiskRegister.ActionList` and `AssessmentIssues` (warnings: not
+      assessed, no owner, an assessment worse than the one before, Amber or Red today with no response).
+      8 tests.
+- [x] Promote. Approved risks scoring at or above the threshold become quantified risks: the
+      probability letter gives a probability (band midpoint, editable: A 2.5%, B 15%, C 37.5%, D 60%,
+      E 82.5%), the schedule severity gives a triangle in working days from its % band times the
+      planned project duration (project start to the deterministic finish; confirmed)
+      (band low / midpoint / high, editable; I gives no schedule impact, V capped at 20%, confirmed), pre-mitigation from the current assessment and post from the target, mapped to activities with the activity picker. Core `RegisterPromoter` writes them
+      into the risk model's register with the same IDs (traceable both ways); promoting again updates
+      them and keeps the activity mapping. CLI: `sra promote register.json model.json`. Tests on the
+      band arithmetic and the round trip.
+      Done (approved): `RegisterPromoter` in Core: the planned duration (project start to deterministic
+      finish in working days of the project calendar, equal to the Results' deterministic duration),
+      eligibility with a reason for each risk left out, the numbers (band midpoint; schedule band low /
+      middle / high x planned duration, rounded to 0.1 day; an opportunity's days negative; no target =
+      no mitigation, a target without schedule severity = 0 days after mitigation), values set by hand
+      and the activity mapping kept in the register (`promotion`, optional, file version still 1), and
+      `Apply` writing rows marked `"source": "register"` into the model: added, updated, removed when they
+      no longer qualify, skipped with a reason (no activities, no upper limit, id already used by a risk
+      typed into the model). `PromotePanel` in the app and `sra promote` on the command line. 14 tests,
+      and a register -> promote -> simulate run on synth_500 (P80 moves from 24-Jan-2029 to 11-Dec-2028
+      after mitigation). The placeholder page for unbuilt steps is gone.
+- [x] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
+      the activity table (moved from the current step 01; the landing page keeps file opening).
+      Scope (owner, 2026-09-28): the health checks become P6's Check Schedule parameters and the DCMA
+      14-Point Assessment side by side, as in the owner's health-check report (JSON with `meta`,
+      `p6_check_schedule` and `dcma_14_point`; definitions as in the p6-schedule-health-check skill).
+      Plan:
+      1. Core `Analysis/HealthCheck`, tests first: the 17 P6 parameters in three tabs (Relationships and
+         Assignments, Dates and Durations, Constraints) and the 14 DCMA checks, each with count,
+         denominator, actual, operator, target, PASS / FAIL / N/A, a note, and the flagged activities
+         or relationships (ID and name, with the value that flagged them). Thresholds in hours (352 h =
+         44 x 8 h for long lags, large float and large durations) and every target and operator
+         editable; defaults are the owner's template, including the two operators that read backwards
+         (Positive Lags `> 5%`, Relationship Types `< 90%`), reported both as configured and in the
+         conventional reading, never silently fixed. N/A with the reason for an unstarted (baseline)
+         export (Out of Sequence, Late / Missed Activities, BEI) and when the XER has no TASKRSRC table
+         (Resources / Cost). Terminal activities exempt from Logic as in the skill (open ends at most 1%
+         of activities).
+      2. ScheduleBuilder reads what the checks need and does not read yet: `target_start_date` /
+         `target_end_date` (baseline, for Late Activities, Missed Activities and BEI),
+         `driving_path_flag`, and whether the file has a TASKRSRC table and which activities have an
+         assignment. Read only: no scheduling change, and `sra verify` stays green on every fixture.
+      3. JSON in the skill's schema from `sra validate --json out.json` (and a download in the app), so
+         the owner's Word report builder reads it unchanged. Checked against the skill's
+         `health_check.py` on every fixture in testdata/: same counts and statuses except where the
+         decisions below say otherwise.
+      4. Step 04 page: the engine check against P6, a scorecard (passed / failed / N/A per section), the
+         two tables with target, actual and status, each row opening its flagged activities (click an
+         ID to show it in the Gantt), then the Gantt and the activity table. The HTML, PDF, Word and
+         PowerPoint reports and `sra validate` switch from today's 12 checks to the two sections.
+      Decided (owner, 2026-09-28): (a) recalculated values, (b) the DCMA method, (c) retire the old checks.
+      Were: (a) float, durations and critical path from our recalculated schedule (identical to
+      P6's stored values when `sra verify` matches, and available for files P6 never scheduled) or
+      from the values stored in the XER as the skill does; (b) DCMA #12 Critical Path Test and #13
+      CPLI by the DCMA method on our engine (delay a critical activity and check the finish moves by
+      the same amount; CPLI = (critical path length + project total float) / critical path length in
+      working days) or by the skill's approximation from `driving_path_flag` (on synth_500, which has
+      no flags, the skill fails #12 while the engine's test passes); (c) today's 12-check
+      `ScheduleValidator` (and its Python twin) retired in favour of the new checks, keeping only the
+      "constraints not modelled (ALAP)" warning.
+      Done: `Analysis/HealthCheck` in Core (`HealthReport`, `HealthItem`, `HealthFlag`, `HealthCheckSettings`),
+      docs/SCHEDULE_CHECK.md. ScheduleBuilder also reads the baseline dates, `driving_path_flag`, the raw
+      status code, TASKRSRC and links to successors in other projects (read only; `sra verify` passes on
+      all 9 fixtures). Step 04: a scorecard and the two tables (P6 grouped by tab), each row opening its
+      flagged activities or relationships, an ID click showing the activity in the Gantt and table, and
+      "Download JSON". Reports (HTML, PDF, Word, PowerPoint) carry both sections; `sra validate` prints
+      them and writes `--json`. Against the owner's `health_check.py` on every fixture: identical counts,
+      statuses and flagged sets except #12 / #13 as decided (the skill fails #12 on files with no
+      driving_path_flag) and float to 4 decimals. Dangling Start leaves out started activities, as P6's
+      description says (no fixture differs). `ScheduleValidator` is gone; its Python twin
+      (reference/python/sra/validate.py) stays as the reference implementation's own check and golden
+      files keep their `validation` block, no longer compared. 24 tests.
+
+- [x] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
+      and edited at the register (a link back to Promote), other risks, uncertainty, drivers and
+      correlation as today.
+      Decided (owner, 2026-09-28): the model's discrete risks come from the risk register only.
+      Link (approved 2026-09-28):
+      1. The register is the single source. In step 05 the Risk register section lists the promoted
+         risks read-only (id, title, current cell, probability, days, activities) with links to Assess
+         and Promote; "+ Add risk" goes. Uncertainty, drivers, correlation and the simulation settings
+         stay in the model.
+      2. Every run promotes first: Run simulation = promote the register into the model, then simulate,
+         so the model can never drift from the register. The Promote page stays for review, activity
+         mapping and values set by hand; a run warns about eligible risks with no activities.
+      3. Ids: model risks all come from the register, so the R01 clash goes away and register ids keep
+         their R01 form. Promote no longer needs the "typed into the model" rule.
+      4. Files: the register file stays the source of risks; the model file keeps uncertainty, drivers,
+         correlation and settings, plus the promoted risks as written at the last run so a saved model
+         still reproduces its results. CLI: `sra simulate --register register.json` promotes before
+         simulating.
+      5. Existing models with typed-in risks: "Move risks to the register" (app and `sra promote
+         --import`) turns each into an approved register risk: its current probability band from its
+         probability, its schedule severity from its mean impact over the planned duration, its numbers
+         kept as values set by hand (so results do not change), mitigation as the target, and its
+         filter resolved to activity ids against the open schedule. Risks in % of duration are listed
+         for the user to convert, since the register works in days.
+      Done: step 05 lists the model's risks read-only (id, title, current cell, probability, impact and its
+      unit, mitigation, activities) with links to Assess and Promote; "+ Add risk" is gone. Every run
+      promotes the register first (`AppState.PromoteForRun`; eligible risks left out are listed with the
+      run's warnings), and opening step 05 does too, so the list is what the next run uses. Typed-in risks
+      in an opened model are marked, with "Move to the register" (`RegisterImporter` in Core). A moved risk
+      keeps its numbers as values set by hand in its own unit (new `promotion.impactUnits`, so % risks move
+      too), its filter resolved to activities, `promotion.always` (promoted whatever its rating; a checkbox
+      in Promote), and an assessment inferred from its probability and mean impact for the heat map; ids
+      the register already has are renamed. The sample project's risks move into a fresh register when it
+      loads (same results: P80 29-Jun-2029). CLI: `sra simulate --register` and `sra promote --import`.
+      Moving the example model and promoting back gives identical P50, P80 and mean before and after
+      mitigation (test, and the CLI on synth_500). 8 tests. Risks typed into a model are still simulated
+      until moved, so opening an older model never changes its results silently.
+
+- [x] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
+      table (per risk: response cost, days saved at P80 and at the chosen level, value at the cost of
+      delay, net benefit) using the method chosen above, reproducible for a seed. Tornado and
+      cost-benefit also in the HTML report and the exports.
+      Done: `RiskTornado` (risks by |pre-mitigation rank correlation|, post value beside each) drawn in
+      Results, the HTML report (`HtmlReport.Tornado`) and the PDF / Word / PowerPoint exports
+      (`ReportCharts.Tornado`), replacing the ranking bars. `Simulation/CostBenefit`: the candidates are the
+      risks whose mitigated probability or impact differ; `WithMitigated` copies the model with one risk at
+      its mitigated values and every risk in its place, so the paired run draws the same random numbers
+      (no change to the simulation engine); one run per candidate with the pre-mitigation run's seed and
+      iterations (or its convergence rule); days saved at P80, at the chosen level and on average; value =
+      P80 days x the register's cost of delay, net = value - response cost (from Assess), benefit / cost;
+      largest P80 saving first. In Results on request ("Work out cost-benefit", with progress and cancel),
+      in every report, and `sra simulate --cost-benefit [--register] [--level]`. Tests: mitigating a model's
+      only risk alone gives exactly the post-mitigation run; savings are never negative for a mitigation;
+      same seed, same rows. 6 tests.
+- [x] 07 Review. The export page (PDF, Word, PowerPoint, CSV and HTML), and the reports gain the
+      register: heat maps pre and post, the register table, the action list and the cost-benefit; the
+      CSV gains `register.csv`. Update README Status and Not yet.
+      Done: `RegisterReport` in Core (the heat map drawn as SVG once for the HTML report and the export
+      charts, the lead line, cells and responses), a "Risk register" section (heat maps now and after
+      the responses, the approved risks with category, owner, both cells and the response) and a "Risk
+      actions" section (overdue first, as of the report date) after the cost-benefit in the HTML, PDF,
+      Word and PowerPoint reports; `CsvExport.Register` (one row per risk: description, status, cell and
+      rating at each point, response and cost, open and overdue actions) in the app's CSVs and from `sra
+      simulate --register`. The Review page lists what the report will hold. The export fixture now
+      carries a register and a cost-benefit, so the PDF checks and the Open XML validator cover the new
+      sections in every format. 6 tests.
+
 ## Hosting and access
 
 - [ ] Restricted access with Cloudflare Access. A copy of the browser app that only invited users can

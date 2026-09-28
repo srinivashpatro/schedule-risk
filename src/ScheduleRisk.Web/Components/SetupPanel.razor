@@ -1,0 +1,296 @@
+@inherits StateComponent
+
+@* Step 01 Setup: the register's matrix (probability bands, severity levels and areas, the rating of every cell and
+   what each rating asks), the promote rule, the categories and the cost of delay. Needs no schedule. *@
+
+@{ var reg = State.Register; var m = reg.Matrix; var issues = reg.Validate(); int np = m.Probability.Count, ns = m.SeverityLevels.Count; }
+
+<div class="split">
+    <aside class="side">
+        <div class="stack-sm">
+            <span class="kicker">@Info.Kicker</span>
+            <h2>Setup</h2>
+            <p class="sub">@Info.Description. Set these once for the project; the register uses them in the next steps.</p>
+        </div>
+        <div class="field">
+            <label for="reg-name">Register name</label>
+            <input id="reg-name" class="input" @bind="reg.Name" />
+        </div>
+        <RegisterFile />
+        <div class="field">
+            <label for="cod">Cost of delay per working day</label>
+            <div class="btn-row">
+                <input id="cod" class="input" type="number" min="0" step="any" value="@Num(m.CostOfDelayPerDay)" @onchange="@(e => m.CostOfDelayPerDay = Parse(e) ?? 0)" />
+                <input class="input w-id" aria-label="Currency" placeholder="Currency" @bind="m.Currency" />
+            </div>
+            <span class="hint">Values the days a response saves, for the cost-benefit in Results. 0 = not set.</span>
+        </div>
+        <div class="field">
+            <label>Promote to the model</label>
+            <div class="stack-sm">
+                <select class="input" aria-label="Lowest rating to promote" value="@m.Promote.MinRating" @onchange="@(e => m.Promote.MinRating = Enum.Parse<RiskRating>(e.Value?.ToString() ?? "Amber"))">
+                    <option value="@RiskRating.Red">Red risks</option>
+                    <option value="@RiskRating.Amber">Red and Amber risks</option>
+                    <option value="@RiskRating.Green">All rated risks</option>
+                </select>
+                <div class="btn-row">
+                    <span class="small">with</span>
+                    <select class="input sm" aria-label="Schedule area" @bind="m.Promote.ScheduleDimension">
+                        @foreach (var d in m.Dimensions)
+                        {
+                            <option value="@d.Id">@d.Name</option>
+                        }
+                        @if (m.Dimension(m.Promote.ScheduleDimension) == null)
+                        {
+                            <option value="@m.Promote.ScheduleDimension">@m.Promote.ScheduleDimension (missing)</option>
+                        }
+                    </select>
+                    <span class="small">severity of at least</span>
+                    <select class="input sm" aria-label="Lowest schedule severity" value="@m.Promote.MinScheduleSeverity" @onchange="@(e => m.Promote.MinScheduleSeverity = int.Parse(e.Value?.ToString() ?? "1"))">
+                        @for (int s = 0; s < ns; s++)
+                        {
+                            <option value="@s">@MatrixSettings.Roman(s)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <span class="hint">Approved risks that meet this on their current assessment become risks in the model (Promote).</span>
+        </div>
+        <div class="field">
+            <label>Check</label>
+            @if (idMessage != null)
+            {
+                <ul class="issues"><li class="err">@idMessage</li></ul>
+            }
+            @if (issues.Count == 0)
+            {
+                <span class="small">✓ The matrix and the register are consistent.</span>
+            }
+            else
+            {
+                <ul class="issues">
+                    @foreach (var i in issues)
+                    {
+                        <li class="@(i.Error ? "err" : "")">@i.Text</li>
+                    }
+                </ul>
+            }
+        </div>
+    </aside>
+
+    <div class="main-col">
+        <div class="block">
+            <div class="headrow">
+                <h4>Risk matrix</h4>
+                <button class="btn btn-ghost" @onclick="ResetMatrix">Reset to the default matrix</button>
+            </div>
+            <p class="sub">Click a cell to change its rating (Green, Amber, Red). A risk sits in the column of its worst area.</p>
+            <div class="matrix-wrap">
+                <table class="matrix">
+                    <thead>
+                        <tr>
+                            <th class="corner">Probability ↓ · Severity →</th>
+                            @for (int s = 0; s < ns; s++)
+                            {
+                                <th><span class="lvl">@MatrixSettings.Roman(s)</span>@m.SeverityLevels[s]</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int p = np - 1; p >= 0; p--)
+                        {
+                            int pp = p;
+                            var band = m.Probability[p];
+                            <tr>
+                                <th class="prob"><span class="strong">@band.Letter · @band.Label</span><span class="rng">@Pct(band.Min)–@Pct(band.Max)</span></th>
+                                @for (int s = 0; s < ns; s++)
+                                {
+                                    int ss = s;
+                                    var rating = pp < m.Ratings.Count && ss < m.Ratings[pp].Length ? m.Ratings[pp][ss] : (RiskRating?)null;
+                                    <td>
+                                        @if (rating is RiskRating r)
+                                        {
+                                            <button class="cell @Rag(r)" title="@m.CellName(pp, ss): @r. Click to change." aria-label="@m.CellName(pp, ss), @r"
+                                                    @onclick="@(() => m.CycleRating(pp, ss))">@m.CellName(pp, ss)</button>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="rag-legend">
+                @foreach (var g in m.Guidance)
+                {
+                    <div class="rag-card">
+                        <div class="rag-head @Rag(g.Rating)">
+                            <input class="input sm" aria-label="@g.Rating label" @bind="g.Label" />
+                        </div>
+                        <div class="rag-body">
+                            <label class="small" for="@($"guid-{g.Rating}")">What it asks, one per line</label>
+                            <textarea id="@($"guid-{g.Rating}")" class="input" value="@string.Join("\n", g.Actions)"
+                                      @onchange="@(e => g.Actions = Lines(e))"></textarea>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Probability</h4></div>
+            <p class="sub">From least to most likely, without overlaps. A band reaching close to 100% is a certainty: put it in the base schedule instead.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>Letter</th><th>Label</th><th class="n">From</th><th class="n">To</th><th>Guidance for choosing it</th><th></th></tr></thead>
+                    <tbody>
+                        @for (int p = 0; p < np; p++)
+                        {
+                            int pp = p;
+                            var b = m.Probability[p];
+                            <tr>
+                                <td><input class="input sm w-id" aria-label="Letter" @bind="b.Letter" /></td>
+                                <td><input class="input sm w-text" aria-label="Label" @bind="b.Label" /></td>
+                                <td class="n"><span class="unit"><input class="input sm w-pct" type="number" min="0" max="100" step="any" aria-label="From %" value="@Num(b.Min * 100)" @onchange="@(e => b.Min = (Parse(e) ?? 0) / 100)" />%</span></td>
+                                <td class="n"><span class="unit"><input class="input sm w-pct" type="number" min="0" max="100" step="any" aria-label="To %" value="@Num(b.Max * 100)" @onchange="@(e => b.Max = (Parse(e) ?? 0) / 100)" />%</span></td>
+                                <td><textarea class="input" aria-label="Guidance" @bind="b.Guidance"></textarea></td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove band" aria-label="Remove band @b.Letter" disabled="@(np <= MatrixSettings.MinSize)" @onclick="@(() => reg.RemoveProbabilityBand(pp))">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" @onclick="reg.AddProbabilityBand">+ Add probability band</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Severity levels</h4></div>
+            <p class="sub">The matrix columns, numbered I upwards. Each area below describes every level.</p>
+            <div class="wrap">
+                <table class="table">
+                    <thead><tr><th>Level</th><th>Name</th><th></th></tr></thead>
+                    <tbody>
+                        @for (int s = 0; s < ns; s++)
+                        {
+                            int ss = s;
+                            <tr>
+                                <td class="strong">@MatrixSettings.Roman(s)</td>
+                                <td><input class="input sm w-text" aria-label="Level @MatrixSettings.Roman(s) name" value="@m.SeverityLevels[s]" @onchange="@(e => m.SeverityLevels[ss] = e.Value?.ToString() ?? "")" /></td>
+                                <td><button class="btn btn-ghost btn-x" title="Remove level" aria-label="Remove level @MatrixSettings.Roman(s)" disabled="@(ns <= MatrixSettings.MinSize)" @onclick="@(() => reg.RemoveSeverityLevel(ss))">✕</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-ghost add" disabled="@(ns >= MatrixSettings.MaxLevels)" @onclick="reg.AddSeverityLevel">+ Add severity level</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Severity areas</h4></div>
+            <p class="sub">What a risk's severity is judged on. A measured area (schedule, cost) has a range for each level; the schedule range turns into days at Promote.</p>
+            @foreach (var d in m.Dimensions.ToList())
+            {
+                var dim = d;
+                <div class="area">
+                    <div class="area-head">
+                        <div class="field"><label>Name</label><input class="input sm w-text" @bind="dim.Name" /></div>
+                        <div class="field"><label>Id (used in the file)</label><input class="input sm w-id" value="@dim.Id" @onchange="@(e => Rename(dim, e))" /></div>
+                        <label class="check"><input type="checkbox" checked="@dim.Quantitative" @onchange="@(e => SetMeasured(dim, e))" /> Measured</label>
+                        @if (dim.Quantitative)
+                        {
+                            <div class="field"><label>Unit</label><input class="input sm w-unit" @bind="dim.Unit" /></div>
+                        }
+                        <span class="spacer"></span>
+                        <button class="btn btn-ghost" @onclick="@(() => reg.RemoveDimension(dim.Id))">Remove area</button>
+                    </div>
+                    <table class="table">
+                        <thead><tr><th>Level</th><th>Description</th>@if (dim.Quantitative) {<th class="n">From</th><th class="n">To</th>}</tr></thead>
+                        <tbody>
+                            @for (int s = 0; s < dim.Bands.Count; s++)
+                            {
+                                var b = dim.Bands[s];
+                                <tr>
+                                    <td class="strong nowrap">@MatrixSettings.Roman(s) · @(s < ns ? m.SeverityLevels[s] : "")</td>
+                                    <td><textarea class="input" aria-label="Description" @bind="b.Text"></textarea></td>
+                                    @if (dim.Quantitative)
+                                    {
+                                        <td class="n"><input class="input sm w-pct" type="number" step="any" aria-label="From" value="@Num(b.Min)" @onchange="@(e => b.Min = Parse(e))" /></td>
+                                        <td class="n"><input class="input sm w-pct" type="number" step="any" aria-label="To" placeholder="and above" value="@Num(b.Max)" @onchange="@(e => b.Max = Parse(e))" /></td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            <button class="btn btn-ghost add" @onclick="@(() => reg.AddDimension())">+ Add area</button>
+        </div>
+
+        <div class="block">
+            <div class="headrow"><h4>Categories</h4></div>
+            <p class="sub">Used to group and filter the register.</p>
+            <div class="chips">
+                @for (int c = 0; c < m.Categories.Count; c++)
+                {
+                    int cc = c;
+                    <span class="chip-edit">
+                        <input class="input sm" aria-label="Category" value="@m.Categories[c]" @onchange="@(e => m.Categories[cc] = e.Value?.ToString()?.Trim() ?? "")" />
+                        <button class="btn btn-ghost btn-x" title="Remove category" aria-label="Remove category @m.Categories[c]" @onclick="@(() => m.Categories.RemoveAt(cc))">✕</button>
+                    </span>
+                }
+            </div>
+            <button class="btn btn-ghost add" @onclick="@(() => m.Categories.Add("New category"))">+ Add category</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly WorkflowStepInfo Info = Workflow.Get(WorkflowStep.Setup);
+
+    private string? idMessage;
+
+    private static string Rag(RiskRating r) => r switch { RiskRating.Red => "rag-red", RiskRating.Amber => "rag-amber", _ => "rag-green" };
+
+    private static string Num(double? v) => v?.ToString("0.####", CultureInfo.InvariantCulture) ?? "";
+
+    private static string Pct(double f) => (f * 100).ToString("0.##", CultureInfo.InvariantCulture) + "%";
+
+    private static double? Parse(ChangeEventArgs e) =>
+        double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+
+    private static List<string> Lines(ChangeEventArgs e) =>
+        (e.Value?.ToString() ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private void Rename(SeverityDimension d, ChangeEventArgs e)
+    {
+        try
+        {
+            State.Register.RenameDimension(d.Id, e.Value?.ToString() ?? "");
+            idMessage = null;
+        }
+        catch (ArgumentException ex)
+        {
+            idMessage = ex.Message;
+        }
+    }
+
+    private static void SetMeasured(SeverityDimension d, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            d.Unit = "%";
+            for (int s = 0; s < d.Bands.Count; s++) d.Bands[s].Min ??= s;
+        }
+        else
+        {
+            d.Unit = null;
+            foreach (var b in d.Bands) { b.Min = null; b.Max = null; }
+        }
+    }
+
+    private void ResetMatrix()
+    {
+        State.Register.ResetMatrix();
+        idMessage = null;
+    }
+}

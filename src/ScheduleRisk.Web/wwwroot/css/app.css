@@ -20,6 +20,10 @@
   --g-actual: #2c5db0;
   --g-remaining: #3b8f45;
   --g-critical: var(--color-accent);
+  /* Risk ratings on the matrix (register steps): red, amber, green with ink that reads on each */
+  --rag-red: #c62828; --rag-red-ink: #ffffff;
+  --rag-amber: #f2a900; --rag-amber-ink: #1a1918;
+  --rag-green: #3f8f47; --rag-green-ink: #ffffff;
 }
 
 /* Dark theme. The design system ships light only; this keeps its structure and derives the dark
@@ -47,6 +51,7 @@
     --shadow-lg: 0 0 0 1px color-mix(in srgb, #f3f2f2 14%, transparent), 0 16px 40px rgba(0,0,0,.55);
     --g-actual: #6d9df0;
     --g-remaining: #63bd71;
+    --rag-red: #d9442f; --rag-amber: #e5a524; --rag-green: #4e9f58;
   }
 }
 
@@ -74,24 +79,51 @@ h1, h2, h4 { margin: 0; }
 .brandcell { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-6) var(--space-4) 0; border-right: 2px solid var(--color-divider); }
 .brandmark { width: 14px; height: 14px; background: var(--color-accent); flex: none; }
 .topnav .nav-brand { margin: 0; }
-/* On narrower screens the name stacks over two lines, so the bar keeps its steps and Report button on one row. */
+/* On narrower screens the name stacks over two lines, so the bar keeps the project and Report button on one row. */
 @media (max-width: 1100px) {
   .topnav .nav-brand { white-space: normal; max-width: 6.8em; line-height: 1.1; }
 }
 .projcell { display: flex; flex-direction: column; justify-content: center; padding: 0 var(--space-6); border-right: 2px solid var(--color-divider); min-width: 0; }
 .projname { font-size: 14px; font-weight: 600; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; }
-.steps { display: flex; margin-right: auto; }
-.step { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-6);
-  border-right: 1px solid var(--color-divider); color: var(--color-neutral-700); font-size: 14px; font-weight: 600; }
-.step .n { font-size: 12px; color: var(--color-neutral-600); }
-.step:hover:not(:disabled) { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
-.step.on { color: var(--color-text); box-shadow: inset 0 -4px 0 var(--color-accent); }
-.step.on .n { color: var(--color-accent-700); }
-.step:disabled { opacity: .45; cursor: not-allowed; }
-.step:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 .navactions { display: flex; align-items: center; gap: var(--space-2); padding-left: var(--space-6); }
 .navactions .btn { justify-content: flex-start; min-width: 120px; margin: var(--space-2) 0; }
-.page { display: flex; flex-direction: column; }
+.page { display: flex; flex-direction: column; min-width: 0; }
+
+/* The risk workflow (design/workflow/steps.png): a column of numbered steps beside the page, Promote as an arrow
+   between 03 and 04. It sticks under the top bar. Narrower, the descriptions go; on a phone it becomes a row. */
+.shell { display: grid; grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
+.workflow { position: sticky; top: var(--nav-h, 0px); max-height: calc(100vh - var(--nav-h, 0px)); overflow: auto;
+  border-right: 2px solid var(--color-divider); padding: var(--space-4) var(--space-3); }
+.workflow ol { list-style: none; margin: 0; padding: 0; }
+.workflow li + li { border-top: 1px solid var(--color-divider); }
+.wf-step { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: 56px minmax(0, 1fr);
+  align-items: baseline; gap: var(--space-3); padding: var(--space-4) var(--space-3); }
+.wf-n { font-size: 28px; font-weight: 800; line-height: 1; color: var(--color-accent-700); font-variant-numeric: tabular-nums; }
+.wf-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wf-title { font-size: 17px; font-weight: 800; color: var(--color-text); }
+.wf-desc { font-size: 13px; color: var(--color-neutral-700); white-space: normal; text-wrap: pretty; }
+.wf-step:hover:not(:disabled) { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.wf-step.on { background: var(--color-accent-100); box-shadow: inset 4px 0 0 var(--color-accent); }
+.wf-step:disabled { opacity: .45; cursor: not-allowed; }
+.wf-step:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+@media (max-width: 1400px) {
+  .shell { grid-template-columns: 200px minmax(0, 1fr); }
+  .wf-desc { display: none; }
+  .wf-step { grid-template-columns: 36px minmax(0, 1fr); padding: var(--space-3) var(--space-2); }
+  .wf-n { font-size: 18px; }
+  .wf-title { font-size: 15px; }
+}
+@media (max-width: 800px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .workflow { position: static; max-height: none; border-right: 0; border-bottom: 2px solid var(--color-divider); padding: 0 var(--space-2); }
+  .workflow ol { display: flex; overflow-x: auto; }
+  .workflow li { flex: none; }
+  .workflow li + li { border-top: 0; border-left: 1px solid var(--color-divider); }
+  .wf-step { width: auto; white-space: nowrap; grid-template-columns: auto auto; gap: var(--space-2); }
+  .wf-n { font-size: 13px; }
+  .wf-title { font-size: 14px; }
+}
+.review-body { display: flex; flex-direction: column; gap: var(--space-3); }
 
 .banner { display: flex; gap: var(--space-4); align-items: flex-start; justify-content: space-between; padding: var(--space-3) var(--space-6);
   background: var(--color-surface); border-left: 4px solid var(--color-text); font-size: 14px; }
@@ -424,7 +456,6 @@ dl.notes .note.sel { background: var(--color-accent-100); box-shadow: -8px 0 0 v
 
 /* dialogs and overlays */
 .dialog-backdrop { z-index: 30; }
-.report-dialog { width: min(520px, 100%); gap: var(--space-4); border-top: 6px solid var(--color-accent); }
 .dialog .field > label { margin-bottom: var(--space-2); }
 .dialog-note { background: var(--color-bg); padding: var(--space-3); font-size: 13px; }
 /* the report formats: the design system's radio dot, one format per row, the chosen one marked in red at its edge */
@@ -507,8 +538,6 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
   .brandcell { padding-right: var(--space-4); }
   .topnav .nav-brand { font-size: 16px; }
   .projcell { padding: 0 var(--space-4); border-right: 0; flex: 1; }
-  .steps { order: 3; width: 100%; margin: 0 calc(-1 * var(--space-4)); border-top: 1px solid var(--color-divider); overflow-x: auto; }
-  .step { padding: var(--space-3) var(--space-4); flex: 1; }
   .navactions { padding-left: var(--space-2); }
   .navactions .btn { min-width: 0; }
   .pad, .main-col, .side, .chart-col, .conf-col, .two-col > div, .hero-drop { padding: var(--space-4); }
@@ -526,3 +555,168 @@ svg text { fill: var(--color-neutral-700); font-size: 11px; font-family: var(--f
   .check input { width: 20px; height: 20px; }
   .table td, .table th { padding: 9px 10px; }
 }
+
+/* ---------------------------------------------------------------- step 01 Setup: the risk matrix */
+.matrix-wrap { overflow-x: auto; }
+.matrix { border-collapse: separate; border-spacing: 3px; font-size: 13px; }
+.matrix th { font-weight: 600; text-align: center; padding: var(--space-2); background: var(--color-surface); vertical-align: bottom; min-width: 96px; }
+.matrix th.corner { text-align: left; background: none; min-width: 150px; color: var(--color-neutral-700); font-weight: 400; }
+.matrix th.prob { text-align: left; vertical-align: middle; }
+.matrix .lvl { display: block; font-size: 18px; font-weight: 800; }
+.matrix .rng { display: block; font-weight: 400; color: var(--color-neutral-700); font-size: 12px; }
+.matrix td { padding: 0; }
+.cell { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px;
+  cursor: pointer; font-weight: 800; font-size: 14px; }
+.cell:hover { filter: brightness(1.08); }
+.cell:focus-visible { outline: 2px solid var(--color-text); outline-offset: 2px; }
+/* After .cell, whose "all: unset" would otherwise clear the rating colour */
+.rag-red { background: var(--rag-red); color: var(--rag-red-ink); }
+.rag-amber { background: var(--rag-amber); color: var(--rag-amber-ink); }
+.rag-green { background: var(--rag-green); color: var(--rag-green-ink); }
+.rag-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+.rag-card { border: 1px solid var(--color-divider); display: flex; flex-direction: column; }
+.rag-card .rag-head { padding: var(--space-2) var(--space-3); font-weight: 800; }
+.rag-card .rag-body { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
+.rag-head .input { background: transparent; color: inherit; border-color: currentColor; font-weight: 800; }
+.side .btn-row select.input { flex: 1 1 7em; }
+.rag-card textarea.input { min-height: 84px; font-size: 13px; }
+.area { border: 1px solid var(--color-divider); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.area-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-end; }
+.area-head .field { display: flex; flex-direction: column; gap: 4px; }
+.area-head .field > label { margin: 0; font-size: 12px; color: var(--color-neutral-700); }
+.table textarea.input, .table input.input.w-wide { width: 100%; min-width: 220px; }
+.table textarea.input { min-height: 38px; font-size: 13px; resize: vertical; }
+.input.w-pct { width: 84px; }
+.input.w-unit { width: 30ch; }
+.issues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); font-size: 13px; }
+.issues li { padding: var(--space-2) var(--space-3); border-left: 4px solid var(--rag-amber); background: var(--color-surface); }
+.issues li.err { border-left-color: var(--color-accent); background: var(--color-accent-100); color: var(--color-accent-800); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip-edit { display: inline-flex; align-items: center; border: 1px solid var(--color-divider); }
+.chip-edit .input { border: 0; min-width: 0; width: 15ch; }
+
+/* ---------------------------------------------------------------- step 02 Identify: proposing and approving risks */
+.btn-sm { font-size: 13px; min-height: 30px; padding: 4px 10px; }
+.side form .field { display: flex; flex-direction: column; gap: var(--space-2); }
+.side form .field > label { margin: 0; }
+.side form .btn-row { align-items: flex-end; flex-wrap: nowrap; }
+.side form .btn-row .field.grow { flex: 1; min-width: 0; }
+.side textarea.input { resize: vertical; font-size: 14px; }
+.statement { margin: 0; padding: var(--space-3); background: var(--color-surface); border-left: 3px solid var(--color-text); font-size: 13.5px; text-wrap: pretty; }
+.empty { margin: 0; padding: var(--space-6); border: 1px dashed var(--color-divider); color: var(--color-neutral-700); }
+.register td { vertical-align: top; }
+.register .risk-cell { display: flex; flex-direction: column; gap: 2px; min-width: 260px; max-width: 70ch; }
+.register tr.open > td { background: var(--color-surface); }
+.register .edit-row > td { background: var(--color-surface); padding: var(--space-4); border-top: 0; }
+.register .row-actions { display: flex; justify-content: flex-end; gap: var(--space-1); }
+.toolbar select.input { width: auto; }
+label .hint { margin-left: 6px; font-weight: 400; }
+.edit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.edit-grid .field { display: flex; flex-direction: column; gap: 4px; }
+.edit-grid .field > label { margin: 0; font-size: 12px; color: var(--color-neutral-700); }
+.edit-grid .field.wide { grid-column: 1 / -1; }
+.edit-grid textarea.input { resize: vertical; }
+.edit-row .issues { margin-bottom: var(--space-3); }
+.status { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--color-divider); white-space: nowrap; }
+.status-proposed { border-style: dashed; }
+.status-approved { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
+.status-rejected, .status-closed { color: var(--color-neutral-700); text-decoration: line-through; text-decoration-thickness: 1px; }
+.status-closed { text-decoration: none; }
+@media (max-width: 800px) { .edit-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------------------------------------------------------------- step 03 Assess: the heat map and each risk's assessments */
+.heatmap-wrap { overflow-x: auto; }
+.heatmap { display: block; max-width: 100%; height: auto; font-family: inherit; }
+.heatmap text { fill: var(--color-text); }
+.hm-axis { font-size: 12px; fill: var(--color-neutral-700) !important; }
+.hm-col { font-size: 18px; font-weight: 800; }
+.hm-col-name { font-size: 12px; font-weight: 600; }
+.hm-row { font-size: 13px; font-weight: 600; }
+.hm-row-rng { font-size: 12px; fill: var(--color-neutral-700) !important; }
+.hm-cell { cursor: pointer; outline: none; }
+.hm-cell rect { stroke: transparent; stroke-width: 3; }
+.hm-cell.rag-red rect { fill: var(--rag-red); }
+.hm-cell.rag-amber rect { fill: var(--rag-amber); }
+.hm-cell.rag-green rect { fill: var(--rag-green); }
+.hm-cell.rag-red text { fill: var(--rag-red-ink); }
+.hm-cell.rag-amber text { fill: var(--rag-amber-ink); }
+.hm-cell.rag-green text { fill: var(--rag-green-ink); }
+.hm-cell:not(.has) rect { opacity: .55; }
+.hm-cell:hover rect { opacity: 1; }
+.hm-cell.on rect, .hm-cell:focus-visible rect { stroke: var(--color-text); opacity: 1; }
+.hm-name { font-size: 11px; font-weight: 600; opacity: .85; }
+.hm-count { font-size: 22px; font-weight: 800; }
+.hm-ids { font-size: 10.5px; font-weight: 600; }
+.hm-path { stroke: var(--color-text); stroke-width: 3; }
+.hm-arrowhead { fill: var(--color-text); }
+.hm-marker circle { fill: var(--color-bg); stroke: var(--color-text); stroke-width: 2.5; }
+.hm-marker text { font-size: 14px; font-weight: 800; fill: var(--color-text); }
+.chip-rating { display: inline-block; padding: 1px 7px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.chip-rating.none { border: 1px dashed var(--color-divider); color: var(--color-neutral-700); font-weight: 400; }
+.risk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-top: 1px solid var(--color-divider); max-height: 50vh; overflow-y: auto; }
+.risk-list li { border-bottom: 1px solid var(--color-divider); }
+.risk-pick { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2);
+  align-items: center; padding: var(--space-2) var(--space-2); font-size: 13.5px; }
+.risk-pick .rp-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.risk-pick:hover { background: color-mix(in srgb, var(--color-text) 5%, transparent); }
+.risk-pick.on { background: var(--color-accent-100); box-shadow: inset 3px 0 0 var(--color-accent); }
+.risk-pick:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
+.table.assess th { vertical-align: bottom; }
+.table.assess td { vertical-align: top; min-width: 200px; }
+.table.assess .rowhead { text-align: left; font-weight: 600; white-space: nowrap; vertical-align: top; padding-top: 12px; }
+.table.assess select.input { width: 100%; }
+.table.assess tr.result td { padding-top: var(--space-3); }
+.pt-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 2px solid var(--color-text); border-radius: 50%; font-weight: 800; font-size: 12px; margin-right: 4px; }
+.band-text { display: block; margin-top: 4px; font-size: 12px; color: var(--color-neutral-700); text-wrap: pretty; }
+.sub-head { margin-top: var(--space-2); }
+.table tr.overdue td { background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+
+/* ---------------------------------------------------------------- Promote: register risks into the model */
+.big { font-size: 22px; font-weight: 800; }
+.hint.block, .block-hint { display: block; margin-top: 4px; }
+.table.promote td { vertical-align: top; }
+.tri { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
+.tri .input.w-pct { width: 70px; }
+.input.set { border-color: var(--color-accent); box-shadow: inset 3px 0 0 var(--color-accent); }
+.picker-cell { min-width: 260px; }
+ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.table.promote td:first-child { min-width: 170px; }
+
+/* ---------------------------------------------------------------- 04 Schedule check: P6 Check Schedule and DCMA 14-Point */
+.scorecard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+.sc-card { border: 1px solid var(--color-divider); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.sc-nums { display: flex; gap: var(--space-4); font-size: 13px; color: var(--color-neutral-700); flex-wrap: wrap; }
+.sc-n { font-size: 26px; font-weight: 800; color: var(--color-text); margin-right: 4px; }
+.sc-n.hc-pass-t { color: var(--rag-green); }
+.sc-n.hc-fail-t { color: var(--color-accent); }
+.sc-bar { display: flex; gap: 2px; height: 10px; }
+.sc-bar > span { flex: 1; }
+.sc-bar .hc-pass { background: var(--rag-green); }
+.sc-bar .hc-fail { background: var(--color-accent); }
+.sc-bar .hc-na { background: var(--color-neutral-300); }
+.hc-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); align-items: start; }
+@media (max-width: 1500px) { .hc-cols { grid-template-columns: minmax(0, 1fr); } }
+.table.hc td { vertical-align: top; }
+.table.hc tr.hc-tab th { background: var(--color-surface); text-align: left; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-top: var(--space-3); }
+.hc-status { display: inline-block; padding: 1px 8px; font-size: 12px; font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
+.hc-status.hc-pass { color: var(--rag-green); border-color: currentColor; }
+.hc-status.hc-fail { background: var(--color-accent); color: var(--color-bg); }
+.hc-status.hc-na { color: var(--color-neutral-700); border-color: var(--color-divider); border-style: dashed; }
+.hc-toggle { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+.hc-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.hc-toggle .caret { font-size: 11px; color: var(--color-neutral-700); width: 10px; }
+.hc-note { font-style: italic; }
+.table.hc tr.open > td { background: var(--color-surface); }
+.table.hc tr.hc-flags > td { background: var(--color-surface); padding: 0 var(--space-3) var(--space-3); }
+.hc-flag-wrap { max-height: 360px; overflow: auto; background: var(--color-bg); }
+.linkish { all: unset; cursor: pointer; font-weight: 700; color: var(--color-accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.linkish:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+#activities { scroll-margin-top: calc(var(--nav-h, 62px) + 8px); }
+.move-banner { border-left-color: var(--color-accent); align-items: center; }
+.table tr.typed td { background: color-mix(in srgb, var(--color-accent) 5%, transparent); }
+label.check.block { display: flex; margin-top: 4px; }
+
+/* ---------------------------------------------------------------- 06 Results: tornado and cost-benefit */
+/* The chart is drawn 960 wide and scaled to the column: sizes in its own units, over the global svg text rule */
+.tornado svg text { fill: var(--fg); font-family: inherit; font-size: 20px; }
+.table td.neg { color: var(--color-accent); }
