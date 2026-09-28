@@ -93,10 +93,6 @@ public class GoldenCpmTests
             n++;
         }
         Assert.Equal(s.Activities.Count, n);
-
-        var checks = ScheduleValidator.Validate(s, r).ToDictionary(c => c.Key, c => c.Count);
-        foreach (var p in g.GetProperty("validation").EnumerateObject())
-            Assert.Equal(p.Value.GetInt32(), checks[p.Name]);
     }
 
     [Theory]

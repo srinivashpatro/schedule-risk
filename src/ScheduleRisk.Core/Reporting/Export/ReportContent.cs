@@ -67,14 +67,14 @@ public sealed class Section
 
 /// <summary>What was simulated and how, for <see cref="ReportContent.Build"/>.</summary>
 public sealed record ReportInput(Schedule Schedule, SimulationSummary Pre, SimulationSummary? Post = null,
-                                 IReadOnlyList<ValidationCheck>? Checks = null, VerifyReport? Verify = null,
+                                 HealthReport? Health = null, VerifyReport? Verify = null,
                                  string? ModelName = null, int Percentile = 80, DateTime? Generated = null);
 
 /// <summary>
 /// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary and what the
 /// results mean, the finish date distribution (histogram and cumulative curve), the confidence levels, the risk
 /// ranking (or duration sensitivity), the criticality index, the risk drivers, the activities that drive the finish
-/// and the milestones; then, as in the HTML report, the schedule health checks and the engine check against P6.
+/// and the milestones; then, as in the HTML report, the schedule health checks (P6 Check Schedule and DCMA 14-Point) and the engine check against P6.
 /// </summary>
 public sealed class ReportContent
 {
@@ -262,23 +262,35 @@ public sealed class ReportContent
             doc.Sections.Add(ms);
         }
 
-        if (input.Checks is { Count: > 0 } checks)
+        if (input.Health is { } health)
         {
-            var hc = new Section { Title = "Schedule health checks", Lead = "DCMA-style checks of the schedule's logic, float and constraints." };
-            var t = new Table
+            void HealthSection(string title, string lead, IEnumerable<HealthItem> items)
             {
-                Header = Heads("Check", "Result", "Count", "Notes"),
-                Widths = new[] { 2.2, 0.8, 0.9, 2.6 },
-                Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Left },
-            };
-            foreach (var c in checks)
-                t.Rows.Add(new Row(new Cell[]
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                var sec = new Section { Title = title, Lead = $"{lead} {p} passed, {f} failed, {na} not applicable." };
+                var t = new Table
                 {
-                    new(c.Title, Tone: Tone.Strong), new(c.Passed ? "Pass" : "Review", Tone: c.Passed ? Tone.Normal : Tone.Accent),
-                    new($"{c.Count.ToString("N0", Inv)} / {c.Total.ToString("N0", Inv)}"), new(c.Note, Tone: Tone.Muted),
-                }));
-            hc.Blocks.Add(new TableBlock(t));
-            doc.Sections.Add(hc);
+                    Header = Heads("Check", "Status", "Actual", "Target", "Count", "Notes"),
+                    Widths = new[] { 1.9, 0.8, 0.7, 0.7, 0.9, 2.2 },
+                    Aligns = new[] { Align.Left, Align.Left, Align.Right, Align.Right, Align.Right, Align.Left },
+                };
+                foreach (var i in list)
+                {
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    t.Rows.Add(new Row(new Cell[]
+                    {
+                        new((i.Number != null ? i.Number + ". " : "") + i.Label, Tone: Tone.Strong),
+                        new(i.StatusText, Tone: i.Status == HealthStatus.Pass ? Tone.Normal : i.Status == HealthStatus.NotApplicable ? Tone.Muted : Tone.Accent),
+                        new(i.ActualText), new(i.TargetText), new(i.CountText), new(note, Tone: Tone.Muted),
+                    }));
+                }
+                sec.Blocks.Add(new TableBlock(t));
+                doc.Sections.Add(sec);
+            }
+            HealthSection("Schedule health: P6 Check Schedule", "The parameters of P6's Check Schedule dialog.", health.P6);
+            HealthSection("Schedule health: DCMA 14-Point Assessment", "The DCMA 14-Point schedule assessment.", health.Dcma);
         }
         if (input.Verify is { Compared: > 0 } v)
         {

@@ -19,7 +19,7 @@ public static class HtmlReport
     private static string F(double x, int d = 1) => x.ToString("F" + d, Inv);
 
     public static string Build(Schedule s, SimulationSummary pre, SimulationSummary? post = null,
-                               IReadOnlyList<ValidationCheck>? checks = null, VerifyReport? verify = null, string? modelName = null)
+                               HealthReport? health = null, VerifyReport? verify = null, string? modelName = null)
     {
         var pcal = s.Settings.ProjectCalendar;
         double mpd = pcal.MinutesPerDay;
@@ -115,13 +115,28 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
             sb.Append("</table></div>");
         }
 
-        if (checks != null)
+        if (health != null)
         {
-            sb.Append("<h2>Schedule health checks</h2><div class=\"wrap\"><table><tr><th>Check</th><th>Result</th><th>Count</th><th>Notes</th></tr>");
-            foreach (var c in checks)
-                sb.Append("<tr><td>").Append(E(c.Title)).Append("</td><td class=\"").Append(c.Passed ? "pass\">Pass" : "fail\">Review")
-                  .Append("</td><td class=\"n\">").Append(c.Count).Append(" / ").Append(c.Total).Append("</td><td>").Append(E(c.Note)).Append("</td></tr>");
-            sb.Append("</table></div>");
+            void HealthTable(string title, IEnumerable<HealthItem> items)
+            {
+                var list = items.ToList();
+                var (p, f, na) = health.Score(list);
+                sb.Append("<h2>").Append(E(title)).Append("</h2><p class=\"muted\">").Append(p).Append(" passed, ").Append(f).Append(" failed, ")
+                  .Append(na).Append(" not applicable.</p><div class=\"wrap\"><table><tr><th>Check</th><th>Status</th><th>Actual</th><th>Target</th><th>Count</th><th>Notes</th></tr>");
+                foreach (var i in list)
+                {
+                    bool pass = i.Status == HealthStatus.Pass, na1 = i.Status == HealthStatus.NotApplicable;
+                    string note = i.Status is HealthStatus.Fail or HealthStatus.FailInformational && i.Flagged.Count > 0 ? i.Examples(5) : i.Note ?? "";
+                    if (i.StatusConventional is HealthStatus sc) note = $"Conventional reading: {HealthCheck.StatusText(sc)}. " + note;
+                    sb.Append("<tr><td>").Append(E((i.Number != null ? i.Number + ". " : "") + i.Label)).Append("</td><td class=\"")
+                      .Append(pass ? "pass" : na1 ? "muted" : "fail").Append("\">").Append(E(i.StatusText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.ActualText)).Append("</td><td class=\"n\">").Append(E(i.TargetText)).Append("</td><td class=\"n\">")
+                      .Append(E(i.CountText)).Append("</td><td>").Append(E(note)).Append("</td></tr>");
+                }
+                sb.Append("</table></div>");
+            }
+            HealthTable("Schedule health: P6 Check Schedule", health.P6);
+            HealthTable("Schedule health: DCMA 14-Point Assessment", health.Dcma);
         }
         if (verify != null)
         {

@@ -34,6 +34,14 @@
 
 ### Changed
 
+- Step 04 Schedule check: the schedule health checks are now P6 Professional's Check Schedule parameters
+  (17, in the dialog's three tabs) and the DCMA 14-Point Assessment side by side, each with its target,
+  result, PASS / FAIL / N/A and the activities or relationships it flagged (click an ID to show it in the
+  Gantt). Two P6 operators that read against their description (Positive Lags, Relationship Types) are
+  reported as configured and in the conventional reading. The Critical Path Test and CPLI use the DCMA
+  method on the recalculated schedule. The same checks are in every report and `sra validate`, which
+  writes them as JSON (`--json`) in the owner's health-check format (docs/SCHEDULE_CHECK.md). They replace
+  the 12 checks of earlier versions.
 - The app is laid out as the seven-step risk workflow: 01 Setup, 02 Identify, 03 Assess, Promote,
   04 Schedule check, 05 Model, 06 Results, 07 Review, listed in a column beside the page. The schedule,
   model and results are steps 04-06, and the report formats are now a page, step 07, instead of a dialog.

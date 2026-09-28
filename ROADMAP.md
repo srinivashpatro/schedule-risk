@@ -414,7 +414,7 @@ To decide before the first item (the plan assumes the choice in brackets):
       typed into the model). `PromotePanel` in the app and `sra promote` on the command line. 14 tests,
       and a register -> promote -> simulate run on synth_500 (P80 moves from 24-Jan-2029 to 11-Dec-2028
       after mitigation). The placeholder page for unbuilt steps is gone.
-- [ ] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
+- [x] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
       the activity table (moved from the current step 01; the landing page keeps file opening).
       Scope (owner, 2026-09-28): the health checks become P6's Check Schedule parameters and the DCMA
       14-Point Assessment side by side, as in the owner's health-check report (JSON with `meta`,
@@ -443,7 +443,8 @@ To decide before the first item (the plan assumes the choice in brackets):
          two tables with target, actual and status, each row opening its flagged activities (click an
          ID to show it in the Gantt), then the Gantt and the activity table. The HTML, PDF, Word and
          PowerPoint reports and `sra validate` switch from today's 12 checks to the two sections.
-      To decide: (a) float, durations and critical path from our recalculated schedule (identical to
+      Decided (owner, 2026-09-28): (a) recalculated values, (b) the DCMA method, (c) retire the old checks.
+      Were: (a) float, durations and critical path from our recalculated schedule (identical to
       P6's stored values when `sra verify` matches, and available for files P6 never scheduled) or
       from the values stored in the XER as the skill does; (b) DCMA #12 Critical Path Test and #13
       CPLI by the DCMA method on our engine (delay a critical activity and check the finish moves by
@@ -452,6 +453,19 @@ To decide before the first item (the plan assumes the choice in brackets):
       no flags, the skill fails #12 while the engine's test passes); (c) today's 12-check
       `ScheduleValidator` (and its Python twin) retired in favour of the new checks, keeping only the
       "constraints not modelled (ALAP)" warning.
+      Done: `Analysis/HealthCheck` in Core (`HealthReport`, `HealthItem`, `HealthFlag`, `HealthCheckSettings`),
+      docs/SCHEDULE_CHECK.md. ScheduleBuilder also reads the baseline dates, `driving_path_flag`, the raw
+      status code, TASKRSRC and links to successors in other projects (read only; `sra verify` passes on
+      all 9 fixtures). Step 04: a scorecard and the two tables (P6 grouped by tab), each row opening its
+      flagged activities or relationships, an ID click showing the activity in the Gantt and table, and
+      "Download JSON". Reports (HTML, PDF, Word, PowerPoint) carry both sections; `sra validate` prints
+      them and writes `--json`. Against the owner's `health_check.py` on every fixture: identical counts,
+      statuses and flagged sets except #12 / #13 as decided (the skill fails #12 on files with no
+      driving_path_flag) and float to 4 decimals. Dangling Start leaves out started activities, as P6's
+      description says (no fixture differs). `ScheduleValidator` is gone; its Python twin
+      (reference/python/sra/validate.py) stays as the reference implementation's own check and golden
+      files keep their `validation` block, no longer compared. 24 tests.
+
 - [ ] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
       and edited at the register (a link back to Promote), other risks, uncertainty, drivers and
       correlation as today.

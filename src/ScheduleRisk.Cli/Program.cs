@@ -18,7 +18,8 @@ public static class Program
 usage:
   sra info      <file.xer>
   sra cpm       <file.xer> [--project ID] [--csv out.csv]
-  sra validate  <file.xer> [--project ID]
+  sra validate  <file.xer> [--project ID] [--json health.json]
+                [--long-lag-hr 352] [--large-float-hr 352] [--large-duration-hr 352]
   sra verify    <file.xer> [--project ID] [--tolerance-min N]
   sra simulate  <file.xer> --risk model.json [--project ID] [--iterations N] [--seed N]
                 [--scenario pre|post|both] [--out folder] [--threads N]
@@ -56,7 +57,7 @@ promote turns the register's approved risks that meet its promote rule into risk
             switch (cmd)
             {
                 case "cpm": return Cpm(s, r, opts, sw.Elapsed);
-                case "validate": return Validate(s, r);
+                case "validate": return Validate(s, r, path, opts);
                 case "verify": return Verify(s, r, opts);
                 case "simulate": return Simulate(s, engine, r, opts);
                 case "promote": return Promote(s, engine, r, opts);
@@ -125,12 +126,42 @@ promote turns the register's approved risks that meet its promote rule into risk
         return 0;
     }
 
-    private static int Validate(Schedule s, CpmResult r)
+    /// <summary>Health check: P6 Check Schedule parameters and the DCMA 14-Point Assessment (docs/SCHEDULE_CHECK.md).</summary>
+    private static int Validate(Schedule s, CpmResult r, string path, Dictionary<string, string> o)
     {
-        var checks = ScheduleValidator.Validate(s, r);
-        foreach (var c in checks)
-            Console.WriteLine($"{(c.Passed ? "PASS  " : "REVIEW")} {c.Title,-50} {c.Count,6}/{c.Total,-6} {c.Pct,6:F1}%  {c.Note}");
-        return checks.All(c => c.Passed) ? 0 : 1;
+        var settings = new HealthCheckSettings();
+        double Hours(string key, double dflt) => o.TryGetValue(key, out var v) ? double.Parse(v, System.Globalization.CultureInfo.InvariantCulture) : dflt;
+        settings.LongLagHours = Hours("long-lag-hr", settings.LongLagHours);
+        settings.LargeFloatHours = Hours("large-float-hr", settings.LargeFloatHours);
+        settings.LargeDurationHours = Hours("large-duration-hr", settings.LargeDurationHours);
+        var h = HealthCheck.Run(s, r, settings);
+        static string Val(HealthItem i) => i.ActualBool is bool b ? (b ? "yes" : "no")
+            : i.Actual is not double a ? "-" : i.Unit == "%" ? $"{a:F1}%" : i.Unit == "index" ? $"{a:F2}" : $"{a:0}";
+        static string Target(HealthItem i) => i.Target is double t ? $"{i.Operator} {t:0.##}{(i.Unit == "%" ? "%" : "")}" : "";
+        void Section(string title, IEnumerable<HealthItem> items)
+        {
+            var list = items.ToList();
+            var (pass, fail, na) = h.Score(list);
+            Console.WriteLine($"{title}: {pass} pass, {fail} fail, {na} n/a");
+            foreach (var i in list)
+            {
+                string count = i.Count is int c && i.Denominator is int d ? $"{c}/{d}" : "";
+                string name = i.Number != null ? $"{i.Number,2} {i.Label}" : i.Label;
+                string conv = i.StatusConventional is HealthStatus sc ? $" (conventional: {HealthCheck.StatusText(sc)})" : "";
+                Console.WriteLine($"  {i.StatusText,-20} {name,-42} {Val(i),8} {Target(i),-9} {count,-11}{conv}");
+            }
+        }
+        Console.WriteLine($"{h.ProjectCode}: {h.Schedulable} activities, {h.TotalRelationships} relationships, data date {Time.Format(h.DataDate)}"
+                          + (h.Unstarted ? " (no progress: baseline)" : ""));
+        Section("P6 Check Schedule", h.P6);
+        Section("DCMA 14-Point", h.Dcma);
+        foreach (var n in h.AppNotes) Console.WriteLine("note: " + n);
+        if (o.TryGetValue("json", out var json))
+        {
+            File.WriteAllText(json, h.ToJson(Path.GetFileName(path)));
+            Console.WriteLine($"json: {Path.GetFullPath(json)}");
+        }
+        return h.P6.Concat(h.Dcma).Any(i => i.Status == HealthStatus.Fail) ? 1 : 0;
     }
 
     private static int Verify(Schedule s, CpmResult r, Dictionary<string, string> o)
@@ -222,7 +253,7 @@ promote turns the register's approved risks that meet its promote rule into risk
         File.WriteAllText(Path.Combine(outDir, "activities.csv"), CsvExport.Activities(main));
         File.WriteAllText(Path.Combine(outDir, "risks.csv"), CsvExport.Risks(main));
         if (preRes != null) File.WriteAllText(Path.Combine(outDir, "iterations.csv"), CsvExport.Iterations(preRes));
-        var checks = ScheduleValidator.Validate(s, det);
+        var checks = HealthCheck.Run(s, det);
         var verify = P6Verifier.Verify(s, det);
         File.WriteAllText(Path.Combine(outDir, "report.html"),
             HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name));

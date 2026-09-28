@@ -30,7 +30,7 @@ public sealed class ExportFixture
         var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), cpm.CriticalToProjectFinish());
         SimulationSummary One(Scenario sc) { var mc = new MonteCarloEngine(s, m, sc); return SimulationSummary.Build(mc, mc.Run(300, 7)); }
         Doc = ReportContent.Build(new ReportInput(s, One(Scenario.PreMitigation), One(Scenario.PostMitigation),
-            ScheduleValidator.Validate(s, res), P6Verifier.Verify(s, res), "Example model", 80, When), Fonts);
+            HealthCheck.Run(s, res), P6Verifier.Verify(s, res), "Example model", 80, When), Fonts);
         // stand-ins for the pictures the browser draws: 8 x 4 pixels, as PNG and as zlib-compressed RGB rows
         foreach (var c in Doc.Charts)
         {
@@ -110,7 +110,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Equal(new[]
         {
             "Summary", "What the results mean", "Finish date distribution", "Confidence levels", "Risk ranking", "Criticality index", "Risk drivers",
-            "Activities that drive the finish", "Milestones", "Schedule health checks", "Engine check against P6",
+            "Activities that drive the finish", "Milestones", "Schedule health: P6 Check Schedule", "Schedule health: DCMA 14-Point Assessment", "Engine check against P6",
         }, fx.Doc.Sections.Select(s => s.Title));
         Assert.Equal(new[] { "histogram", "cumulative", "risks", "criticality", "drivers" }, fx.Doc.Charts.Select(c => c.Key));
         Assert.Equal("Project risk analysis: SYN500", fx.Doc.Title);
@@ -201,7 +201,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Contains("Duration sensitivity", titles);
         Assert.DoesNotContain("Risk ranking", titles);
         Assert.DoesNotContain("Risk drivers", titles);
-        Assert.DoesNotContain("Schedule health checks", titles);
+        Assert.DoesNotContain(titles, t => t.StartsWith("Schedule health", StringComparison.Ordinal));
         var finish = ((TableBlock)((ColumnsBlock)doc.Sections[0].Blocks[0]).Left[0]).Table;
         Assert.Equal(2, finish.Columns);                               // no post-mitigation column
     }
@@ -282,7 +282,7 @@ public class ReportExportTests : IClassFixture<ExportFixture>
         Assert.Empty(Validate(docx, word: true));
         using var zip = new ZipArchive(new MemoryStream(docx));
         string body = Part(zip, "word/document.xml");
-        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health checks" })
+        foreach (var expected in new[] { "Project risk analysis: SYN500", "P80 − deterministic", "Finish date distribution", "Schedule health: P6 Check Schedule", "DCMA 14-Point Assessment" })
             Assert.Contains(expected, body);
         Assert.Equal(fx.Doc.Charts.Count(), zip.Entries.Count(e => e.FullName.StartsWith("word/media/") && e.Name != "logo.png"));
         Assert.Contains("<w:tblHeader/>", body);                     // table heads repeat on each page

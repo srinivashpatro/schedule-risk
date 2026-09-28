@@ -23,7 +23,7 @@ public abstract class StateComponent : ComponentBase, IDisposable
     protected async Task DownloadReport()
     {
         if (State.Pre == null || State.Schedule == null || State.Cpm == null) return;
-        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Checks,
+        string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Health,
             State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name);
         await Download($"{State.Schedule.ProjectCode}-risk-report.html", "text/html", html);
     }

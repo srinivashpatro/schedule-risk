@@ -1,0 +1,181 @@
+@* Step 04's health check: P6 Check Schedule parameters (in the dialog's three tabs) and the DCMA 14-Point Assessment,
+   side by side, each row opening the activities or relationships it flagged. Built by HealthCheck in Core. *@
+
+<section class="pad rule-b stack">
+    <div class="headrow">
+        <h4>Schedule health</h4>
+        <button class="btn btn-secondary btn-sm" @onclick="() => OnDownload.InvokeAsync()">Download JSON</button>
+    </div>
+    <p class="sub">
+        P6 Professional's Check Schedule parameters and the DCMA 14-Point Assessment, on the schedule as recalculated here.
+        @if (Report.Unstarted) { <text>This file has no actual progress (a baseline), so the progress checks are N/A. </text> }
+        @if (!Report.HasResourceData) { <text>It has no resource or cost assignments (no TASKRSRC table). </text> }
+    </p>
+    <div class="scorecard">
+        @Card("P6 Check Schedule", Report.P6)
+        @Card("DCMA 14-Point", Report.Dcma)
+    </div>
+    @if (Report.AppNotes.Count > 0)
+    {
+        <ul class="issues">
+            @foreach (var n in Report.AppNotes)
+            {
+                <li>@n</li>
+            }
+        </ul>
+    }
+
+    <div class="hc-cols">
+        <div class="stack-sm">
+            <h4 class="sub-head">P6 Check Schedule</h4>
+            <div class="wrap">
+                <table class="table hc">
+                    <thead><tr><th>Parameter</th><th>Status</th><th class="n">Actual</th><th class="n">Target</th><th class="n">Count</th></tr></thead>
+                    @foreach (var tab in Report.P6.GroupBy(i => i.Section))
+                    {
+                        <tbody>
+                            <tr class="hc-tab"><th colspan="5">@tab.Key</th></tr>
+                            @foreach (var i in tab)
+                            {
+                                @Row(i)
+                            }
+                        </tbody>
+                    }
+                </table>
+            </div>
+        </div>
+        <div class="stack-sm">
+            <h4 class="sub-head">DCMA 14-Point Assessment</h4>
+            <div class="wrap">
+                <table class="table hc">
+                    <thead><tr><th>Check</th><th>Status</th><th class="n">Actual</th><th class="n">Target</th><th class="n">Count</th></tr></thead>
+                    <tbody>
+                        @foreach (var i in Report.Dcma)
+                        {
+                            @Row(i)
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public HealthReport Report { get; set; } = null!;
+    /// <summary>An activity ID was clicked: show it in the Gantt and the activity table.</summary>
+    [Parameter] public EventCallback<string> OnShow { get; set; }
+    [Parameter] public EventCallback OnDownload { get; set; }
+
+    private readonly HashSet<string> open = new();
+
+    private static string Tag(HealthStatus s) => s switch
+    {
+        HealthStatus.Pass => "hc-pass",
+        HealthStatus.NotApplicable => "hc-na",
+        _ => "hc-fail",
+    };
+
+    private static string Num(double v, int dp) => v.ToString(dp == 0 ? "0" : "0." + new string('#', dp), CultureInfo.InvariantCulture);
+
+    private RenderFragment Card(string title, List<HealthItem> items) => @<div class="sc-card">
+        @{ var (p, f, na) = Report.Score(items); }
+        <span class="eyebrow">@title</span>
+        <div class="sc-nums">
+            <span><b class="sc-n hc-pass-t">@p</b> passed</span>
+            <span><b class="sc-n hc-fail-t">@f</b> failed</span>
+            <span><b class="sc-n">@na</b> N/A</span>
+        </div>
+        <div class="sc-bar" aria-hidden="true">
+            @foreach (var i in items)
+            {
+                <span class="@Tag(i.Status)" title="@(i.Number ?? "") @i.Label: @i.StatusText"></span>
+            }
+        </div>
+    </div>;
+
+    private RenderFragment Row(HealthItem i) => @<text>
+        @{ string id = (i.Number != null ? "d" : "p") + i.Key; bool can = i.Flagged.Count > 0; bool isOpen = open.Contains(id); }
+        <tr class="hc-row @(isOpen ? "open" : "")">
+            <td>
+                @if (can)
+                {
+                    <button class="hc-toggle" aria-expanded="@(isOpen ? "true" : "false")" @onclick="@(() => { if (!open.Remove(id)) open.Add(id); })">
+                        <span class="caret">@(isOpen ? "▾" : "▸")</span>
+                        <span class="strong">@(i.Number != null ? i.Number + " · " : "")@i.Label</span>
+                    </button>
+                }
+                else
+                {
+                    <span class="strong">@(i.Number != null ? i.Number + " · " : "")@i.Label</span>
+                }
+                <span class="hint block">@i.Description</span>
+                @if (i.Note != null)
+                {
+                    <span class="hint block hc-note">@i.Note</span>
+                }
+            </td>
+            <td class="nowrap">
+                <span class="hc-status @Tag(i.Status)">@i.StatusText</span>
+                @if (i.StatusConventional is HealthStatus sc)
+                {
+                    <span class="hint block">conventional: @HealthCheck.StatusText(sc)</span>
+                }
+            </td>
+            <td class="n">@i.ActualText</td>
+            <td class="n nowrap">@i.TargetText</td>
+            <td class="n nowrap">@i.CountText</td>
+        </tr>
+        @if (isOpen)
+        {
+            <tr class="hc-flags"><td colspan="5">@Flags(i)</td></tr>
+        }
+    </text>;
+
+    private RenderFragment Flags(HealthItem i) => @<div class="wrap hc-flag-wrap">
+        @{ var rows = i.Flagged.Take(500).ToList(); bool rel = rows.Count > 0 && rows[0].IsRelationship; }
+        <table class="table">
+            @if (rel)
+            {
+                <thead><tr><th>Predecessor</th><th>Successor</th><th>Type</th><th class="n">Lag (h)</th></tr></thead>
+                <tbody>
+                    @foreach (var f in rows)
+                    {
+                        <tr>
+                            <td>@Link(f.PredCode!) <span class="small">@f.PredName</span></td>
+                            <td>@Link(f.Code) <span class="small">@f.Name</span></td>
+                            <td>@f.PredType?.Replace("PR_", "")</td>
+                            <td class="n">@Num(f.LagHours ?? 0, 2)</td>
+                        </tr>
+                    }
+                </tbody>
+            }
+            else
+            {
+                <thead><tr><th>Activity</th><th>Name</th><th>Detail</th></tr></thead>
+                <tbody>
+                    @foreach (var f in rows)
+                    {
+                        <tr>
+                            <td class="nowrap">@Link(f.Code)</td>
+                            <td>@f.Name</td>
+                            <td class="small">@Detail(f)</td>
+                        </tr>
+                    }
+                </tbody>
+            }
+        </table>
+        @if (i.Flagged.Count > rows.Count)
+        {
+            <p class="hint">First @rows.Count of @i.Flagged.Count.ToString("N0"); the JSON has them all.</p>
+        }
+    </div>;
+
+    private RenderFragment Link(string activityId) => @<button class="linkish" title="Show @activityId in the Gantt and the table" @onclick="() => OnShow.InvokeAsync(activityId)">@activityId</button>;
+
+    private static string Detail(HealthFlag f) =>
+        f.ValueKey == "total_float_hr" ? $"Total float {Num(f.Value ?? 0, 1)} h"
+        : f.ValueKey == "remaining_duration_hr" ? $"Remaining {Num(f.Value ?? 0, 1)} h"
+        : f.Constraint ?? (f.Reasons != null ? string.Join("; ", f.Reasons) : null) ?? f.Reason
+          ?? (f.BaselineFinish != null ? $"Baseline finish {f.BaselineFinish}, now {f.CurrentFinish}" : "");
+}

@@ -32,15 +32,16 @@ and [docs/HOSTING.md](docs/HOSTING.md)).
     run-web.cmd        # start locally, then open the address it prints
     publish-web.cmd    # static site in publish\wwwroot - copy to any web host
 
-Three steps in one page: **Schedule** (open or drop an XER, or use the sample project; P6 check,
-health checks, a P6-style Gantt chart or the activity table) -> **Risk model** (uncertainty, risk
+The quantitative steps: **04 Schedule check** (open or drop an XER, or use the sample project; the
+engine check against P6, the P6 Check Schedule and DCMA 14-Point health checks with every flagged
+activity, a P6-style Gantt chart or the activity table) -> **05 Model** (uncertainty, risk
 register with mitigation, drivers, correlation, each applied to activities picked from a searchable
 list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
-**Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
+**06 Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
 it, what those results mean in plain words, with a glossary; then the finish distribution as
-histogram or S-curve, confidence table, risk ranking, criticality, milestones; export the report as
-PDF, Word or PowerPoint, as an HTML page, or as CSVs).
+histogram or S-curve, confidence table, risk ranking, criticality, milestones) -> **07 Review** (the
+report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
 
 The app is laid out as a seven-step risk workflow in a column beside the page: 01 Setup, 02
 Identify, 03 Assess, Promote, 04 Schedule check, 05 Model, 06 Results and 07 Review (the report
@@ -97,7 +98,7 @@ To host the site in a sub-folder anywhere else, change `<base href="/" />` in
 
 ```
 sra info      project.xer
-sra validate  project.xer                      # DCMA-style schedule health checks
+sra validate  project.xer --json health.json   # P6 Check Schedule + DCMA 14-Point (docs/SCHEDULE_CHECK.md)
 sra verify    project.xer                      # our CPM dates vs the dates P6 saved in the file
 sra cpm       project.xer --csv dates.csv
 sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model

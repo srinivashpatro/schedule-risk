@@ -30,7 +30,9 @@ public sealed class AppState
     public Schedule? Schedule { get; private set; }
     public CpmEngine? Engine { get; private set; }
     public CpmResult? Cpm { get; private set; }
-    public List<ValidationCheck> Checks { get; private set; } = new();
+    /// <summary>Step 04's health check (P6 Check Schedule and DCMA 14-Point) of the loaded schedule.</summary>
+    public HealthReport? Health { get; private set; }
+    public HealthCheckSettings HealthSettings { get; } = new();
     public VerifyReport? Verify { get; private set; }
     public List<string> Warnings { get; } = new();
     public string? Error { get; set; }
@@ -144,7 +146,7 @@ public sealed class AppState
         Engine = engine;
         Cpm = r;
         ProjectId = projectId;
-        Checks = ScheduleValidator.Validate(s, r);
+        Health = HealthCheck.Run(s, r, HealthSettings);
         Verify = P6Verifier.Verify(s, r);
         Error = null;
     }

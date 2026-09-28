@@ -23,7 +23,7 @@
             <span class="num">04</span>
             <h4>Schedule check</h4>
             <div class="card-art"><LandingArt Kind="schedule" /></div>
-            <p class="body">Recalculated with P6's rules (calendars, constraints, lags and progress) and checked against the dates P6 saved in the file, with DCMA-style health checks.</p>
+            <p class="body">Recalculated with P6's rules (calendars, constraints, lags and progress) and checked against the dates P6 saved in the file, with P6 Check Schedule and DCMA 14-Point health checks.</p>
         </div>
         <div class="step-card">
             <span class="num">05</span>
@@ -128,42 +128,14 @@ else
         }
     </section>
 
-    if (State.Checks.Count > 0)
+    if (State.Health != null)
     {
-        <section class="pad rule-b stack">
-            <div class="headrow">
-                <h4>Schedule health</h4>
-                <span class="sub">@State.Checks.Count(c => c.Passed) of @State.Checks.Count checks pass</span>
-            </div>
-            <div class="wrap">
-                <table class="table">
-                    <thead><tr><th>Check</th><th>Result</th><th class="n">Count</th><th class="n">%</th><th>Notes</th></tr></thead>
-                    <tbody>
-                        @foreach (var c in State.Checks)
-                        {
-                            <tr>
-                                <td class="strong">@c.Title</td>
-                                <td><span class="tag @(c.Passed ? "tag-neutral" : "tag-accent")">@(c.Passed ? "✓ Pass" : "! Review")</span></td>
-                                <td class="n">@c.Count / @c.Total</td>
-                                <td class="n">@Num(c.Pct)</td>
-                                <td class="small">
-                                    @c.Note
-                                    @if (c.Items.Count > 0 && !c.Passed)
-                                    {
-                                        <details><summary>@Math.Min(c.Items.Count, 100) items</summary><span class="small">@string.Join(", ", c.Items.Take(100))</span></details>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </section>
+        <HealthCheckView Report="State.Health" OnShow="ShowActivity" OnDownload="DownloadHealth" />
     }
 
     if (r != null)
     {
-        <section class="pad stack">
+        <section class="pad stack" id="activities">
             <div class="headrow">
                 <h4>Parsed activities</h4>
                 <span class="tag tag-neutral">@State.FileName · @Rows.Count.ToString("N0") shown</span>
@@ -216,6 +188,21 @@ else
 
 @code {
     [Parameter] public EventCallback OnNext { get; set; }
+
+    /// <summary>An activity ID clicked in the health check: find it in the Gantt and the table below.</summary>
+    private async Task ShowActivity(string code)
+    {
+        search = code;
+        criticalOnly = false;
+        StateHasChanged();
+        await JS.InvokeVoidAsync("sraScrollToId", "activities");
+    }
+
+    private async Task DownloadHealth()
+    {
+        if (State.Health == null || State.Schedule == null) return;
+        await Download($"{State.Schedule.ProjectCode}-health-check.json", "application/json", State.Health.ToJson(State.FileName ?? State.Schedule.ProjectCode));
+    }
 
     private string search = "";
     private bool criticalOnly;

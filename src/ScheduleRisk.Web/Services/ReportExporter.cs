@@ -48,7 +48,7 @@ public sealed class ReportExporter
                 foreach (var f in ReportFonts.Files) files.Add(await http.GetByteArrayAsync(f));
                 fonts = new ReportFonts(files[0], files[1], files[2]);
             }
-            var doc = ReportContent.Build(new ReportInput(s, pre, state.Post, state.Checks,
+            var doc = ReportContent.Build(new ReportInput(s, pre, state.Post, state.Health,
                 state.Verify is { Compared: > 0 } v ? v : null, state.Model.Name, state.Percentile), fonts);
 
             var palette = format == ReportFormat.PowerPoint ? ReportPalette.Screen : ReportPalette.Paper;

@@ -36,6 +36,12 @@ public sealed class Activity
     /// <summary>Dates P6 stored in the file (early_start_date etc.), minutes or Time.None.</summary>
     public Dictionary<string, long> P6Dates { get; } = new(StringComparer.Ordinal);
     public double? P6TotalFloatHours { get; set; }
+    /// <summary>status_code as P6 wrote it (TK_NotStart, TK_Active, TK_Complete), before any correction; for the health checks.</summary>
+    public string P6StatusCode { get; set; } = "";
+    /// <summary>P6's driving_path_flag (Y/N), null when the file has none. Read for information; the engine finds its own path.</summary>
+    public bool? P6DrivingPath { get; set; }
+    /// <summary>Whether the activity has a resource or expense assignment (TASKRSRC); see <see cref="Schedule.HasResourceTable"/>.</summary>
+    public bool HasAssignment { get; set; }
     /// <summary>Activity code type name -> value short name.</summary>
     public Dictionary<string, string> Codes { get; } = new(StringComparer.Ordinal);
 
@@ -62,7 +68,14 @@ public sealed class Relationship
     public long Lag { get; }
     public long ExternalStart { get; }
     public long ExternalFinish { get; }
+    /// <summary>Activity ID and name of an external predecessor (<see cref="Pred"/> = -1), for reports.</summary>
+    public string ExternalCode { get; init; } = "";
+    public string ExternalName { get; init; } = "";
 }
+
+/// <summary>A relationship from an activity of this project to a successor in another project. It does not affect this
+/// project's dates (the successor is not scheduled here) but counts in the health checks, as P6 counts it.</summary>
+public sealed record ExternalSuccessor(int Pred, RelType Type, long Lag, string Code, string Name);
 
 public sealed class ScheduleSettings
 {
@@ -86,6 +99,11 @@ public sealed class Schedule
     public string ProjectCode { get; set; } = "";
     public List<Activity> Activities { get; } = new();
     public List<Relationship> Relationships { get; } = new();
+    public List<ExternalSuccessor> ExternalSuccessors { get; } = new();
+    /// <summary>The project's planned start (PROJECT.plan_start_date), or Time.None.</summary>
+    public long PlanStart { get; set; } = Time.None;
+    /// <summary>Whether the file has a TASKRSRC table at all: without it, "no assignment" means "not exported", not "unresourced".</summary>
+    public bool HasResourceTable { get; set; }
     public Dictionary<string, WorkCalendar> Calendars { get; } = new(StringComparer.Ordinal);
     public WorkCalendar Cal24 { get; set; } = null!;
     public ScheduleSettings Settings { get; } = new();

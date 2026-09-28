@@ -681,3 +681,34 @@ label .hint { margin-left: 6px; font-weight: 400; }
 .picker-cell { min-width: 260px; }
 ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
 .table.promote td:first-child { min-width: 170px; }
+
+/* ---------------------------------------------------------------- 04 Schedule check: P6 Check Schedule and DCMA 14-Point */
+.scorecard { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
+.sc-card { border: 1px solid var(--color-divider); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.sc-nums { display: flex; gap: var(--space-4); font-size: 13px; color: var(--color-neutral-700); flex-wrap: wrap; }
+.sc-n { font-size: 26px; font-weight: 800; color: var(--color-text); margin-right: 4px; }
+.sc-n.hc-pass-t { color: var(--rag-green); }
+.sc-n.hc-fail-t { color: var(--color-accent); }
+.sc-bar { display: flex; gap: 2px; height: 10px; }
+.sc-bar > span { flex: 1; }
+.sc-bar .hc-pass { background: var(--rag-green); }
+.sc-bar .hc-fail { background: var(--color-accent); }
+.sc-bar .hc-na { background: var(--color-neutral-300); }
+.hc-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); align-items: start; }
+@media (max-width: 1500px) { .hc-cols { grid-template-columns: minmax(0, 1fr); } }
+.table.hc td { vertical-align: top; }
+.table.hc tr.hc-tab th { background: var(--color-surface); text-align: left; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding-top: var(--space-3); }
+.hc-status { display: inline-block; padding: 1px 8px; font-size: 12px; font-weight: 700; border: 1px solid transparent; white-space: nowrap; }
+.hc-status.hc-pass { color: var(--rag-green); border-color: currentColor; }
+.hc-status.hc-fail { background: var(--color-accent); color: var(--color-bg); }
+.hc-status.hc-na { color: var(--color-neutral-700); border-color: var(--color-divider); border-style: dashed; }
+.hc-toggle { all: unset; cursor: pointer; display: inline-flex; gap: 6px; align-items: baseline; }
+.hc-toggle:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.hc-toggle .caret { font-size: 11px; color: var(--color-neutral-700); width: 10px; }
+.hc-note { font-style: italic; }
+.table.hc tr.open > td { background: var(--color-surface); }
+.table.hc tr.hc-flags > td { background: var(--color-surface); padding: 0 var(--space-3) var(--space-3); }
+.hc-flag-wrap { max-height: 360px; overflow: auto; background: var(--color-bg); }
+.linkish { all: unset; cursor: pointer; font-weight: 700; color: var(--color-accent-700); text-decoration: underline; text-underline-offset: 2px; }
+.linkish:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+#activities { scroll-margin-top: calc(var(--nav-h, 62px) + 8px); }
