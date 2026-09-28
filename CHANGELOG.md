@@ -32,8 +32,16 @@
   once the repository has the Cloudflare settings; the GitHub Pages copy stays public. The app has no sign-in
   code and still sends nothing anywhere. Set-up steps and privacy notes are in docs/HOSTING.md.
 
+- Results: the cost-benefit of each risk response. For each risk with a response, a run with only that risk
+  mitigated on the same seed and iterations as the pre-mitigation run gives the working days it saves at P80,
+  at the chosen level and on average; the P80 days are valued at the cost of delay from Setup and set against
+  the response cost from Assess (value, net benefit, benefit / cost). In the reports too, and from the command
+  line with `sra simulate --cost-benefit [--register register.json]`.
+
 ### Changed
 
+- Results: the risk ranking is drawn as a tornado, each risk's rank correlation with the finish before and
+  after mitigation side by side (bars to the left shorten the finish), in the app and in every report.
 - Step 05 Model: the model's discrete risks come from the risk register. Every run promotes the register
   first, and step 05 lists the risks read-only, with links to Assess and Promote. A model whose risks were
   typed into it offers "Move to the register": each becomes an approved register risk with the same

@@ -23,6 +23,7 @@ usage:
   sra verify    <file.xer> [--project ID] [--tolerance-min N]
   sra simulate  <file.xer> --risk model.json [--project ID] [--iterations N] [--seed N]
                 [--scenario pre|post|both] [--out folder] [--threads N] [--register register.json]
+                [--cost-benefit [--level 80]]
   sra promote   <file.xer> --register register.json [--risk model.json] [--out model.json]
                 [--import [--register-out register.json]] [--project ID]
 
@@ -280,10 +281,22 @@ simulate --register promotes the register into the model before simulating, as t
         File.WriteAllText(Path.Combine(outDir, "activities.csv"), CsvExport.Activities(main));
         File.WriteAllText(Path.Combine(outDir, "risks.csv"), CsvExport.Risks(main));
         if (preRes != null) File.WriteAllText(Path.Combine(outDir, "iterations.csv"), CsvExport.Iterations(preRes));
+        CostBenefitResult? cb = null;
+        if (o.ContainsKey("cost-benefit") && pre != null)
+        {
+            // Paired runs, one per risk with a response; costs and the cost of delay from the register when given.
+            RiskRegister? reg = o.TryGetValue("register", out var rp2) ? RiskRegister.FromJson(File.ReadAllText(rp2)) : null;
+            int level = o.TryGetValue("level", out var lv) ? int.Parse(lv) : 80;
+            cb = CostBenefit.Run(s, model, engine, pre, level, id => reg?.Risks.FirstOrDefault(r => r.Id == id)?.ResponseCost,
+                reg?.Matrix.CostOfDelayPerDay ?? 0, reg?.Matrix.Currency ?? "");
+            Console.WriteLine($"cost-benefit ({cb.Iterations} iterations, seed {cb.Seed}): days saved at P80 / P{level} / mean, value, net");
+            foreach (var r in cb.Rows)
+                Console.WriteLine($"  {r.Id,-6} {r.SavedP80,7:F1} {r.SavedAtLevel,7:F1} {r.SavedMean,7:F1}  {r.Value?.ToString("N0") ?? "-",14} {r.Net?.ToString("N0") ?? "-",14}  {r.Title}");
+        }
         var checks = HealthCheck.Run(s, det);
         var verify = P6Verifier.Verify(s, det);
         File.WriteAllText(Path.Combine(outDir, "report.html"),
-            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name));
+            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name, cb));
         Console.WriteLine($"report: {Path.GetFullPath(Path.Combine(outDir, "report.html"))}");
         return 0;
     }

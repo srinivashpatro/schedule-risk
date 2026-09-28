@@ -215,8 +215,54 @@ public sealed class AppState
     public int Total { get; private set; }
     private CancellationTokenSource? _cts;
 
+    /// <summary>The compiled model of the last run, for the cost-benefit's paired runs.</summary>
+    public RiskModel? RunModel { get; private set; }
+    public CostBenefitResult? CostBenefit { get; private set; }
+    public bool CostBenefitRunning { get; private set; }
+    public string CostBenefitLabel { get; private set; } = "";
+
+    /// <summary>06 Results: one paired run per risk with a response (only that risk mitigated, same seed and iterations as
+    /// the pre-mitigation run). Response costs come from the register; the days are valued at its cost of delay.</summary>
+    public async Task RunCostBenefitAsync()
+    {
+        if (Schedule == null || Engine == null || Pre == null || RunModel == null || Running || CostBenefitRunning) return;
+        CostBenefitRunning = true;
+        _cts = new CancellationTokenSource();
+        Notify();
+        try
+        {
+            var matrix = Register.Matrix;
+            double? Cost(string id) => Register.Risks.FirstOrDefault(r => r.Id == id)?.ResponseCost;
+            var progress = new CostBenefitProgress(p =>
+            {
+                CostBenefitLabel = $"Risk {p.Risk} of {p.Risks}";
+                Done = p.Done; Total = p.Total;
+            });
+            CostBenefit = await Core.Simulation.CostBenefit.RunAsync(Schedule, RunModel, Engine, Pre, Percentile, Cost,
+                matrix.CostOfDelayPerDay, matrix.Currency, progress, YieldToBrowser, _cts.Token, ChunkFor(Schedule.Activities.Count));
+        }
+        catch (OperationCanceledException)
+        {
+            CostBenefit = null;
+        }
+        finally
+        {
+            CostBenefitRunning = false;
+            Notify();
+        }
+    }
+
+    private sealed class CostBenefitProgress : IProgress<(int Risk, int Risks, int Done, int Total)>
+    {
+        private readonly Action<(int Risk, int Risks, int Done, int Total)> _a;
+        public CostBenefitProgress(Action<(int Risk, int Risks, int Done, int Total)> a) => _a = a;
+        public void Report((int Risk, int Risks, int Done, int Total) v) => _a(v);
+    }
+
     public void ClearResults()
     {
+        CostBenefit = null;
+        RunModel = null;
         Pre = Post = null;
         PreResult = null;
         ModelWarnings.Clear();
@@ -252,6 +298,7 @@ public sealed class AppState
             return;
         }
         ModelWarnings.AddRange(model.Warnings);
+        RunModel = model;
         if (promoted != null)
             ModelWarnings.AddRange(promoted.Skipped.Select(x => $"Register risk {x.Id} is not in the run: {x.Reason}"));
         Running = true;

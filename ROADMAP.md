@@ -504,10 +504,22 @@ To decide before the first item (the plan assumes the choice in brackets):
       mitigation (test, and the CLI on synth_500). 8 tests. Risks typed into a model are still simulated
       until moved, so opening an older model never changes its results silently.
 
-- [ ] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
+- [x] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
       table (per risk: response cost, days saved at P80 and at the chosen level, value at the cost of
       delay, net benefit) using the method chosen above, reproducible for a seed. Tornado and
       cost-benefit also in the HTML report and the exports.
+      Done: `RiskTornado` (risks by |pre-mitigation rank correlation|, post value beside each) drawn in
+      Results, the HTML report (`HtmlReport.Tornado`) and the PDF / Word / PowerPoint exports
+      (`ReportCharts.Tornado`), replacing the ranking bars. `Simulation/CostBenefit`: the candidates are the
+      risks whose mitigated probability or impact differ; `WithMitigated` copies the model with one risk at
+      its mitigated values and every risk in its place, so the paired run draws the same random numbers
+      (no change to the simulation engine); one run per candidate with the pre-mitigation run's seed and
+      iterations (or its convergence rule); days saved at P80, at the chosen level and on average; value =
+      P80 days x the register's cost of delay, net = value - response cost (from Assess), benefit / cost;
+      largest P80 saving first. In Results on request ("Work out cost-benefit", with progress and cancel),
+      in every report, and `sra simulate --cost-benefit [--register] [--level]`. Tests: mitigating a model's
+      only risk alone gives exactly the post-mitigation run; savings are never negative for a mitigation;
+      same seed, same rows. 6 tests.
 - [ ] 07 Review. The export page (PDF, Word, PowerPoint, CSV and HTML), and the reports gain the
       register: heat maps pre and post, the register table, the action list and the cost-benefit; the
       CSV gains `register.csv`. Update README Status and Not yet.

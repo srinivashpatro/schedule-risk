@@ -93,6 +93,46 @@ public static class ReportCharts
         return Wrap(key, title, "bars", Math.Max(1, bars.Count) * row, sb.ToString(), title, BarsWidth);
     }
 
+    /// <summary>The risk tornado: each risk's rank correlation with the finish either side of a centre line, the
+    /// pre-mitigation bar in ink and the post-mitigation bar in the accent under it.</summary>
+    public static Chart Tornado(string key, string title, IReadOnlyList<TornadoRow> rows, ReportFonts fonts)
+    {
+        bool both = rows.Any(r => r.Post != null);
+        int row = both ? 40 : 34;
+        const int nameX = 60, nameW = 200, trackX = 272, valW = 44, idW = 48;
+        const int trackW = BarsWidth - trackX - 2 * valW;
+        double mid = trackX + valW + trackW / 2.0, half = trackW / 2.0;
+        var sb = new StringBuilder();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            double top = i * row, center = top + row / 2.0;
+            sb.Append($"<text x=\"0\" y=\"{F(center + 4)}\" class=\"id\">{E(Fit(r.Id, idW, fonts.Regular, 12))}</text>");
+            sb.Append($"<text x=\"{nameX}\" y=\"{F(center + 5)}\" class=\"nm\">{E(Fit(r.Title, nameW, fonts.Bold, 14))}</text>");
+            void Bar(double v, double y, double h, string cls)
+            {
+                double w = half * Math.Clamp(Math.Abs(v), 0, 1), x = v >= 0 ? mid : mid - w;
+                sb.Append($"<rect x=\"{F(x)}\" y=\"{F(y)}\" width=\"{F(Math.Max(w, 1))}\" height=\"{F(h)}\" class=\"{cls}\"/>");
+                double tx = v >= 0 ? x + w + 4 : x - 4;
+                sb.Append($"<text x=\"{F(tx)}\" y=\"{F(y + h - 1)}\" text-anchor=\"{(v >= 0 ? "start" : "end")}\" class=\"id\">{E(v.ToString("0.00", CultureInfo.InvariantCulture))}</text>");
+            }
+            if (both)
+            {
+                Bar(r.Pre, center - 12, 11, "fill ink");
+                if (r.Post is double p) Bar(p, center + 1, 11, "fill top");
+            }
+            else Bar(r.Pre, center - 7, 14, "fill ink");
+            sb.Append($"<line x1=\"0\" x2=\"{BarsWidth}\" y1=\"{F(top + row - 0.5)}\" y2=\"{F(top + row - 0.5)}\" class=\"rule\"/>");
+        }
+        int h = Math.Max(1, rows.Count) * row;
+        sb.Append($"<line x1=\"{F(mid)}\" x2=\"{F(mid)}\" y1=\"0\" y2=\"{h}\" class=\"rule\"/>");
+        int ly = h + 22;
+        sb.Append($"<rect x=\"{trackX}\" y=\"{ly - 10}\" width=\"12\" height=\"10\" class=\"fill ink\"/><text x=\"{trackX + 18}\" y=\"{ly}\" class=\"lg\">Pre-mitigation</text>");
+        if (both)
+            sb.Append($"<rect x=\"{trackX + 150}\" y=\"{ly - 10}\" width=\"12\" height=\"10\" class=\"fill top\"/><text x=\"{trackX + 168}\" y=\"{ly}\" class=\"lg\">Post-mitigation</text>");
+        return Wrap(key, title, "bars", h + 32, sb.ToString(), title, BarsWidth);
+    }
+
     /// <summary>
     /// The SVG ready for the browser to draw: the palette's colours, and @font-face rules carrying just the glyphs the
     /// chart uses from each Archivo face (so each picture stays small and draws the same in any browser).

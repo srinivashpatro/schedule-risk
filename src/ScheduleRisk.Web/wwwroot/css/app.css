@@ -715,3 +715,8 @@ ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex
 .move-banner { border-left-color: var(--color-accent); align-items: center; }
 .table tr.typed td { background: color-mix(in srgb, var(--color-accent) 5%, transparent); }
 label.check.block { display: flex; margin-top: 4px; }
+
+/* ---------------------------------------------------------------- 06 Results: tornado and cost-benefit */
+/* The chart is drawn 960 wide and scaled to the column: sizes in its own units, over the global svg text rule */
+.tornado svg text { fill: var(--fg); font-family: inherit; font-size: 20px; }
+.table td.neg { color: var(--color-accent); }

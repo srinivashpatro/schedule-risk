@@ -24,7 +24,7 @@ public abstract class StateComponent : ComponentBase, IDisposable
     {
         if (State.Pre == null || State.Schedule == null || State.Cpm == null) return;
         string html = HtmlReport.Build(State.Schedule, State.Pre, State.Post, State.Health,
-            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name);
+            State.Verify is { Compared: > 0 } ? State.Verify : null, State.Model.Name, State.CostBenefit);
         await Download($"{State.Schedule.ProjectCode}-risk-report.html", "text/html", html);
     }
 

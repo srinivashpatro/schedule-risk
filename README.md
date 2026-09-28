@@ -40,7 +40,8 @@ list by ID or name, or by WBS, code or critical path; simulation settings; open/
 **06 Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
 it, what those results mean in plain words, with a glossary; then the finish distribution as
-histogram or S-curve, confidence table, risk ranking, criticality, milestones) -> **07 Review** (the
+histogram or S-curve, confidence table, the risk tornado before and after mitigation, criticality,
+milestones, and on request the cost-benefit of each response from paired runs) -> **07 Review** (the
 report as PDF, Word or PowerPoint, as an HTML page, or as CSVs).
 
 The app is laid out as a seven-step risk workflow in a column beside the page: 01 Setup, 02
@@ -104,7 +105,8 @@ sra verify    project.xer                      # our CPM dates vs the dates P6 s
 sra cpm       project.xer --csv dates.csv
 sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model
 sra simulate  project.xer --risk model.json --out results   # pre + post mitigation, HTML report
-                                                             # add --register register.json to promote first
+                                                             # add --register register.json to promote first,
+                                                             # --cost-benefit for each response's days saved
 ```
 
 From source: `dotnet run --project src\ScheduleRisk.Cli -c Release -- <command> ...`

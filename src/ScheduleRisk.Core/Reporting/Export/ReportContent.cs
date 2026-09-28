@@ -68,7 +68,8 @@ public sealed class Section
 /// <summary>What was simulated and how, for <see cref="ReportContent.Build"/>.</summary>
 public sealed record ReportInput(Schedule Schedule, SimulationSummary Pre, SimulationSummary? Post = null,
                                  HealthReport? Health = null, VerifyReport? Verify = null,
-                                 string? ModelName = null, int Percentile = 80, DateTime? Generated = null);
+                                 string? ModelName = null, int Percentile = 80, DateTime? Generated = null,
+                                 CostBenefitResult? CostBenefit = null);
 
 /// <summary>
 /// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary and what the
@@ -178,10 +179,9 @@ public sealed class ReportContent
 
         if (pre.Risks.Count > 0)
         {
-            double top = Math.Max(0.01, pre.Risks.Max(r => Math.Abs(r.Sensitivity)));
-            var ranking = new Section { Title = "Risk ranking", Lead = "Rank correlation of each risk's impact with the project finish." };
-            ranking.Blocks.Add(new ChartBlock(ReportCharts.Bars("risks", "Risk ranking",
-                pre.Risks.Take(12).Select(r => new ReportCharts.Bar(r.Id, r.Title, Math.Abs(r.Sensitivity) / top, N(r.Sensitivity, 2))).ToList(), false, fonts)));
+            var ranking = new Section { Title = "Risk ranking", Lead = "Rank correlation of each risk's impact with the project finish"
+                + (post != null ? ", before and after mitigation." : ".") + " Bars to the left shorten the finish." };
+            ranking.Blocks.Add(new ChartBlock(ReportCharts.Tornado("risks", "Risk tornado", RiskTornado.Build(pre, post, 12), fonts)));
             var detail = new Table
             {
                 Header = Heads("ID", "Risk", "Occurred", "Sensitivity", "Finish delta (working days)"),
@@ -206,6 +206,33 @@ public sealed class ReportContent
             sens.Blocks.Add(new ChartBlock(ReportCharts.Bars("sensitivity", "Duration sensitivity",
                 bySens.Select(a => new ReportCharts.Bar(a.Code, a.Name, Math.Abs(a.Sensitivity) / top, N(a.Sensitivity, 2))).ToList(), false, fonts)));
             doc.Sections.Add(sens);
+        }
+        if (input.CostBenefit is { Rows.Count: > 0 } cb)
+        {
+            string cur = cb.Currency.Length > 0 ? cb.Currency + " " : "";
+            string M(double? v) => v is double x ? cur + x.ToString("N0", Inv) : "–";
+            var sec = new Section
+            {
+                Title = "Cost-benefit of responses",
+                Lead = "For each risk with a response, a run with only that risk mitigated on the same seed and iterations: the days it saves and their value"
+                       + (cb.CostOfDelayPerDay > 0 ? $" at {cur}{cb.CostOfDelayPerDay.ToString("N0", Inv)} per working day of delay." : " (no cost of delay set)."),
+            };
+            var t = new Table
+            {
+                Header = Heads("Risk", "Response cost", "Days saved at P80", $"at P{cb.Level}", "on average", "Value", "Net benefit", "Benefit / cost"),
+                Widths = new[] { 2.2, 1, 0.8, 0.7, 0.7, 1, 1, 0.7 },
+                Aligns = new[] { Align.Left, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right, Align.Right },
+                Note = "Working days of the project calendar. Value: days saved at P80 times the cost of delay; net benefit: value minus response cost.",
+            };
+            foreach (var r in cb.Rows)
+                t.Rows.Add(new Row(new Cell[]
+                {
+                    new(r.Id + " " + r.Title, Tone: Tone.Strong), new(M(r.ResponseCost)), new(N(r.SavedP80, 1), Tone: Tone.Strong),
+                    new(N(r.SavedAtLevel, 1)), new(N(r.SavedMean, 1)), new(M(r.Value)),
+                    new(M(r.Net), Tone: r.Net < 0 ? Tone.Accent : Tone.Normal), new(r.Ratio is double x ? N(x, 1) + "×" : "–"),
+                }));
+            sec.Blocks.Add(new TableBlock(t));
+            doc.Sections.Add(sec);
         }
 
         var crit = new Section { Title = "Criticality index", Lead = "Share of iterations in which the activity sits on the critical path." };
