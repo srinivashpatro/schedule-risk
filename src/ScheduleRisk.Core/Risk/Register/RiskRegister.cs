@@ -66,6 +66,23 @@ public sealed class RegisterRisk
     public double? ResponseCost { get; set; }
     public List<RiskAction> Actions { get; set; } = new();
 
+    /// <summary>The risk as one sentence in cause-event-effect form: "Because of (cause), (event), which would lead to
+    /// (effect)." Empty until the event is written.</summary>
+    public string Statement
+    {
+        get
+        {
+            static string Clean(string s) => s.Trim().TrimEnd('.').Trim();
+            static string Lower(string s) => s.Length > 1 && char.IsUpper(s[0]) && !char.IsUpper(s[1]) ? char.ToLowerInvariant(s[0]) + s[1..] : s;
+            static string Upper(string s) => s.Length > 0 ? char.ToUpperInvariant(s[0]) + s[1..] : s;
+            string cause = Clean(Cause), ev = Clean(Event), effect = Clean(Effect);
+            if (ev.Length == 0) return "";
+            string text = cause.Length > 0 ? $"Because of {Lower(cause)}, {ev}" : Upper(ev);
+            if (effect.Length > 0) text += $", which would lead to {effect}";
+            return text + ".";
+        }
+    }
+
     public Assessment At(AssessmentPoint p) => p switch
     {
         AssessmentPoint.Inherent => Inherent,
@@ -97,6 +114,63 @@ public sealed class RiskRegister
         while (Risks.Any(r => r.Id == $"R{k:00}")) k++;
         return $"R{k:00}";
     }
+
+    // ------------------------------------------------------------------ identifying risks (step 02 Identify)
+
+    /// <summary>Adds a proposed risk with the next free id.</summary>
+    public RegisterRisk Propose(string title, string cause, string @event, string effect, string category, RiskKind kind, string raisedBy, DateOnly raised)
+    {
+        var r = new RegisterRisk
+        {
+            Id = NextId(), Title = title.Trim(), Cause = cause.Trim(), Event = @event.Trim(), Effect = effect.Trim(),
+            Category = category, Kind = kind, RaisedBy = raisedBy.Trim(), Raised = raised, Status = RiskStatus.Proposed,
+        };
+        Risks.Add(r);
+        return r;
+    }
+
+    /// <summary>What a risk needs before it can be approved (errors) and what it should have (warnings).</summary>
+    public static List<RegisterIssue> ApprovalIssues(RegisterRisk r)
+    {
+        var issues = new List<RegisterIssue>();
+        if (string.IsNullOrWhiteSpace(r.Title)) issues.Add(new RegisterIssue(true, "Give the risk a title."));
+        if (string.IsNullOrWhiteSpace(r.Event)) issues.Add(new RegisterIssue(true, "Describe the event: what might happen."));
+        if (string.IsNullOrWhiteSpace(r.Cause)) issues.Add(new RegisterIssue(false, "Add the cause: why it might happen."));
+        if (string.IsNullOrWhiteSpace(r.Effect)) issues.Add(new RegisterIssue(false, "Add the effect on the project if it happens."));
+        return issues;
+    }
+
+    /// <summary>The approval workflow: a proposed risk is approved or rejected, an approved one is closed once it can
+    /// no longer happen, and a rejected or closed one can be reopened (as proposed or approved).</summary>
+    public static bool CanMove(RiskStatus from, RiskStatus to) => (from, to) switch
+    {
+        (RiskStatus.Proposed, RiskStatus.Approved or RiskStatus.Rejected) => true,
+        (RiskStatus.Approved, RiskStatus.Closed) => true,
+        (RiskStatus.Rejected, RiskStatus.Proposed) => true,
+        (RiskStatus.Closed, RiskStatus.Approved) => true,
+        _ => false,
+    };
+
+    public void SetStatus(RegisterRisk r, RiskStatus to)
+    {
+        if (!CanMove(r.Status, to))
+            throw new InvalidOperationException($"{r.Id} is {r.Status.ToString().ToLowerInvariant()} and cannot become {to.ToString().ToLowerInvariant()}.");
+        if (to == RiskStatus.Approved && ApprovalIssues(r).FirstOrDefault(i => i.Error) is { } missing)
+            throw new InvalidOperationException($"{r.Id} cannot be approved yet: {missing.Text}");
+        r.Status = to;
+    }
+
+    /// <summary>Only risks never approved can be deleted; an approved risk is closed instead, so the register keeps its history.</summary>
+    public bool CanDelete(RegisterRisk r) => r.Status is RiskStatus.Proposed or RiskStatus.Rejected;
+
+    public void Delete(RegisterRisk r)
+    {
+        if (!CanDelete(r)) throw new InvalidOperationException($"{r.Id} has been approved: close it instead of deleting it.");
+        Risks.Remove(r);
+    }
+
+    public Dictionary<RiskStatus, int> StatusCounts() =>
+        System.Enum.GetValues<RiskStatus>().ToDictionary(s => s, s => Risks.Count(r => r.Status == s));
 
     // ------------------------------------------------------------------ editing the matrix (step 01 Setup)
     // Structural edits go through the register so that the rating grid, every area's bands and the risks'
@@ -517,4 +591,28 @@ public sealed class RiskRegister
                 r.Actions.Add(new RiskAction { Text = S(a, "text"), Owner = S(a, "owner"), Due = Date(a, "due"), Status = ReadEnum(a, "status", ActionStatus.Open) });
         return r;
     }
+}
+
+/// <summary>Finds risks in the register: every word of the search must appear in the id, title, cause, event, effect,
+/// category, owner or who raised it (ignoring case), and each filter that is set must match.</summary>
+public sealed class RegisterFilter
+{
+    public string Search { get; set; } = "";
+    /// <summary>Empty for every category.</summary>
+    public string Category { get; set; } = "";
+    public RiskStatus? Status { get; set; }
+    public RiskKind? Kind { get; set; }
+
+    public bool Matches(RegisterRisk r)
+    {
+        if (Status is RiskStatus s && r.Status != s) return false;
+        if (Kind is RiskKind k && r.Kind != k) return false;
+        if (Category.Length > 0 && r.Category != Category) return false;
+        var words = Search.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return true;
+        string text = string.Join("\n", r.Id, r.Title, r.Cause, r.Event, r.Effect, r.Category, r.Owner, r.RaisedBy);
+        return words.All(w => text.Contains(w, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public IEnumerable<RegisterRisk> Apply(IEnumerable<RegisterRisk> risks) => risks.Where(Matches);
 }

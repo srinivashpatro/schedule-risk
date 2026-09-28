@@ -366,8 +366,17 @@ To decide before the first item (the plan assumes the choice in brackets):
       grid, the areas' bands, the promote rule and the risks' assessments stay in step (10 tests). The
       register lives in `AppState` for the tab, needs no schedule, and is opened and saved as
       `*.register.json`.
-- [ ] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
+- [x] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
       and edit their descriptions; a register table with search, category and status filters.
+      Done: `IdentifyPanel`, with the proposal form in the side column (title, threat or opportunity,
+      category, cause / event / effect with a live one-sentence statement, raised by and date; who raised
+      it and the category stay for the next proposal) and the register beside it (status tabs with
+      counts, search, category and type filters, the statement under each title, an edit row per risk).
+      Workflow in `RiskRegister`: proposed -> approved or rejected, approved -> closed, rejected ->
+      proposed and closed -> approved (reopen); approval needs a title and an event, and suggests a cause
+      and an effect; only risks never approved can be deleted, approved ones are closed so the register
+      keeps its history. `RegisterFilter` for search (every word, any field, ignoring case) and filters.
+      The register file's Open / Save / New are shared with Setup (`RegisterFile`). 18 tests.
 - [ ] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
       band text shown, as in the reference) at each assessment point; a heat map in the reference's
       layout (probability rows E to A, severity columns I to V, cell names, Red / Amber / Green, counts

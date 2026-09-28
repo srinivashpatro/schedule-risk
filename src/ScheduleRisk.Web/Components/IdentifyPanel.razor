@@ -1,0 +1,284 @@
+@inherits StateComponent
+
+@* Step 02 Identify: propose risks in cause-event-effect form, approve or reject them, and find them in the register.
+   Needs no schedule. The workflow rules (who can move where, what approval needs) live in RiskRegister. *@
+
+@{ var reg = State.Register; var counts = reg.StatusCounts(); var shown = filter.Apply(reg.Risks).ToList(); }
+
+<div class="split">
+    <aside class="side">
+        <div class="stack-sm">
+            <span class="kicker">@Info.Kicker</span>
+            <h2>Identify</h2>
+            <p class="sub">@Info.Description. A risk is proposed first; once it is approved it can be assessed in step 03.</p>
+        </div>
+
+        <form class="stack" @onsubmit="Propose" @onsubmit:preventDefault="true" aria-labelledby="propose-title">
+            <h4 id="propose-title">Propose a risk</h4>
+            <div class="field">
+                <label for="p-title">Title</label>
+                <input id="p-title" class="input" @bind="title" @bind:event="oninput" placeholder="Late heavy-lift crane" />
+            </div>
+            <div class="field">
+                <label>Type</label>
+                <div class="seg seg-fill" role="radiogroup" aria-label="Type">
+                    <label class="seg-opt"><input type="radio" name="p-kind" checked="@(kind == RiskKind.Threat)" @onchange="@(() => kind = RiskKind.Threat)" />Threat</label>
+                    <label class="seg-opt"><input type="radio" name="p-kind" checked="@(kind == RiskKind.Opportunity)" @onchange="@(() => kind = RiskKind.Opportunity)" />Opportunity</label>
+                </div>
+            </div>
+            <div class="field">
+                <label for="p-cat">Category</label>
+                <select id="p-cat" class="input" @bind="category">
+                    <option value="">(none)</option>
+                    @foreach (var c in reg.Matrix.Categories)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label for="p-cause">Cause <span class="hint">Because of…</span></label>
+                <textarea id="p-cause" class="input" rows="2" @bind="cause" @bind:event="oninput" placeholder="a single crane supplier"></textarea>
+            </div>
+            <div class="field">
+                <label for="p-event">Event <span class="hint">…this may happen</span></label>
+                <textarea id="p-event" class="input" rows="2" @bind="evt" @bind:event="oninput" placeholder="the crane arrives late"></textarea>
+            </div>
+            <div class="field">
+                <label for="p-effect">Effect <span class="hint">…which would lead to</span></label>
+                <textarea id="p-effect" class="input" rows="2" @bind="effect" @bind:event="oninput" placeholder="erection of the converter slipping"></textarea>
+            </div>
+            <div class="btn-row">
+                <div class="field grow">
+                    <label for="p-by">Raised by</label>
+                    <input id="p-by" class="input" @bind="raisedBy" />
+                </div>
+                <div class="field">
+                    <label for="p-date">Date</label>
+                    <input id="p-date" class="input" type="date" @bind="raised" />
+                </div>
+            </div>
+            @if (Draft.Statement.Length > 0)
+            {
+                <p class="statement">@Draft.Statement</p>
+            }
+            <button type="submit" class="btn btn-primary btn-block" disabled="@string.IsNullOrWhiteSpace(title)">Propose risk</button>
+            @if (proposed != null)
+            {
+                <span class="small" role="status">✓ @proposed proposed. Approve it in the register.</span>
+            }
+        </form>
+
+        <RegisterFile />
+    </aside>
+
+    <div class="main-col">
+        <div class="block">
+            <div class="headrow">
+                <h4>Register</h4>
+                <span class="sub">@shown.Count of @reg.Risks.Count risks</span>
+            </div>
+            <div class="seg" role="radiogroup" aria-label="Status">
+                <label class="seg-opt"><input type="radio" name="f-status" checked="@(filter.Status == null)" @onchange="@(() => filter.Status = null)" />All · @reg.Risks.Count</label>
+                @foreach (var s in Enum.GetValues<RiskStatus>())
+                {
+                    var st = s;
+                    <label class="seg-opt"><input type="radio" name="f-status" checked="@(filter.Status == st)" @onchange="@(() => filter.Status = st)" />@st · @counts[st]</label>
+                }
+            </div>
+            <div class="toolbar">
+                <input class="input" type="search" placeholder="Search id, title, cause, event, effect, people" aria-label="Search the register" @bind="filter.Search" @bind:event="oninput" />
+                <select class="input" aria-label="Category" @bind="filter.Category">
+                    <option value="">All categories</option>
+                    @foreach (var c in reg.Matrix.Categories.Concat(reg.Risks.Select(r => r.Category)).Where(c => c.Length > 0).Distinct())
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </select>
+                <select class="input" aria-label="Type" value="@(filter.Kind?.ToString() ?? "")" @onchange="@(e => filter.Kind = Enum.TryParse<RiskKind>(e.Value?.ToString(), out var k) ? k : null)">
+                    <option value="">Threats and opportunities</option>
+                    <option value="@RiskKind.Threat">Threats</option>
+                    <option value="@RiskKind.Opportunity">Opportunities</option>
+                </select>
+            </div>
+            @if (message != null)
+            {
+                <ul class="issues"><li class="err" role="alert">@message</li></ul>
+            }
+
+            @if (reg.Risks.Count == 0)
+            {
+                <p class="empty">No risks yet. Propose the first one with the form on the left.</p>
+            }
+            else if (shown.Count == 0)
+            {
+                <p class="empty">No risk matches the search and filters.</p>
+            }
+            else
+            {
+                <div class="wrap">
+                    <table class="table register">
+                        <thead><tr><th>ID</th><th>Risk</th><th>Category</th><th>Type</th><th>Status</th><th>Raised</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var r in shown)
+                            {
+                                var risk = r;
+                                <tr class="@(editing == risk ? "open" : "")">
+                                    <td class="strong nowrap">@risk.Id</td>
+                                    <td><div class="risk-cell">
+                                        <span class="strong">@(risk.Title.Length > 0 ? risk.Title : "(untitled)")</span>
+                                        @if (risk.Statement.Length > 0)
+                                        {
+                                            <span class="small dim">@risk.Statement</span>
+                                        }
+                                    </div></td>
+                                    <td>@risk.Category</td>
+                                    <td>@(risk.Kind == RiskKind.Threat ? "Threat" : "Opportunity")</td>
+                                    <td><span class="status status-@risk.Status.ToString().ToLowerInvariant()">@risk.Status</span></td>
+                                    <td class="nowrap small">@risk.RaisedBy<br />@risk.Raised?.ToString("dd-MMM-yyyy", CultureInfo.InvariantCulture)</td>
+                                    <td class="nowrap"><div class="row-actions">
+                                        @switch (risk.Status)
+                                        {
+                                            case RiskStatus.Proposed:
+                                                <button class="btn btn-secondary btn-sm" @onclick="@(() => Move(risk, RiskStatus.Approved))">Approve</button>
+                                                <button class="btn btn-ghost btn-sm" @onclick="@(() => Move(risk, RiskStatus.Rejected))">Reject</button>
+                                                break;
+                                            case RiskStatus.Approved:
+                                                <button class="btn btn-ghost btn-sm" @onclick="@(() => Move(risk, RiskStatus.Closed))">Close</button>
+                                                break;
+                                            case RiskStatus.Rejected:
+                                                <button class="btn btn-ghost btn-sm" @onclick="@(() => Move(risk, RiskStatus.Proposed))">Reopen</button>
+                                                break;
+                                            case RiskStatus.Closed:
+                                                <button class="btn btn-ghost btn-sm" @onclick="@(() => Move(risk, RiskStatus.Approved))">Reopen</button>
+                                                break;
+                                        }
+                                        <button class="btn btn-ghost btn-sm" aria-expanded="@(editing == risk)" @onclick="@(() => Toggle(risk))">@(editing == risk ? "Done" : "Edit")</button>
+                                    </div></td>
+                                </tr>
+                                @if (editing == risk)
+                                {
+                                    <tr class="edit-row">
+                                        <td colspan="7">
+                                            <div class="edit-grid">
+                                                <div class="field"><label>Title</label><input class="input" @bind="risk.Title" @bind:event="oninput" /></div>
+                                                <div class="field">
+                                                    <label>Category</label>
+                                                    <select class="input" @bind="risk.Category">
+                                                        <option value="">(none)</option>
+                                                        @foreach (var c in reg.Matrix.Categories.Append(risk.Category).Where(c => c.Length > 0).Distinct())
+                                                        {
+                                                            <option value="@c">@c</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <div class="field">
+                                                    <label>Type</label>
+                                                    <select class="input" value="@risk.Kind" @onchange="@(e => SetKind(risk, e))">
+                                                        <option value="@RiskKind.Threat">Threat</option>
+                                                        <option value="@RiskKind.Opportunity">Opportunity</option>
+                                                    </select>
+                                                </div>
+                                                <div class="field wide"><label>Cause <span class="hint">Because of…</span></label><textarea class="input" rows="2" @bind="risk.Cause" @bind:event="oninput"></textarea></div>
+                                                <div class="field wide"><label>Event <span class="hint">…this may happen</span></label><textarea class="input" rows="2" @bind="risk.Event" @bind:event="oninput"></textarea></div>
+                                                <div class="field wide"><label>Effect <span class="hint">…which would lead to</span></label><textarea class="input" rows="2" @bind="risk.Effect" @bind:event="oninput"></textarea></div>
+                                                <div class="field"><label>Raised by</label><input class="input" @bind="risk.RaisedBy" /></div>
+                                                <div class="field"><label>Date</label><input class="input" type="date" @bind="risk.Raised" /></div>
+                                            </div>
+                                            @{ var needs = RiskRegister.ApprovalIssues(risk); }
+                                            @if (needs.Count > 0)
+                                            {
+                                                <ul class="issues">
+                                                    @foreach (var i in needs)
+                                                    {
+                                                        <li class="@(i.Error ? "err" : "")">@i.Text</li>
+                                                    }
+                                                </ul>
+                                            }
+                                            <div class="btn-row">
+                                                <span class="spacer"></span>
+                                                @if (reg.CanDelete(risk))
+                                                {
+                                                    @if (confirmDelete == risk)
+                                                    {
+                                                        <span class="small">Delete @risk.Id for good?</span>
+                                                        <button class="btn btn-secondary btn-sm" @onclick="@(() => Delete(risk))">Delete</button>
+                                                        <button class="btn btn-ghost btn-sm" @onclick="@(() => confirmDelete = null)">Keep</button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-ghost btn-sm" @onclick="@(() => confirmDelete = risk)">Delete risk</button>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <span class="hint">Approved risks are closed rather than deleted, so the register keeps their history.</span>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly WorkflowStepInfo Info = Workflow.Get(WorkflowStep.Identify);
+
+    // The form keeps who is raising risks and their category between proposals, so a workshop can enter several quickly.
+    private string title = "", cause = "", evt = "", effect = "", category = "", raisedBy = "";
+    private RiskKind kind = RiskKind.Threat;
+    private DateOnly raised = DateOnly.FromDateTime(DateTime.Today);
+    private string? proposed, message;
+    private RegisterRisk? editing, confirmDelete;
+    private readonly RegisterFilter filter = new();
+
+    private RegisterRisk Draft => new() { Cause = cause, Event = evt, Effect = effect };
+
+    private void Propose()
+    {
+        if (string.IsNullOrWhiteSpace(title)) return;
+        var r = State.Register.Propose(title, cause, evt, effect, category, kind, raisedBy, raised);
+        proposed = r.Id;
+        message = null;
+        title = cause = evt = effect = "";
+    }
+
+    private void Move(RegisterRisk r, RiskStatus to)
+    {
+        try
+        {
+            State.Register.SetStatus(r, to);
+            message = null;
+        }
+        catch (InvalidOperationException e)
+        {
+            message = e.Message;
+            editing = r;
+        }
+    }
+
+    private void Toggle(RegisterRisk r)
+    {
+        editing = editing == r ? null : r;
+        confirmDelete = null;
+    }
+
+    private void SetKind(RegisterRisk r, ChangeEventArgs e)
+    {
+        r.Kind = Enum.Parse<RiskKind>(e.Value?.ToString() ?? nameof(RiskKind.Threat));
+        // A response chosen for the other kind no longer applies.
+        if (r.Response != ResponseStrategy.None && !RegisterRisk.Responses(r.Kind).Contains(r.Response)) r.Response = ResponseStrategy.None;
+    }
+
+    private void Delete(RegisterRisk r)
+    {
+        State.Register.Delete(r);
+        editing = confirmDelete = null;
+    }
+}

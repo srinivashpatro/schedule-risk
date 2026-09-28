@@ -48,6 +48,9 @@
             case WorkflowStep.Setup:
                 <SetupPanel />
                 break;
+            case WorkflowStep.Identify:
+                <IdentifyPanel />
+                break;
             case WorkflowStep.Model:
                 <RiskModelPanel OnRun="RunFromModel" />
                 break;

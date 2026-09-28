@@ -29,9 +29,9 @@ public class WorkflowTests
     [Fact]
     public void Placeholder_steps_say_what_they_will_hold()
     {
-        foreach (var s in new[] { WorkflowStep.Identify, WorkflowStep.Assess, WorkflowStep.Promote })
+        foreach (var s in new[] { WorkflowStep.Assess, WorkflowStep.Promote })
             Assert.NotEmpty(Workflow.Get(s).Planned);
-        foreach (var s in new[] { WorkflowStep.Setup, WorkflowStep.ScheduleCheck, WorkflowStep.Model, WorkflowStep.Results, WorkflowStep.Review })
+        foreach (var s in new[] { WorkflowStep.Setup, WorkflowStep.Identify, WorkflowStep.ScheduleCheck, WorkflowStep.Model, WorkflowStep.Results, WorkflowStep.Review })
             Assert.Empty(Workflow.Get(s).Planned);
     }
 
@@ -43,6 +43,7 @@ public class WorkflowTests
         Assert.Contains("<ReviewPanel", app);
         Assert.Contains("<StepPlaceholder", app);
         Assert.Contains("<SetupPanel", app);
+        Assert.Contains("<IdentifyPanel", app);
         // The old three-step labels are gone from the panels' kickers.
         foreach (var f in new[] { "SchedulePanel.razor", "RiskModelPanel.razor", "ResultsPanel.razor" })
             Assert.DoesNotMatch(@"kicker"">Step 0[123]\b(?! ·)|Step 01 · Schedule<", File.ReadAllText(Path.Combine(WebDir, "Components", f)));

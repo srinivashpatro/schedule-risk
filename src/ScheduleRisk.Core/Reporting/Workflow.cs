@@ -21,12 +21,7 @@ public static class Workflow
     public static IReadOnlyList<WorkflowStepInfo> Steps { get; } = new WorkflowStepInfo[]
     {
         new(WorkflowStep.Setup, "01", "Setup", "Matrix scales, promote threshold, categories", None),
-        new(WorkflowStep.Identify, "02", "Identify", "Propose, approve and describe risks", new[]
-        {
-            "Propose risks with a cause, event and effect",
-            "Approve or reject proposed risks",
-            "Search and filter the register by category and status",
-        }),
+        new(WorkflowStep.Identify, "02", "Identify", "Propose, approve and describe risks", None),
         new(WorkflowStep.Assess, "03", "Assess", "Heat map, responses, owners and actions", new[]
         {
             "Probability and severity of each approved risk: inherent, current and target",

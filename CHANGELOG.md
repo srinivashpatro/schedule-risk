@@ -13,6 +13,10 @@
   it), the rating guidance, the probability bands, the severity levels and areas, the categories, which
   risks are promoted to the model and the cost of delay per day. Open and save the register as a file on
   your device.
+- Step 02 Identify: propose risks as cause, event and effect (the app writes them as one sentence), approve,
+  reject, close or reopen them, and find them in the register by search, status, category and type.
+  Approval needs a title and an event; approved risks are closed, not deleted, so the register keeps
+  its history.
 
 ### Changed
 
