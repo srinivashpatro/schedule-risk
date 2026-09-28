@@ -5,7 +5,7 @@
 {
     <section class="landing blueprint rule-b">
         <div class="landing-text">
-            <span class="kicker">Step 01 · Schedule</span>
+            <span class="kicker">Open a schedule</span>
             <h1>Project risk analysis for Primavera&nbsp;P6</h1>
             <p class="lede">Open a P6 export (.xer). It is recalculated with P6's rules, checked and simulated in this browser. Nothing is uploaded.</p>
             @ProjectPicker
@@ -20,22 +20,22 @@
 
     <section class="step-cards rule-b" aria-label="How it works">
         <div class="step-card">
-            <span class="num">01</span>
-            <h4>Schedule</h4>
+            <span class="num">04</span>
+            <h4>Schedule check</h4>
             <div class="card-art"><LandingArt Kind="schedule" /></div>
             <p class="body">Recalculated with P6's rules (calendars, constraints, lags and progress) and checked against the dates P6 saved in the file, with DCMA-style health checks.</p>
         </div>
         <div class="step-card">
-            <span class="num">02</span>
-            <h4>Risk model</h4>
+            <span class="num">05</span>
+            <h4>Model</h4>
             <div class="card-art"><LandingArt Kind="risk" /></div>
             <p class="body">Three-point uncertainty, a risk register with mitigation, risk drivers and correlation. Open or save the model as JSON.</p>
         </div>
         <div class="step-card">
-            <span class="num">03</span>
+            <span class="num">06</span>
             <h4>Results</h4>
             <div class="card-art"><LandingArt Kind="results" /></div>
-            <p class="body">Monte Carlo simulation with Latin Hypercube sampling, reproducible by seed: P-dates, criticality, sensitivity and a risk ranking. Export an HTML report or CSVs.</p>
+            <p class="body">Monte Carlo simulation with Latin Hypercube sampling, reproducible by seed: P-dates, criticality, sensitivity and a risk ranking, then reports as PDF, Word, PowerPoint, HTML or CSV in step 07.</p>
         </div>
     </section>
 
@@ -50,7 +50,7 @@ else
     var r = State.Cpm;
     <section class="file-strip blueprint rule-b">
         <div class="fs-file">
-            <span class="kicker">Step 01 · Schedule</span>
+            <span class="kicker">@Workflow.Get(WorkflowStep.ScheduleCheck).Kicker</span>
             <span class="fs-name" title="@State.FileName">@State.FileName</span>
         </div>
         @ProjectPicker

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The app is laid out as the seven-step risk workflow: 01 Setup, 02 Identify, 03 Assess, Promote,
+  04 Schedule check, 05 Model, 06 Results, 07 Review, listed in a column beside the page. Steps 01-03
+  and Promote say what they will hold; the schedule, model and results are steps 04-06, and the report
+  formats are now a page, step 07, instead of a dialog.
+
 ## 0.6.0 - 2026-09-27
 
 ### Added

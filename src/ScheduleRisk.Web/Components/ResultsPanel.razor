@@ -230,9 +230,9 @@ else if (!State.Running)
 {
     <section class="hero rule-b">
         <div class="hero-text">
-            <span class="kicker">Step 03</span>
+            <span class="kicker">@Workflow.Get(WorkflowStep.Results).Kicker</span>
             <h1>Ready to simulate</h1>
-            <p class="lede">Uses the risk model from step 2. Everything runs in this browser tab; larger schedules take longer.</p>
+            <p class="lede">Uses the risk model from step 05. Everything runs in this browser tab; larger schedules take longer.</p>
         </div>
         <div class="hero-drop ready">
             <button class="btn btn-primary btn-wide" disabled="@(State.Cpm == null)" @onclick="State.RunAsync">Run simulation →</button>

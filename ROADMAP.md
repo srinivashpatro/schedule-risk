@@ -325,11 +325,16 @@ To decide before the first item (the plan assumes the choice in brackets):
 - Review lists PDF, Word, PowerPoint and CSV: keep the HTML report as a fifth format [assumed].
 - Import of P6's own risk register (XER `PROJRISK`/`RISKTYPE`): later, not in this list.
 
-- [ ] Workflow shell. The seven steps and the Promote bridge in the top bar (numbered 01-07 with a
-      title and the design's one-line description, Promote with an arrow), mapped for now to the
-      existing panels: 01-03 show a placeholder, 04 the schedule panel, 05 the risk model, 06 results,
-      07 the report formats as a page instead of the Report dialog. Steps that need a schedule or a
-      run stay disabled as today. No Core change. Tests: the page lists the steps in order.
+- [x] Workflow shell. The seven steps and the Promote bridge in a column beside the page, as in the
+      design (number, title and one-line description; Promote with an arrow), mapped for now to the
+      existing panels: 01-03 and Promote show what they will hold, 04 the schedule panel, 05 the risk
+      model, 06 results, 07 the report formats as a page instead of the Report dialog (the top bar's
+      Report button opens it). The landing page shows until a step is picked or a schedule opens,
+      which counts as 04. Setup, Identify, Assess and Schedule check are always open; Promote, Model
+      and Results need a schedule, Review a run. Up to 1400px the descriptions go, and on a phone the
+      column becomes a scrolling row. The step list is `Reporting/Workflow` in Core (text only, for
+      the app and later the reports); the panels' kickers and the landing cards use the new numbers.
+      In the app's own tokens (the red accent, light and dark), not the mock-up's blue. 4 tests.
 - [ ] Core: risk register and matrix. `Risk/Register` in Core: matrix settings (probability scale with
       letters, labels and % ranges; severity dimensions, each with five bands of text and, for
       schedule and cost, % ranges; the cell rating lookup; rating colours and guidance text; promote
