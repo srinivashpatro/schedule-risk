@@ -21,6 +21,12 @@
   after the response, choosing from the matrix's guidance; the heat map shows the risks per cell with
   Red, Amber and Green counts and draws a risk's movement as numbered arrows. Record the response, owner,
   cost and actions per risk, and see every action across the register with overdue ones marked.
+- Promote: approved Red and Amber risks with a schedule severity of II or more become risks in the model.
+  The probability is the middle of the probability band and the impact a range of working days from the
+  schedule band times the planned duration (project start to deterministic finish); the current
+  assessment is before mitigation and the target after it. Values can be set by hand, and each risk is
+  mapped to the activities it would delay. Promoting again updates them. Also `sra promote` on the
+  command line (docs/RISK_REGISTER.md).
 
 ### Changed
 

@@ -5,6 +5,7 @@ using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
 using ScheduleRisk.Core.Reporting;
 using ScheduleRisk.Core.Risk;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 using ScheduleRisk.Core.Xer;
 
@@ -21,9 +22,14 @@ usage:
   sra verify    <file.xer> [--project ID] [--tolerance-min N]
   sra simulate  <file.xer> --risk model.json [--project ID] [--iterations N] [--seed N]
                 [--scenario pre|post|both] [--out folder] [--threads N]
+  sra promote   <file.xer> --register register.json [--risk model.json] [--out model.json]
+                [--project ID]
 
 simulate writes to --out (default: ./sra-output):
-  report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv";
+  report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv
+
+promote turns the register's approved risks that meet its promote rule into risks in the model
+(--risk, or an empty model) and writes it to --out (default: promoted.risk.json)";
 
     public static int Main(string[] args)
     {
@@ -53,6 +59,7 @@ simulate writes to --out (default: ./sra-output):
                 case "validate": return Validate(s, r);
                 case "verify": return Verify(s, r, opts);
                 case "simulate": return Simulate(s, engine, r, opts);
+                case "promote": return Promote(s, engine, r, opts);
                 default:
                     Console.Error.WriteLine($"unknown command '{cmd}'\n\n{Usage}");
                     return 2;
@@ -144,6 +151,37 @@ simulate writes to --out (default: ./sra-output):
             _ => "RESULT: nothing to compare - no P6-calculated dates in this file (it may not have been scheduled in P6 before export)",
         });
         return rep.Outcome == VerifyOutcome.Differences ? 1 : 0;
+    }
+
+    /// <summary>Promote the register's risks into a risk model (docs/RISK_REGISTER.md), as step "Promote" in the app.</summary>
+    private static int Promote(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
+    {
+        if (!o.TryGetValue("register", out var regPath)) throw new ArgumentException("promote needs --register register.json");
+        var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+        var issues = reg.Validate();
+        foreach (var i in issues) Console.Error.WriteLine((i.Error ? "error: " : "warning: ") + i.Text);
+        if (issues.Any(i => i.Error)) return 4;
+        var doc = o.TryGetValue("risk", out var riskPath) ? RiskModelDocument.FromJson(File.ReadAllText(riskPath)) : new RiskModelDocument();
+        var planned = RegisterPromoter.PlannedDuration(s, det);
+        Console.WriteLine($"planned duration: {planned.WorkingDays:F1} working days ({Time.Format(planned.Start)} to {Time.Format(planned.Finish)})");
+        var report = RegisterPromoter.Apply(doc, reg, planned.WorkingDays);
+        foreach (var row in doc.Risks.Where(x => x.Source == RiskRow.RegisterSource))
+        {
+            string how = report.Added.Contains(row.Id) ? "added" : "updated";
+            string post = row.Mitigated ? $", after mitigation {row.MitigatedProbability:P1} {Days(row.MitigatedImpact)}" : "";
+            Console.WriteLine($"  {how} {row.Id} {row.Title}: {row.Probability:P1} {Days(row.Impact)}{post} on {row.Filter.Value}");
+        }
+        foreach (var id in report.Removed) Console.WriteLine($"  removed {id}: no longer promoted");
+        foreach (var sk in report.Skipped) Console.WriteLine($"  skipped {sk.Id}: {sk.Reason}");
+        // Check the result the way simulate will read it (activity ids, distributions).
+        var model = RiskModelLoader.LoadJson(s, doc.ToJson(), engine.CriticalToProjectFinish());
+        foreach (var w in model.Warnings) Console.Error.WriteLine("warning: " + w);
+        string outPath = o.GetValueOrDefault("out", "promoted.risk.json");
+        File.WriteAllText(outPath, doc.ToJson());
+        Console.WriteLine($"{report} -> {outPath}");
+        return 0;
+
+        static string Days(DistSpec d) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{d.Min:0.#}/{d.MostLikely:0.#}/{d.Max:0.#}d");
     }
 
     private static int Simulate(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)

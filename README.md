@@ -45,8 +45,10 @@ Red, Amber or Green cell by cell, all editable) and saves the register as a JSON
 (docs/RISK_REGISTER.md). Step 02 proposes risks as cause, event and effect, approves or rejects them,
 and searches and filters the register. Step 03 assesses approved risks at three points (inherent,
 current, target) on a heat map that draws each risk's movement, with responses, owners, costs and
-actions. Not yet: Promote, which turns the register's Red and Amber risks into risks in the model
-(see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
+actions. Promote turns the register's approved Red and Amber risks into risks in the model: the
+probability band's midpoint, and a range of working days from the schedule band on the planned
+duration, mapped to the activities they would delay (also `sra promote`, see docs/RISK_REGISTER.md).
+Risks can still be typed straight into the model in step 05.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
@@ -93,6 +95,7 @@ sra info      project.xer
 sra validate  project.xer                      # DCMA-style schedule health checks
 sra verify    project.xer                      # our CPM dates vs the dates P6 saved in the file
 sra cpm       project.xer --csv dates.csv
+sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model
 sra simulate  project.xer --risk model.json --out results   # pre + post mitigation, HTML report
 ```
 

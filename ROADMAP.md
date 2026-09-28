@@ -395,7 +395,7 @@ To decide before the first item (the plan assumes the choice in brackets):
       assessed, counts by rating, paths), `RiskRegister.ActionList` and `AssessmentIssues` (warnings: not
       assessed, no owner, an assessment worse than the one before, Amber or Red today with no response).
       8 tests.
-- [ ] Promote. Approved risks scoring at or above the threshold become quantified risks: the
+- [x] Promote. Approved risks scoring at or above the threshold become quantified risks: the
       probability letter gives a probability (band midpoint, editable: A 2.5%, B 15%, C 37.5%, D 60%,
       E 82.5%), the schedule severity gives a triangle in working days from its % band times the
       planned project duration (project start to the deterministic finish; confirmed)
@@ -403,6 +403,17 @@ To decide before the first item (the plan assumes the choice in brackets):
       into the risk model's register with the same IDs (traceable both ways); promoting again updates
       them and keeps the activity mapping. CLI: `sra promote register.json model.json`. Tests on the
       band arithmetic and the round trip.
+      Done (approved): `RegisterPromoter` in Core: the planned duration (project start to deterministic
+      finish in working days of the project calendar, equal to the Results' deterministic duration),
+      eligibility with a reason for each risk left out, the numbers (band midpoint; schedule band low /
+      middle / high x planned duration, rounded to 0.1 day; an opportunity's days negative; no target =
+      no mitigation, a target without schedule severity = 0 days after mitigation), values set by hand
+      and the activity mapping kept in the register (`promotion`, optional, file version still 1), and
+      `Apply` writing rows marked `"source": "register"` into the model: added, updated, removed when they
+      no longer qualify, skipped with a reason (no activities, no upper limit, id already used by a risk
+      typed into the model). `PromotePanel` in the app and `sra promote` on the command line. 14 tests,
+      and a register -> promote -> simulate run on synth_500 (P80 moves from 24-Jan-2029 to 11-Dec-2028
+      after mitigation). The placeholder page for unbuilt steps is gone.
 - [ ] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
       the activity table (moved from the current step 01; the landing page keeps file opening).
 - [ ] 05 Model. The current risk model panel: promoted risks shown with their register ID and score

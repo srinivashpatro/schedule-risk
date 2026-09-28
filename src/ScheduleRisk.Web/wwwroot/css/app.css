@@ -123,7 +123,7 @@ h1, h2, h4 { margin: 0; }
   .wf-n { font-size: 13px; }
   .wf-title { font-size: 14px; }
 }
-.placeholder-body, .review-body { display: flex; flex-direction: column; gap: var(--space-3); }
+.review-body { display: flex; flex-direction: column; gap: var(--space-3); }
 
 .banner { display: flex; gap: var(--space-4); align-items: flex-start; justify-content: space-between; padding: var(--space-3) var(--space-6);
   background: var(--color-surface); border-left: 4px solid var(--color-text); font-size: 14px; }
@@ -670,3 +670,14 @@ label .hint { margin-left: 6px; font-weight: 400; }
 .band-text { display: block; margin-top: 4px; font-size: 12px; color: var(--color-neutral-700); text-wrap: pretty; }
 .sub-head { margin-top: var(--space-2); }
 .table tr.overdue td { background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+
+/* ---------------------------------------------------------------- Promote: register risks into the model */
+.big { font-size: 22px; font-weight: 800; }
+.hint.block, .block-hint { display: block; margin-top: 4px; }
+.table.promote td { vertical-align: top; }
+.tri { display: flex; gap: 4px; align-items: center; flex-wrap: nowrap; }
+.tri .input.w-pct { width: 70px; }
+.input.set { border-color: var(--color-accent); box-shadow: inset 3px 0 0 var(--color-accent); }
+.picker-cell { min-width: 260px; }
+ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.table.promote td:first-child { min-width: 170px; }

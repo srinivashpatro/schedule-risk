@@ -29,6 +29,22 @@ public sealed class Assessment
     public Assessment Clone() => new() { Probability = Probability, Severity = new Dictionary<string, int>(Severity) };
 }
 
+/// <summary>
+/// A risk's link to the quantitative model: the activities it is mapped to, and values that replace the ones Promote
+/// works out from the matrix (null = use the matrix: the probability band's midpoint and the schedule band's days).
+/// </summary>
+public sealed class Promotion
+{
+    public List<string> Activities { get; set; } = new();
+    public double? Probability { get; set; }
+    /// <summary>Impact in working days.</summary>
+    public DistSpec? Impact { get; set; }
+    public double? MitigatedProbability { get; set; }
+    public DistSpec? MitigatedImpact { get; set; }
+
+    public bool IsEmpty => Activities.Count == 0 && Probability == null && Impact == null && MitigatedProbability == null && MitigatedImpact == null;
+}
+
 public sealed class RiskAction
 {
     public string Text { get; set; } = "";
@@ -65,6 +81,8 @@ public sealed class RegisterRisk
     /// <summary>Cost of carrying out the response, in the register's currency; null when not known.</summary>
     public double? ResponseCost { get; set; }
     public List<RiskAction> Actions { get; set; } = new();
+    /// <summary>How the risk goes into the model at Promote: the activities it hits and any values set by hand.</summary>
+    public Promotion Promotion { get; set; } = new();
 
     /// <summary>The risk as one sentence in cause-event-effect form: "Because of (cause), (event), which would lead to
     /// (effect)." Empty until the event is written.</summary>
@@ -491,6 +509,19 @@ public sealed class RiskRegister
             w.WriteEndObject();
         }
         w.WriteEndArray();
+        if (!r.Promotion.IsEmpty)
+        {
+            var p = r.Promotion;
+            w.WriteStartObject("promotion");
+            w.WriteStartArray("activities");
+            foreach (var a in p.Activities) w.WriteStringValue(a);
+            w.WriteEndArray();
+            if (p.Probability is double prob) w.WriteNumber("probability", prob);
+            if (p.Impact != null) { w.WriteStartObject("impact"); p.Impact.WriteFields(w); w.WriteEndObject(); }
+            if (p.MitigatedProbability is double mp) w.WriteNumber("mitigatedProbability", mp);
+            if (p.MitigatedImpact != null) { w.WriteStartObject("mitigatedImpact"); p.MitigatedImpact.WriteFields(w); w.WriteEndObject(); }
+            w.WriteEndObject();
+        }
         w.WriteEndObject();
     }
 
@@ -634,6 +665,15 @@ public sealed class RiskRegister
         if (e.TryGetProperty("actions", out var acts) && acts.ValueKind == JsonValueKind.Array)
             foreach (var a in acts.EnumerateArray())
                 r.Actions.Add(new RiskAction { Text = S(a, "text"), Owner = S(a, "owner"), Due = Date(a, "due"), Status = ReadEnum(a, "status", ActionStatus.Open) });
+        if (e.TryGetProperty("promotion", out var pr) && pr.ValueKind == JsonValueKind.Object)
+            r.Promotion = new Promotion
+            {
+                Activities = Strings(pr, "activities"),
+                Probability = N(pr, "probability"),
+                Impact = pr.TryGetProperty("impact", out var imp) && imp.ValueKind == JsonValueKind.Object ? DistSpec.From(imp) : null,
+                MitigatedProbability = N(pr, "mitigatedProbability"),
+                MitigatedImpact = pr.TryGetProperty("mitigatedImpact", out var mi) && mi.ValueKind == JsonValueKind.Object ? DistSpec.From(mi) : null,
+            };
         return r;
     }
 }

@@ -68,6 +68,8 @@ Milestones, LOE/WBS summaries and completed activities are skipped automatically
 - `mitigated` is optional; missing fields fall back to the pre-mitigation values. `--scenario both` runs
   pre and post with the same seed so the difference is the effect of the mitigation, not sampling noise.
 - `activities: [...]` can be used instead of `filter`.
+- `source: "register"` marks a risk written by Promote from the qualitative risk register
+  (docs/RISK_REGISTER.md); promoting again updates or removes it. The simulation ignores it.
 
 ## Risk drivers
 

@@ -63,8 +63,8 @@
             case WorkflowStep.Review:
                 <ReviewPanel />
                 break;
-            case { } s:
-                <StepPlaceholder Info="@Workflow.Get(s)" />
+            case WorkflowStep.Promote:
+                <PromotePanel OnNext="@(() => Go(WorkflowStep.Model))" />
                 break;
         }
     </main>

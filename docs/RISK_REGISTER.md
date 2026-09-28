@@ -86,3 +86,36 @@ defaults, and a file without `matrix` uses the default matrix below.
   or `accept` for an opportunity; `none` until chosen. **responseCost** is in the register's currency.
 - **actions**: `status` is `open`, `done` or `cancelled`; an open action past its `due` date is overdue.
 - Dates are `yyyy-mm-dd`.
+- **promotion** (optional): how the risk goes into the model at Promote.
+
+```json
+"promotion": { "activities": ["A04700", "A04720"],
+               "probability": 0.4, "impact": { "distribution": "triangle", "min": 20, "mostLikely": 35, "max": 70 },
+               "mitigatedProbability": 0.1, "mitigatedImpact": { "min": 0, "mostLikely": 5, "max": 10 } }
+```
+
+  `activities` are the activity IDs the risk would delay. The other fields are values set by hand; left out,
+  they are worked out from the matrix as below.
+
+## Promote
+
+Approved risks that meet the promote rule on their current assessment become discrete risks in the risk
+model (docs/RISK_MODEL.md), with the register's ids, in the app (step "Promote") or from the command line:
+
+```
+sra promote schedule.xer --register register.json [--risk model.json] [--out promoted.risk.json]
+```
+
+- **Planned duration**: from the project start (the earliest start in the deterministic schedule, actual
+  starts included) to the deterministic finish, in working days of the project calendar; the same figure
+  the Results call the deterministic duration.
+- **Probability**: the midpoint of the probability band (A 2.5%, B 15%, C 37.5%, D 60%, E 82.5% by default).
+- **Impact**: a triangle in working days from the schedule band: its low, middle and high % of the planned
+  duration, rounded to 0.1 day. Level IV (6-10%) on a 500-day plan gives 30 / 40 / 50. A band without an
+  upper limit cannot be turned into days. An opportunity's days are negative (time saved).
+- **Pre- and post-mitigation**: the current assessment before mitigation, the target after it. Without a
+  target there is no mitigation; a target without a schedule severity means no delay after mitigation.
+- The risk applies to the activities in `promotion.activities`; a risk mapped to none is skipped.
+- In the model, promoted risks carry `"source": "register"`. Promoting again updates them and removes the
+  ones that no longer meet the rule; risks typed into the model are never changed. When a model risk
+  typed by hand already uses a register id, that risk is skipped until one of them is renamed.

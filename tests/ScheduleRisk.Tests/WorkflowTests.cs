@@ -27,21 +27,13 @@ public class WorkflowTests
     }
 
     [Fact]
-    public void Placeholder_steps_say_what_they_will_hold()
-    {
-        foreach (var s in new[] { WorkflowStep.Promote })
-            Assert.NotEmpty(Workflow.Get(s).Planned);
-        foreach (var s in new[] { WorkflowStep.Setup, WorkflowStep.Identify, WorkflowStep.Assess, WorkflowStep.ScheduleCheck, WorkflowStep.Model, WorkflowStep.Results, WorkflowStep.Review })
-            Assert.Empty(Workflow.Get(s).Planned);
-    }
-
-    [Fact]
     public void The_app_draws_its_steps_from_the_workflow()
     {
         string app = File.ReadAllText(Path.Combine(WebDir, "App.razor"));
         Assert.Contains("Workflow.Steps", app);
         Assert.Contains("<ReviewPanel", app);
-        Assert.Contains("<StepPlaceholder", app);
+        Assert.Contains("<PromotePanel", app);
+        Assert.DoesNotContain("StepPlaceholder", app);
         Assert.Contains("<SetupPanel", app);
         Assert.Contains("<IdentifyPanel", app);
         Assert.Contains("<AssessPanel", app);
