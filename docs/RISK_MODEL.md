@@ -69,7 +69,9 @@ Milestones, LOE/WBS summaries and completed activities are skipped automatically
   pre and post with the same seed so the difference is the effect of the mitigation, not sampling noise.
 - `activities: [...]` can be used instead of `filter`.
 - `source: "register"` marks a risk written by Promote from the qualitative risk register
-  (docs/RISK_REGISTER.md); promoting again updates or removes it. The simulation ignores it.
+  (docs/RISK_REGISTER.md); promoting again updates or removes it. The simulation ignores it. The app takes
+  the model's risks from the register (it promotes before every run); risks typed into a model without a
+  source can be moved to the register unchanged.
 
 ## Risk drivers
 

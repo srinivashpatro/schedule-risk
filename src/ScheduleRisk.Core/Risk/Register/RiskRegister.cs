@@ -36,13 +36,20 @@ public sealed class Assessment
 public sealed class Promotion
 {
     public List<string> Activities { get; set; } = new();
+    /// <summary>Promote even when the risk is below the promote rule (set for risks moved from a model, so that moving
+    /// them does not change the model). The risk must still be approved.</summary>
+    public bool Always { get; set; }
     public double? Probability { get; set; }
-    /// <summary>Impact in working days.</summary>
+    /// <summary>Impact set by hand, in <see cref="ImpactUnits"/>.</summary>
     public DistSpec? Impact { get; set; }
+    /// <summary>"days" (working days) or "percent" (of each activity's remaining duration), for the impacts set by hand;
+    /// impacts worked out from the matrix are always in days.</summary>
+    public string ImpactUnits { get; set; } = "days";
     public double? MitigatedProbability { get; set; }
     public DistSpec? MitigatedImpact { get; set; }
 
-    public bool IsEmpty => Activities.Count == 0 && Probability == null && Impact == null && MitigatedProbability == null && MitigatedImpact == null;
+    public bool IsEmpty => Activities.Count == 0 && !Always && ImpactUnits == "days"
+                           && Probability == null && Impact == null && MitigatedProbability == null && MitigatedImpact == null;
 }
 
 public sealed class RiskAction
@@ -516,6 +523,8 @@ public sealed class RiskRegister
             w.WriteStartArray("activities");
             foreach (var a in p.Activities) w.WriteStringValue(a);
             w.WriteEndArray();
+            if (p.Always) w.WriteBoolean("always", true);
+            if (p.ImpactUnits != "days") w.WriteString("impactUnits", p.ImpactUnits);
             if (p.Probability is double prob) w.WriteNumber("probability", prob);
             if (p.Impact != null) { w.WriteStartObject("impact"); p.Impact.WriteFields(w); w.WriteEndObject(); }
             if (p.MitigatedProbability is double mp) w.WriteNumber("mitigatedProbability", mp);
@@ -669,6 +678,8 @@ public sealed class RiskRegister
             r.Promotion = new Promotion
             {
                 Activities = Strings(pr, "activities"),
+                Always = pr.TryGetProperty("always", out var al) && al.ValueKind == JsonValueKind.True,
+                ImpactUnits = S(pr, "impactUnits", "days"),
                 Probability = N(pr, "probability"),
                 Impact = pr.TryGetProperty("impact", out var imp) && imp.ValueKind == JsonValueKind.Object ? DistSpec.From(imp) : null,
                 MitigatedProbability = N(pr, "mitigatedProbability"),

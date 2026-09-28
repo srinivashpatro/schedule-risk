@@ -8,8 +8,8 @@
     var reg = State.Register; var m = reg.Matrix;
     var planned = State.Schedule != null && State.Cpm != null ? RegisterPromoter.PlannedDuration(State.Schedule, State.Cpm) : null;
     var approved = reg.Risks.Where(r => r.Status == RiskStatus.Approved).ToList();
-    var eligible = approved.Where(r => RegisterPromoter.Ineligibility(reg, r) == null).ToList();
-    var others = approved.Where(r => RegisterPromoter.Ineligibility(reg, r) != null).ToList();
+    var eligible = approved.Where(r => RegisterPromoter.Ineligibility(reg, r, honourAlways: true) == null).ToList();
+    var others = approved.Where(r => RegisterPromoter.Ineligibility(reg, r, honourAlways: true) != null).ToList();
     string cur = m.Currency;
 }
 
@@ -98,7 +98,7 @@
                                                 <input class="input sm w-pct @(p6.Impact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact most likely days" value="@Num(q.Impact.MostLikely)" @onchange="@(e => SetImpact(risk, false, 1, e, q.Impact))" />
                                                 <input class="input sm w-pct @(p6.Impact != null ? "set" : "")" type="number" step="any" aria-label="@risk.Id impact max days" value="@Num(q.Impact.Max)" @onchange="@(e => SetImpact(risk, false, 2, e, q.Impact))" />
                                             </div>
-                                            <span class="hint block">matrix: @Tri(auto.Impact) (schedule @SevText(risk.Current))</span>
+                                            <span class="hint block">@(p6.Impact != null && p6.ImpactUnits == "percent" ? "% of each activity's duration · " : "")matrix: @Tri(auto.Impact) days (schedule @SevText(risk.Current))</span>
                                         </td>
                                         <td>
                                             @if (q.Mitigated)
@@ -134,6 +134,12 @@
                                     </td>
                                     <td class="nowrap">
                                         <span class="small">@InModel(risk)</span>
+                                        @if (p6.Always)
+                                        {
+                                            <label class="check small block" title="Moved from a model: kept in the model whatever its rating, so moving it did not change the results">
+                                                <input type="checkbox" checked @onchange="@(e => p6.Always = e.Value is true)" /> Always in the model
+                                            </label>
+                                        }
                                         @if (!p6.IsEmpty && (p6.Probability != null || p6.Impact != null || p6.MitigatedProbability != null || p6.MitigatedImpact != null))
                                         {
                                             <button class="btn btn-ghost btn-sm" title="Use the matrix's values again" @onclick="@(() => ResetValues(risk))">Use matrix values</button>

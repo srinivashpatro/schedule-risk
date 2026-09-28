@@ -22,15 +22,17 @@ usage:
                 [--long-lag-hr 352] [--large-float-hr 352] [--large-duration-hr 352]
   sra verify    <file.xer> [--project ID] [--tolerance-min N]
   sra simulate  <file.xer> --risk model.json [--project ID] [--iterations N] [--seed N]
-                [--scenario pre|post|both] [--out folder] [--threads N]
+                [--scenario pre|post|both] [--out folder] [--threads N] [--register register.json]
   sra promote   <file.xer> --register register.json [--risk model.json] [--out model.json]
-                [--project ID]
+                [--import [--register-out register.json]] [--project ID]
 
 simulate writes to --out (default: ./sra-output):
   report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv
 
 promote turns the register's approved risks that meet its promote rule into risks in the model
-(--risk, or an empty model) and writes it to --out (default: promoted.risk.json)";
+(--risk, or an empty model) and writes it to --out (default: promoted.risk.json). --import first moves
+the model's typed-in risks to the register (written to --register-out, default promoted.register.json).
+simulate --register promotes the register into the model before simulating, as the app does.";
 
     public static int Main(string[] args)
     {
@@ -195,12 +197,26 @@ promote turns the register's approved risks that meet its promote rule into risk
         var doc = o.TryGetValue("risk", out var riskPath) ? RiskModelDocument.FromJson(File.ReadAllText(riskPath)) : new RiskModelDocument();
         var planned = RegisterPromoter.PlannedDuration(s, det);
         Console.WriteLine($"planned duration: {planned.WorkingDays:F1} working days ({Time.Format(planned.Start)} to {Time.Format(planned.Finish)})");
+        if (o.ContainsKey("import"))
+        {
+            // Move the model's typed-in risks to the register first; they promote back unchanged.
+            var imp = RegisterImporter.MoveToRegister(doc, reg, s, engine.CriticalToProjectFinish(), planned.WorkingDays);
+            Console.WriteLine($"import: {imp}");
+            foreach (var (from, to) in imp.Renamed) Console.WriteLine($"  {from} renamed {to}: the register already had {from}");
+            foreach (var n in imp.NotMoved) Console.WriteLine($"  {n.Id} not moved: {n.Reason}");
+            foreach (var n in imp.Notes) Console.WriteLine($"  {n}");
+            string regOut = o.GetValueOrDefault("register-out", "promoted.register.json");
+            File.WriteAllText(regOut, reg.ToJson());
+            Console.WriteLine($"register -> {regOut}");
+        }
         var report = RegisterPromoter.Apply(doc, reg, planned.WorkingDays);
         foreach (var row in doc.Risks.Where(x => x.Source == RiskRow.RegisterSource))
         {
             string how = report.Added.Contains(row.Id) ? "added" : "updated";
             string post = row.Mitigated ? $", after mitigation {row.MitigatedProbability:P1} {Days(row.MitigatedImpact)}" : "";
-            Console.WriteLine($"  {how} {row.Id} {row.Title}: {row.Probability:P1} {Days(row.Impact)}{post} on {row.Filter.Value}");
+            var ids = row.Filter.Value.Split(", ");
+            string on = ids.Length <= 5 ? row.Filter.Value : string.Join(", ", ids.Take(5)) + $" and {ids.Length - 5} more";
+            Console.WriteLine($"  {how} {row.Id} {row.Title}: {row.Probability:P1} {Days(row.Impact)}{(row.ImpactUnits == "percent" ? " (%)" : "")}{post} on {on}");
         }
         foreach (var id in report.Removed) Console.WriteLine($"  removed {id}: no longer promoted");
         foreach (var sk in report.Skipped) Console.WriteLine($"  skipped {sk.Id}: {sk.Reason}");
@@ -218,7 +234,18 @@ promote turns the register's approved risks that meet its promote rule into risk
     private static int Simulate(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
     {
         if (!o.TryGetValue("risk", out var riskPath)) throw new ArgumentException("simulate needs --risk model.json");
-        var model = RiskModelLoader.Load(s, riskPath, engine.CriticalToProjectFinish());
+        RiskModel model;
+        if (o.TryGetValue("register", out var regPath))
+        {
+            // The model's discrete risks come from the register: promote it first, as the app does before every run.
+            var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+            var doc = RiskModelDocument.FromJson(File.ReadAllText(riskPath));
+            var rep = RegisterPromoter.Apply(doc, reg, RegisterPromoter.PlannedDuration(s, det).WorkingDays);
+            Console.WriteLine($"register: {rep}");
+            foreach (var sk in rep.Skipped) Console.Error.WriteLine($"warning: register risk {sk.Id} is not in the run: {sk.Reason}");
+            model = RiskModelLoader.LoadJson(s, doc.ToJson(), engine.CriticalToProjectFinish());
+        }
+        else model = RiskModelLoader.Load(s, riskPath, engine.CriticalToProjectFinish());
         foreach (var w in model.Warnings) Console.Error.WriteLine("warning: " + w);
         int? iters = o.TryGetValue("iterations", out var it) ? int.Parse(it) : null;
         long? seed = o.TryGetValue("seed", out var sd) ? long.Parse(sd) : null;

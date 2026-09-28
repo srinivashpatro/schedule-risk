@@ -95,7 +95,10 @@ defaults, and a file without `matrix` uses the default matrix below.
 ```
 
   `activities` are the activity IDs the risk would delay. The other fields are values set by hand; left out,
-  they are worked out from the matrix as below.
+  they are worked out from the matrix as below. `impactUnits` (`days`, the default, or `percent` of each
+  activity's remaining duration) applies to the impacts set by hand. `always: true` promotes the risk
+  whatever its rating (it must still be approved); risks moved from a model get it, so moving them does
+  not change the model.
 
 ## Promote
 
@@ -116,6 +119,24 @@ sra promote schedule.xer --register register.json [--risk model.json] [--out pro
 - **Pre- and post-mitigation**: the current assessment before mitigation, the target after it. Without a
   target there is no mitigation; a target without a schedule severity means no delay after mitigation.
 - The risk applies to the activities in `promotion.activities`; a risk mapped to none is skipped.
+- The model's discrete risks come from the register: the app promotes before every run, and
+  `sra simulate --risk model.json --register register.json` does the same.
 - In the model, promoted risks carry `"source": "register"`. Promoting again updates them and removes the
   ones that no longer meet the rule; risks typed into the model are never changed. When a model risk
   typed by hand already uses a register id, that risk is skipped until one of them is renamed.
+
+## Moving a model's risks to the register
+
+Risks typed into a model (no `"source": "register"`) can be moved to the register: in step 05 ("Move to the
+register") or with `sra promote schedule.xer --register register.json --risk model.json --import
+[--register-out register.json] [--out model.json]`. Each becomes an approved register risk that promotes
+back to exactly the same model risk, so results stay the same for the same seed:
+
+- its probability, impacts and mitigation are kept as values set by hand, in their own unit;
+- its filter becomes the list of activities it applies to (noted when it was a WBS, code, name or critical
+  filter, since the list no longer follows changes to the schedule);
+- it is marked `always`, so it stays in the model whatever its rating;
+- its current assessment is the probability band its probability falls in and the schedule level of its
+  mean impact as a share of the planned duration (a % impact on the mean remaining duration of its
+  activities); a mitigated risk gets a target assessment the same way, for the heat map;
+- an id the register already uses is renamed, in the register and the model.

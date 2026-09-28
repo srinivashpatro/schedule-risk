@@ -96,7 +96,33 @@ public sealed class AppState
         await LoadXerAsync("sample-project.xer", xer);
         if (Schedule == null) return;
         Model = RiskModelDocument.FromJson(model);
+        // The sample's risks go into a fresh register, as the model now takes its risks from the register; results
+        // stay the same. A register the user already has is left alone.
+        if (Register.Risks.Count == 0)
+        {
+            Register = new RiskRegister { Name = "Sample project register" };
+            MoveRisksToRegister();
+        }
         Notify();
+    }
+
+    /// <summary>The planned duration Promote scales the schedule bands by, or null without a calculated schedule.</summary>
+    public PlannedDuration? Planned => Schedule != null && Cpm != null ? RegisterPromoter.PlannedDuration(Schedule, Cpm) : null;
+
+    /// <summary>"Move risks to the register": the model's typed-in risks become register risks that promote back unchanged.</summary>
+    public ImportReport? MoveRisksToRegister()
+    {
+        if (Schedule == null || Planned is not { } planned) return null;
+        var report = RegisterImporter.MoveToRegister(Model, Register, Schedule, Critical, planned.WorkingDays);
+        ClearResults();
+        return report;
+    }
+
+    /// <summary>Every run promotes the register into the model first, so the model's risks always follow the register.</summary>
+    public PromoteReport? PromoteForRun()
+    {
+        if (Planned is not { } planned) return null;
+        return RegisterPromoter.Apply(Model, Register, planned.WorkingDays);
     }
 
     public async Task SelectProjectAsync(string projectId)
@@ -213,6 +239,7 @@ public sealed class AppState
         if (Schedule == null || Engine == null || Running) return;
         Error = null;
         ClearResults();
+        var promoted = PromoteForRun();
         RiskModel model;
         try
         {
@@ -225,6 +252,8 @@ public sealed class AppState
             return;
         }
         ModelWarnings.AddRange(model.Warnings);
+        if (promoted != null)
+            ModelWarnings.AddRange(promoted.Skipped.Select(x => $"Register risk {x.Id} is not in the run: {x.Reason}"));
         Running = true;
         _cts = new CancellationTokenSource();
         try

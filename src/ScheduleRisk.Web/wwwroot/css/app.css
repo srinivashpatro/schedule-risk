@@ -712,3 +712,6 @@ ul.plain { margin: 0; padding-left: 18px; font-size: 13.5px; display: flex; flex
 .linkish { all: unset; cursor: pointer; font-weight: 700; color: var(--color-accent-700); text-decoration: underline; text-underline-offset: 2px; }
 .linkish:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
 #activities { scroll-margin-top: calc(var(--nav-h, 62px) + 8px); }
+.move-banner { border-left-color: var(--color-accent); align-items: center; }
+.table tr.typed td { background: color-mix(in srgb, var(--color-accent) 5%, transparent); }
+label.check.block { display: flex; margin-top: 4px; }

@@ -122,42 +122,57 @@
         </div>
 
         <div class="block">
-            <div class="headrow"><h4>Risk register</h4></div>
-            <p class="sub">Discrete events. If a risk occurs in an iteration, its impact is added to <b>each</b> activity it applies to, so map it to the activities it really hits.</p>
-            <div class="wrap">
-                <table class="table">
-                    <thead><tr><th>ID</th><th>Title</th><th class="n">Probability</th><th>Impact · min / likely / max</th><th>Units</th><th>Applies to</th><th>Mitigation</th><th></th></tr></thead>
-                    <tbody>
-                        @foreach (var r in m.Risks)
-                        {
-                            <tr>
-                                <td><input class="input sm w-id" @bind="r.Id" aria-label="Risk ID" /></td>
-                                <td><input class="input sm w-text" @bind="r.Title" aria-label="Risk title" /></td>
-                                <td class="n"><span class="unit"><input class="input sm" type="number" min="0" max="100" step="1" aria-label="Probability %" value="@Num(r.Probability * 100, 0)" @onchange="@(e => r.Probability = ParsePct(e))" />%</span></td>
-                                <td><DistEditor Dist="r.Impact" /></td>
-                                <td><select class="input sm" @bind="r.ImpactUnits" aria-label="Impact units"><option value="days">days</option><option value="percent">% of dur.</option></select></td>
-                                <td><FilterEditor Spec="r.Filter" CodeTypes="codeTypes" /></td>
-                                <td>
-                                    <label class="check"><input type="checkbox" @bind="r.Mitigated" /> Mitigated</label>
-                                    @if (r.Mitigated)
-                                    {
-                                        <div class="filter mt">
-                                            <span class="unit"><input class="input sm" type="number" min="0" max="100" step="1" aria-label="Mitigated probability %" value="@Num(r.MitigatedProbability * 100, 0)" @onchange="@(e => r.MitigatedProbability = ParsePct(e))" />%</span>
-                                            <label class="check small"><input type="checkbox" @bind="r.MitigatedImpactDiffers" /> new impact</label>
-                                        </div>
-                                        if (r.MitigatedImpactDiffers)
-                                        {
-                                            <div class="mt"><DistEditor Dist="r.MitigatedImpact" /></div>
-                                        }
-                                    }
-                                </td>
-                                <td><button class="btn btn-ghost btn-x" title="Remove" aria-label="Remove row" @onclick="() => m.Risks.Remove(r)">✕</button></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <div class="headrow">
+                <h4>Risks from the register</h4>
+                <div class="btn-row">
+                    <button class="btn btn-secondary btn-sm" @onclick="@(() => OnGo.InvokeAsync(WorkflowStep.Assess))">Assess risks</button>
+                    <button class="btn btn-secondary btn-sm" @onclick="@(() => OnGo.InvokeAsync(WorkflowStep.Promote))">Numbers and activities</button>
+                </div>
             </div>
-            <button class="btn btn-ghost add" @onclick="AddRisk">+ Add risk</button>
+            <p class="sub">The model's discrete risks come from the risk register: every run promotes the register's approved Red and Amber risks first. Change them in 03 · Assess and Promote. If a risk occurs in an iteration, its impact is added to <b>each</b> activity it applies to.</p>
+            @if (typedIn > 0)
+            {
+                <div class="banner move-banner">
+                    <span><b>@typedIn @(typedIn == 1 ? "risk was" : "risks were") typed into this model.</b> Risks now come from the register: move them there, with their numbers and activities, and the results stay the same.</span>
+                    <button class="btn btn-primary btn-sm" @onclick="MoveRisks">Move to the register</button>
+                </div>
+            }
+            @if (moveReport != null)
+            {
+                <ul class="issues">
+                    <li>@moveReport</li>
+                    @foreach (var (from, to) in moveReport.Renamed) { <li>@from was renamed @to: the register already had @from.</li> }
+                    @foreach (var n in moveReport.NotMoved) { <li class="err">@n.Id not moved: @n.Reason</li> }
+                    @foreach (var n in moveReport.Notes) { <li>@n</li> }
+                </ul>
+            }
+            @if (m.Risks.Count == 0)
+            {
+                <p class="empty">No risk from the register is in the model yet. Approve and assess risks (steps 02 and 03), then map them to activities in Promote.</p>
+            }
+            else
+            {
+                <div class="wrap">
+                    <table class="table">
+                        <thead><tr><th>ID</th><th>Risk</th><th>Cell</th><th class="n">Probability</th><th>Impact · min / likely / max</th><th>After mitigation</th><th>Applies to</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in m.Risks)
+                            {
+                                var reg = r.Source == RiskRow.RegisterSource ? State.Register.Risks.FirstOrDefault(x => x.Id == r.Id) : null;
+                                <tr class="@(r.Source == RiskRow.RegisterSource ? "" : "typed")">
+                                    <td class="strong nowrap">@r.Id</td>
+                                    <td>@r.Title @if (r.Source != RiskRow.RegisterSource) { <span class="tag tag-accent">typed in</span> }</td>
+                                    <td>@if (reg != null && State.Register.Matrix.Rate(reg.Current) is RiskRating rr) { <span class="chip-rating @(rr switch { RiskRating.Red => "rag-red", RiskRating.Amber => "rag-amber", _ => "rag-green" })">@State.Register.Matrix.CellName(reg.Current)</span> }</td>
+                                    <td class="n">@Num(r.Probability * 100, 1)%</td>
+                                    <td class="nowrap">@Tri(r.Impact) @(r.ImpactUnits == "percent" ? "% of duration" : "days")</td>
+                                    <td class="nowrap">@(r.Mitigated ? $"{Num(r.MitigatedProbability * 100, 1)}%, {Tri(r.MitigatedImpactDiffers ? r.MitigatedImpact : r.Impact)}" : "—")</td>
+                                    <td class="small">@r.Filter.Describe()</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
 
         <div class="block">
@@ -249,7 +264,25 @@
 
     private void AddUncertainty() => State.Model.Uncertainty.Add(new UncertaintyRow());
 
-    private void AddRisk() => State.Model.Risks.Add(new RiskRow { Id = State.Model.NextRiskId(), Title = "New risk" });
+    [Parameter] public EventCallback<WorkflowStep> OnGo { get; set; }
+
+    private ImportReport? moveReport;
+    private int typedIn => RegisterImporter.TypedIn(State.Model);
+
+    private static string Tri(DistSpec d) => $"{Num(d.Min, 1)} / {(DistSpec.Canonical(d.Distribution) == "uniform" ? "–" : Num(d.MostLikely, 1))} / {Num(d.Max, 1)}";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        State.PromoteForRun();   // show the register's risks as the next run will use them
+    }
+
+    private void MoveRisks()
+    {
+        moveReport = State.MoveRisksToRegister();
+        State.PromoteForRun();
+        State.Notify();
+    }
 
     private void AddDriver()
     {

@@ -55,7 +55,7 @@
                 <AssessPanel />
                 break;
             case WorkflowStep.Model:
-                <RiskModelPanel OnRun="RunFromModel" />
+                <RiskModelPanel OnRun="RunFromModel" OnGo="Go" />
                 break;
             case WorkflowStep.Results:
                 <ResultsPanel />

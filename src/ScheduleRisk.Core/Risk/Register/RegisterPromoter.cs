@@ -47,12 +47,14 @@ public static class RegisterPromoter
     public static double Midpoint(MatrixSettings m, int probability) =>
         (m.Probability[probability].Min + m.Probability[probability].Max) / 2;
 
-    /// <summary>Why a risk is not promoted, or null when it meets the rule.</summary>
-    public static string? Ineligibility(RiskRegister reg, RegisterRisk r)
+    /// <summary>Why a risk is not promoted, or null when it meets the rule. With <paramref name="honourAlways"/>, an approved
+    /// risk marked <see cref="Promotion.Always"/> is promoted whatever its rating.</summary>
+    public static string? Ineligibility(RiskRegister reg, RegisterRisk r, bool honourAlways = false)
     {
         var m = reg.Matrix;
         var rule = m.Promote;
         if (r.Status != RiskStatus.Approved) return $"only approved risks are promoted; it is {r.Status.ToString().ToLowerInvariant()}.";
+        if (honourAlways && r.Promotion.Always) return null;
         if (m.Rate(r.Current) is not RiskRating rating) return "it has no current assessment.";
         if (rating < rule.MinRating)
             return $"it is {rating} today; the rule promotes {(rule.MinRating == RiskRating.Red ? "Red" : "Red and Amber")} risks.";
@@ -68,13 +70,18 @@ public static class RegisterPromoter
         var none = new DistSpec { Distribution = "triangle" };
         QuantifiedRisk Fail(string why) => new(0, none, false, 0, none, why);
         var dim = m.Dimension(m.Promote.ScheduleDimension);
-        if (dim is not { Quantitative: true }) return Fail($"the schedule area {m.Promote.ScheduleDimension} has no ranges to turn into days.");
-        if (r.Current.Probability is not int p || p < 0 || p >= m.Probability.Count) return Fail("it has no current probability.");
         var p6 = r.Promotion;
+        int p = r.Current.Probability is int cp && cp >= 0 && cp < m.Probability.Count ? cp : -1;
+        if (p < 0 && p6.Probability == null) return Fail("it has no current probability.");
 
         DistSpec? Days(Assessment a, out string? problem)
         {
             problem = null;
+            if (dim is not { Quantitative: true })
+            {
+                problem = $"the schedule area {m.Promote.ScheduleDimension} has no ranges to turn into days.";
+                return null;
+            }
             if (!a.Severity.TryGetValue(dim.Id, out int level)) return new DistSpec { Distribution = "triangle" };
             if (level < 0 || level >= dim.Bands.Count) { problem = "its schedule severity is not a level of the matrix."; return null; }
             var band = dim.Bands[level];
@@ -117,7 +124,7 @@ public static class RegisterPromoter
         var promoted = new HashSet<string>();
         foreach (var r in reg.Risks)
         {
-            if (Ineligibility(reg, r) != null) continue;
+            if (Ineligibility(reg, r, honourAlways: true) != null) continue;
             var existing = doc.Risks.FirstOrDefault(x => x.Id == r.Id);
             if (existing != null && existing.Source != RiskRow.RegisterSource)
             {
@@ -134,7 +141,7 @@ public static class RegisterPromoter
             row.Title = r.Title;
             row.Probability = q.Probability;
             row.Impact = q.Impact;
-            row.ImpactUnits = "days";
+            row.ImpactUnits = r.Promotion.Impact != null ? r.Promotion.ImpactUnits : "days";
             row.Filter = new FilterSpec { Kind = FilterKind.Activities, Value = string.Join(", ", r.Promotion.Activities) };
             row.Mitigated = q.Mitigated;
             row.MitigatedProbability = q.MitigatedProbability;

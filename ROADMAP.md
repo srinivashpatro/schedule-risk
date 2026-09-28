@@ -466,11 +466,11 @@ To decide before the first item (the plan assumes the choice in brackets):
       (reference/python/sra/validate.py) stays as the reference implementation's own check and golden
       files keep their `validation` block, no longer compared. 24 tests.
 
-- [ ] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
+- [x] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
       and edited at the register (a link back to Promote), other risks, uncertainty, drivers and
       correlation as today.
       Decided (owner, 2026-09-28): the model's discrete risks come from the risk register only.
-      Proposed link, to confirm:
+      Link (approved 2026-09-28):
       1. The register is the single source. In step 05 the Risk register section lists the promoted
          risks read-only (id, title, current cell, probability, days, activities) with links to Assess
          and Promote; "+ Add risk" goes. Uncertainty, drivers, correlation and the simulation settings
@@ -490,6 +490,20 @@ To decide before the first item (the plan assumes the choice in brackets):
          kept as values set by hand (so results do not change), mitigation as the target, and its
          filter resolved to activity ids against the open schedule. Risks in % of duration are listed
          for the user to convert, since the register works in days.
+      Done: step 05 lists the model's risks read-only (id, title, current cell, probability, impact and its
+      unit, mitigation, activities) with links to Assess and Promote; "+ Add risk" is gone. Every run
+      promotes the register first (`AppState.PromoteForRun`; eligible risks left out are listed with the
+      run's warnings), and opening step 05 does too, so the list is what the next run uses. Typed-in risks
+      in an opened model are marked, with "Move to the register" (`RegisterImporter` in Core). A moved risk
+      keeps its numbers as values set by hand in its own unit (new `promotion.impactUnits`, so % risks move
+      too), its filter resolved to activities, `promotion.always` (promoted whatever its rating; a checkbox
+      in Promote), and an assessment inferred from its probability and mean impact for the heat map; ids
+      the register already has are renamed. The sample project's risks move into a fresh register when it
+      loads (same results: P80 29-Jun-2029). CLI: `sra simulate --register` and `sra promote --import`.
+      Moving the example model and promoting back gives identical P50, P80 and mean before and after
+      mitigation (test, and the CLI on synth_500). 8 tests. Risks typed into a model are still simulated
+      until moved, so opening an older model never changes its results silently.
+
 - [ ] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
       table (per risk: response cost, days saved at P80 and at the chosen level, value at the cost of
       delay, net benefit) using the method chosen above, reproducible for a seed. Tornado and

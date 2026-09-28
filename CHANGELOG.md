@@ -34,6 +34,11 @@
 
 ### Changed
 
+- Step 05 Model: the model's discrete risks come from the risk register. Every run promotes the register
+  first, and step 05 lists the risks read-only, with links to Assess and Promote. A model whose risks were
+  typed into it offers "Move to the register": each becomes an approved register risk with the same
+  numbers and activities, so the results do not change (also `sra promote --import`). `sra simulate
+  --register` promotes before simulating. The sample project's risks now start in its register.
 - Step 04 Schedule check: the schedule health checks are now P6 Professional's Check Schedule parameters
   (17, in the dialog's three tabs) and the DCMA 14-Point Assessment side by side, each with its target,
   result, PASS / FAIL / N/A and the activities or relationships it flagged (click an ID to show it in the

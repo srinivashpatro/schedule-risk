@@ -34,8 +34,8 @@ and [docs/HOSTING.md](docs/HOSTING.md)).
 
 The quantitative steps: **04 Schedule check** (open or drop an XER, or use the sample project; the
 engine check against P6, the P6 Check Schedule and DCMA 14-Point health checks with every flagged
-activity, a P6-style Gantt chart or the activity table) -> **05 Model** (uncertainty, risk
-register with mitigation, drivers, correlation, each applied to activities picked from a searchable
+activity, a P6-style Gantt chart or the activity table) -> **05 Model** (the risks promoted from the register,
+duration uncertainty, drivers and correlation, each applied to activities picked from a searchable
 list by ID or name, or by WBS, code or critical path; simulation settings; open/save model JSON; run) ->
 **06 Results** (a Summary panel with the key outputs: P50, P80 and any confidence level with their
 contingency, mean, median and spread, top risk drivers, critical and near-critical activities; under
@@ -53,7 +53,8 @@ current, target) on a heat map that draws each risk's movement, with responses, 
 actions. Promote turns the register's approved Red and Amber risks into risks in the model: the
 probability band's midpoint, and a range of working days from the schedule band on the planned
 duration, mapped to the activities they would delay (also `sra promote`, see docs/RISK_REGISTER.md).
-Risks can still be typed straight into the model in step 05.
+The model takes its discrete risks from the register: every run promotes it first, and a model
+whose risks were typed into it can move them to the register without changing its results.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
@@ -103,6 +104,7 @@ sra verify    project.xer                      # our CPM dates vs the dates P6 s
 sra cpm       project.xer --csv dates.csv
 sra promote   project.xer --register register.json --risk model.json --out model2.json   # register risks into the model
 sra simulate  project.xer --risk model.json --out results   # pre + post mitigation, HTML report
+                                                             # add --register register.json to promote first
 ```
 
 From source: `dotnet run --project src\ScheduleRisk.Cli -c Release -- <command> ...`
