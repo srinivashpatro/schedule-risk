@@ -299,9 +299,25 @@ To decide before the first item (the plan assumes the choice in brackets):
   without a schedule and activities picked at Promote [assumed]; or as part of Setup.
 - Where the Gantt and activity table go: step 04 Schedule check, with the engine check and health
   checks [assumed].
-- Default matrix: 5x5; probability bands 1-10%, 10-30%, 30-50%, 50-70%, 70-99%; schedule impact
-  bands <5, 5-20, 20-60, 60-120, >120 working days; score = P x I; Low 1-6, Medium 8-12, High 15-25;
-  promote threshold 8 [assumed, all editable in Setup].
+- Default matrix (decided from the user's reference, an owner's corporate risk guideline; its
+  wording is proprietary, so only the structure and numbers below go in the repo and the default
+  wording is our own):
+  - Probability A-E: A Remote 0-5%, B Unlikely 5-25%, C Occasional 25-50%, D Likely 50-70%,
+    E Most likely 70-95%. At or near 100% the risk is a certainty: Setup warns and suggests putting
+    it in the base schedule instead of the register.
+  - Severity I-V (Insignificant, Minor, Significant, Major, Very high), one scale per dimension:
+    schedule as % of the planned project duration (I: none, absorbed by float; II <3%; III 3-6%;
+    IV 6-10%; V >10%), cost as % of the approved control budget (<=0.25, 0.25-0.5, 0.5-1, 1-2, >2%),
+    and descriptive scales for quality/performance, health and safety, environment and regulatory.
+    A risk is scored on each dimension that applies and its severity is the worst of them [assumed].
+  - Cells are named severity.probability (IV.D) and rated by a lookup table, not a score (rows E to A,
+    columns I to V): E G A A R R; D G G A A R; C G G A A A; B G G G A A; A G G G A A.
+    Red: intolerable, report regularly to senior management, focused intervention. Amber: major or
+    significant, tighten controls, track the remedial actions. Green: low, monitor and escalate if it
+    worsens.
+  - Promote: Red and Amber risks with a schedule severity of II or more [assumed].
+  - Every scale, band, colour, text and the lookup table stay editable in Setup and are saved with
+    the register, so another organisation's matrix can be entered.
 - Cost-benefit method: per risk, days of P80 saved by its response (a paired run with only that risk
   mitigated, same seed) against the response cost, and value of those days at a cost of delay per day
   set in Setup [assumed]; or the cheaper expected-value method (probability x mean impact, no extra
@@ -314,26 +330,34 @@ To decide before the first item (the plan assumes the choice in brackets):
       existing panels: 01-03 show a placeholder, 04 the schedule panel, 05 the risk model, 06 results,
       07 the report formats as a page instead of the Report dialog. Steps that need a schedule or a
       run stay disabled as today. No Core change. Tests: the page lists the steps in order.
-- [ ] Core: risk register and matrix. `Risk/Register` in Core: matrix settings (probability and impact
-      scales with bands, labels and ranges, score rule, rating bands and colours, promote threshold,
-      categories), risks (ID, title, cause-event-effect description, category, threat or opportunity,
-      status Proposed / Approved / Rejected / Closed, raised by and date), pre- and post-response
-      probability and impact scores, response (avoid / transfer / mitigate / accept; exploit / share /
+- [ ] Core: risk register and matrix. `Risk/Register` in Core: matrix settings (probability scale with
+      letters, labels and % ranges; severity dimensions, each with five bands of text and, for
+      schedule and cost, % ranges; the cell rating lookup; rating colours and guidance text; promote
+      rule; categories), risks (ID, title, cause-event-effect description, category, threat or opportunity,
+      status Proposed / Approved / Rejected / Closed, raised by and date), probability letter and a
+      severity per dimension at each assessment point (inherent, current with existing controls,
+      target after the response, as the arrows 5 -> 6 -> 7 in the reference) [assumed], response (avoid / transfer / mitigate / accept; exploit / share /
       enhance / accept for opportunities), owner, response cost, actions (text, owner, due date,
       status). JSON load and save with a version field (docs/RISK_REGISTER.md), validation messages,
-      scoring and rating. Tests first. Needs approval: engine core.
-- [ ] 01 Setup. Edit the matrix scales, the rating bands, the promote threshold and the categories,
-      with the defaults above and a live preview of the matrix; cost of delay per day. Open and save
+      overall severity (worst dimension), cell and rating by lookup. Tests first. Needs approval: engine core.
+- [ ] 01 Setup. Edit the probability scale, the severity dimensions and their bands, the cell ratings
+      (click a cell to cycle Red / Amber / Green), the rating guidance, the promote rule and the
+      categories, with the defaults above and a live preview of the matrix; cost of delay per day. Open and save
       the register file.
 - [ ] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
       and edit their descriptions; a register table with search, category and status filters.
-- [ ] 03 Assess. Score each approved risk pre- and post-response on the matrix; a heat map (counts per
-      cell, pre and post side by side, click a cell to filter the register); response, owner, cost and
+- [ ] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
+      band text shown, as in the reference) at each assessment point; a heat map in the reference's
+      layout (probability rows E to A, severity columns I to V, cell names, Red / Amber / Green, counts
+      per cell, click a cell to filter the register) with a risk's path drawn as arrows between its
+      assessment points; response, owner, cost and
       actions per risk; an action list across risks with overdue actions marked.
 - [ ] Promote. Approved risks scoring at or above the threshold become quantified risks: the
-      probability band gives a probability (band midpoint, editable), the schedule impact band gives a
-      triangle in working days (band low / midpoint / high, editable), pre and post from the two
-      assessments, mapped to activities with the activity picker. Core `RegisterPromoter` writes them
+      probability letter gives a probability (band midpoint, editable: A 2.5%, B 15%, C 37.5%, D 60%,
+      E 82.5%), the schedule severity gives a triangle in working days from its % band times the
+      planned project duration (data date or project start to the deterministic finish, to decide)
+      (band low / midpoint / high, editable; I gives no schedule impact, V needs an upper bound, 20%
+      assumed), pre-mitigation from the current assessment and post from the target, mapped to activities with the activity picker. Core `RegisterPromoter` writes them
       into the risk model's register with the same IDs (traceable both ways); promoting again updates
       them and keeps the activity mapping. CLI: `sra promote register.json model.json`. Tests on the
       band arithmetic and the round trip.
