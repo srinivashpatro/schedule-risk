@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- A second copy of the browser app on Cloudflare Pages behind Cloudflare Access, for invited email addresses
+  only: they sign in with a one-time PIN sent by email, and a sign-in lasts 48 hours. The workflow deploys it
+  once the repository has the Cloudflare settings; the GitHub Pages copy stays public. The app has no sign-in
+  code and still sends nothing anywhere. Set-up steps and privacy notes are in docs/HOSTING.md.
+
+### Changed
+
+- When the sample project or the report fonts cannot be fetched from the site (a dropped connection, or an
+  ended sign-in on the Cloudflare copy), the message now says to open the app in a new tab, sign in if asked,
+  and try again, instead of showing the browser's own error. The tab keeps its schedule and results.
+
 ## 0.6.0 - 2026-09-27
 
 ### Added

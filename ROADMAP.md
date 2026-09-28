@@ -284,45 +284,38 @@ not detected yet.
 
 ## Hosting and access
 
-- [ ] Restricted access with Cloudflare Access. Only invited users can load the browser app. The
-      login is checked by Cloudflare on every request, before any file is served, so it cannot be
-      bypassed from the browser (a login screen inside the app could be, since its DLLs download
-      to every visitor). Decision: Cloudflare Access (Zero Trust, free for up to 50 users) in front
-      of the static site; the app gets no login code, no JWT handling and no new network call.
-      Access's login page and `CF_Authorization` cookie live outside the app, so `WebAssetsTests`
-      still holds. XER files still never leave the browser: Cloudflare serves the app's own files
-      and learns who signed in, never schedule data. Plan:
-      1. Host on Cloudflare Pages instead of GitHub Pages. Access cannot sit in front of
-         `*.github.io`, and a custom domain proxied to GitHub Pages can still be fetched from
-         GitHub's servers directly, skipping the login. The workflow deploys with Wrangler
-         (`pages deploy`, API token and account ID as repository secrets) after build and tests pass,
-         as now. Check no published file is over Pages' 25 MiB limit (an AOT build's
-         `dotnet.native.wasm` could be).
-      2. One Access application covering the production address (custom domain or
-         `<project>.pages.dev`) and the preview deployments (`*.<project>.pages.dev`), so no address
-         serves the app without a login. Policy: allow the invited users; session length as decided.
-      3. Workflow: the site sits at the root of its address, so base href stays `/`; drop the
-         `404.html` copy and `.nojekyll` (with no 404.html, Pages serves index.html for unknown
-         paths); v0.4/ and v0.3/ keep their folders and base hrefs, behind the same login.
-      4. Retire the GitHub Pages site (deploy job removed, Pages turned off) so
-         srinivashpatro.github.io/schedule-risk/ stops serving the app, or leave only a static page
-         there that points to the new address.
-      5. Expired session: the app fetches some of its own files after it has loaded (the report
-         fonts on the first export, the sample project). Once the Access session has expired, those
-         requests get Access's login redirect instead of the file. Show "Your session has expired:
-         reload the page to sign in again" instead of a failed export or sample, with a test.
-      6. README (where the app lives, that it needs an invitation, that the privacy promise is
-         unchanged) and CHANGELOG.
-      Decisions still open (owner): who gets access (named emails, an email domain, or a GitHub
-      organisation) and how they sign in (Cloudflare's one-time PIN by email needs no identity
-      provider; Google, Microsoft Entra ID or GitHub can be added); a custom domain on Cloudflare or
-      the free `pages.dev` address; the session length; whether the GitHub Pages address is switched
-      off or keeps a pointer page; and whether the repository stays public. It is public today, so
-      anyone can still build and run the app from source: Access restricts the hosted copy, not the
-      code. Done when, signed out, every path (/, `_framework/`, `sample/`, `fonts/`, v0.4/, v0.3/,
-      preview addresses) answers with the Access login and no app file; signed in, the app, sample,
-      simulation and every report export work as before; the GitHub Pages address no longer serves
-      the app; build-and-test passes.
+- [ ] Restricted access with Cloudflare Access. A copy of the browser app that only invited users can
+      open. The login is checked by Cloudflare on every request, before any file is served, so it
+      cannot be bypassed from the browser (a login screen inside the app could be, since its DLLs
+      download to every visitor). The app gets no login code, no JWT handling and no new network
+      call; Access's sign-in page and `CF_Authorization` cookie live outside the app, so
+      `WebAssetsTests` still holds. XER files still never leave the browser: Cloudflare serves the
+      app's own files and learns who signed in, never schedule data.
+      Decided (owner, 2026-09-28): invited email addresses, signing in with Cloudflare's one-time
+      PIN; the free `<project>.pages.dev` address; sessions of 2 days; the GitHub Pages copy stays
+      up and public; the repository stays public for now. So Access restricts the Cloudflare copy,
+      not the app: anyone can still use the GitHub Pages copy or build from source.
+      Done in the repository:
+      1. The workflow assembles two copies of the site (current app plus v0.4/ and v0.3/): GitHub
+         Pages as before (base href `/schedule-risk/`, `404.html`, `.nojekyll`), and Cloudflare
+         Pages at the root of its address (base href `/`, no `404.html`, so Pages serves index.html
+         for unknown paths), checked against Pages' 25 MiB and 20,000-file limits. It deploys the
+         Cloudflare copy with Wrangler once the repository has `CLOUDFLARE_API_TOKEN` (secret),
+         `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_PAGES_PROJECT` (variables); until then the step is
+         skipped.
+      2. Ended session: the files the app fetches after it has loaded (the report fonts on the first
+         export, the sample project) fail once the session ends, because the request is sent to the
+         sign-in page on another site. The app now says to open it in a new tab, sign in there, and
+         try again in the first tab, which keeps its work (`SiteFiles`, 3 tests).
+      3. docs/HOSTING.md: the Cloudflare setup (account, token, Pages project, repository settings,
+         one-time PIN, one Access application covering `<project>.pages.dev` and
+         `*.<project>.pages.dev`, 48-hour sessions, the email policy kept in Cloudflare and not in
+         this public repository, Web Analytics left off), inviting and removing people, and the
+         checks below. README and CHANGELOG.
+      Left for the owner: the Cloudflare setup in docs/HOSTING.md. Tick when, from a private window,
+      every path (/, `_framework/`, `sample/`, `fonts/`, v0.4/, v0.3/, a deployment address) shows
+      the Access sign-in and no app file; an uninvited address gets no PIN; and signed in, the app,
+      sample, simulation and every report export work as before.
 
 ## Shipped
 
