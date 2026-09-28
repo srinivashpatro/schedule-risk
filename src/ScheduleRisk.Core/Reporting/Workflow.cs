@@ -20,13 +20,7 @@ public static class Workflow
 
     public static IReadOnlyList<WorkflowStepInfo> Steps { get; } = new WorkflowStepInfo[]
     {
-        new(WorkflowStep.Setup, "01", "Setup", "Matrix scales, promote threshold, categories", new[]
-        {
-            "Probability scale A to E and severity scales I to V, one per area (schedule, cost, quality, safety, environment, regulatory)",
-            "The Red, Amber and Green rating of each matrix cell, with its guidance",
-            "Which risks are promoted to the model, and the risk categories",
-            "Open and save the register as a file on this device",
-        }),
+        new(WorkflowStep.Setup, "01", "Setup", "Matrix scales, promote threshold, categories", None),
         new(WorkflowStep.Identify, "02", "Identify", "Propose, approve and describe risks", new[]
         {
             "Propose risks with a cause, event and effect",

@@ -3,6 +3,7 @@ using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Cpm;
 using ScheduleRisk.Core.Model;
 using ScheduleRisk.Core.Risk;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 using ScheduleRisk.Core.Xer;
 
@@ -16,6 +17,10 @@ public sealed class AppState
 {
     public event Action? Changed;
     public void Notify() => Changed?.Invoke();
+
+    // ---------------------------------------------------------------- risk register (steps 01-03)
+    /// <summary>The qualitative register and its matrix. It needs no schedule, and opening another schedule keeps it.</summary>
+    public RiskRegister Register { get; set; } = new();
 
     // ---------------------------------------------------------------- schedule
     public string? FileName { get; private set; }

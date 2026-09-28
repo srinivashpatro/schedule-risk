@@ -98,6 +98,112 @@ public sealed class RiskRegister
         return $"R{k:00}";
     }
 
+    // ------------------------------------------------------------------ editing the matrix (step 01 Setup)
+    // Structural edits go through the register so that the rating grid, every area's bands and the risks'
+    // assessments stay in step with the matrix.
+
+    private IEnumerable<Assessment> Assessments =>
+        Risks.SelectMany(r => new[] { r.Inherent, r.Current, r.Target });
+
+    public void ResetMatrix() => Matrix = MatrixSettings.Default();
+
+    /// <summary>Adds a band above the most likely one, rated like the band below it.</summary>
+    public void AddProbabilityBand()
+    {
+        var m = Matrix;
+        var last = m.Probability.LastOrDefault();
+        string letter = last is { Letter.Length: 1 } && char.IsAsciiLetter(last.Letter[0]) && last.Letter[0] is not ('z' or 'Z')
+            ? ((char)(last.Letter[0] + 1)).ToString() : "?";
+        double min = last?.Max ?? 0;
+        m.Probability.Add(new ProbabilityBand { Letter = letter, Label = "New band", Min = min, Max = Math.Min(1, min + (last == null ? .25 : last.Max - last.Min)) });
+        m.Ratings.Add(m.Ratings.Count > 0 ? (RiskRating[])m.Ratings[^1].Clone() : new RiskRating[m.SeverityLevels.Count]);
+    }
+
+    /// <summary>Removes a band (the matrix keeps at least two). Assessments on it lose their probability; those above move down.</summary>
+    public void RemoveProbabilityBand(int index)
+    {
+        var m = Matrix;
+        if (m.Probability.Count <= MatrixSettings.MinSize || index < 0 || index >= m.Probability.Count) return;
+        m.Probability.RemoveAt(index);
+        if (index < m.Ratings.Count) m.Ratings.RemoveAt(index);
+        foreach (var a in Assessments)
+            if (a.Probability == index) a.Probability = null;
+            else if (a.Probability > index) a.Probability--;
+    }
+
+    /// <summary>Adds a level above the highest one: a band on every area (a measured area continues its ranges) and a
+    /// grid column rated like the one below it.</summary>
+    public void AddSeverityLevel()
+    {
+        var m = Matrix;
+        if (m.SeverityLevels.Count >= MatrixSettings.MaxLevels) return;
+        m.SeverityLevels.Add("New level");
+        foreach (var d in m.Dimensions)
+        {
+            var band = new SeverityBand();
+            if (d.Quantitative && d.Bands.Count > 0)
+            {
+                var last = d.Bands[^1];
+                last.Max ??= last.Min is > 0 ? last.Min * 2 : 1;
+                band.Min = last.Max;
+            }
+            d.Bands.Add(band);
+        }
+        for (int p = 0; p < m.Ratings.Count; p++)
+            m.Ratings[p] = m.Ratings[p].Append(m.Ratings[p].Length > 0 ? m.Ratings[p][^1] : RiskRating.Green).ToArray();
+    }
+
+    /// <summary>Removes a level (the matrix keeps at least two) from the grid and every area. Assessments at that level
+    /// lose it; higher ones move down, and so does the promote rule's minimum.</summary>
+    public void RemoveSeverityLevel(int index)
+    {
+        var m = Matrix;
+        if (m.SeverityLevels.Count <= MatrixSettings.MinSize || index < 0 || index >= m.SeverityLevels.Count) return;
+        m.SeverityLevels.RemoveAt(index);
+        foreach (var d in m.Dimensions)
+            if (index < d.Bands.Count) d.Bands.RemoveAt(index);
+        for (int p = 0; p < m.Ratings.Count; p++)
+            if (index < m.Ratings[p].Length) m.Ratings[p] = m.Ratings[p].Where((_, s) => s != index).ToArray();
+        foreach (var a in Assessments)
+            foreach (var (area, level) in a.Severity.ToList())
+                if (level == index) a.Severity.Remove(area);
+                else if (level > index) a.Severity[area] = level - 1;
+        if (m.Promote.MinScheduleSeverity > index || m.Promote.MinScheduleSeverity >= m.SeverityLevels.Count)
+            m.Promote.MinScheduleSeverity = Math.Max(0, m.Promote.MinScheduleSeverity - 1);
+    }
+
+    /// <summary>Adds an area described in words, with an empty band per level.</summary>
+    public SeverityDimension AddDimension()
+    {
+        int k = Matrix.Dimensions.Count + 1;
+        while (Matrix.Dimension($"area{k}") != null) k++;
+        var d = new SeverityDimension { Id = $"area{k}", Name = "New area" };
+        d.Bands.AddRange(Matrix.SeverityLevels.Select(_ => new SeverityBand()));
+        Matrix.Dimensions.Add(d);
+        return d;
+    }
+
+    /// <summary>Removes an area; assessments forget their severity on it.</summary>
+    public void RemoveDimension(string id)
+    {
+        Matrix.Dimensions.RemoveAll(d => d.Id == id);
+        foreach (var a in Assessments) a.Severity.Remove(id);
+    }
+
+    /// <summary>Changes an area's id, and with it the assessments and the promote rule that refer to it.</summary>
+    public void RenameDimension(string id, string newId)
+    {
+        newId = newId.Trim();
+        if (newId == id) return;
+        if (newId.Length == 0) throw new ArgumentException("An area id cannot be empty.", nameof(newId));
+        if (Matrix.Dimension(newId) != null) throw new ArgumentException($"Area id {newId} is already used.", nameof(newId));
+        var d = Matrix.Dimension(id) ?? throw new ArgumentException($"No area {id}.", nameof(id));
+        d.Id = newId;
+        foreach (var a in Assessments)
+            if (a.Severity.Remove(id, out int level)) a.Severity[newId] = level;
+        if (Matrix.Promote.ScheduleDimension == id) Matrix.Promote.ScheduleDimension = newId;
+    }
+
     /// <summary>Problems with the matrix and the risks. Errors make the register unusable until fixed; warnings do not.</summary>
     public List<RegisterIssue> Validate()
     {

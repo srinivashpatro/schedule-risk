@@ -40,8 +40,10 @@ PDF, Word or PowerPoint, as an HTML page, or as CSVs).
 
 The app is laid out as a seven-step risk workflow in a column beside the page: 01 Setup, 02
 Identify, 03 Assess, Promote, 04 Schedule check, 05 Model, 06 Results and 07 Review (the report
-formats). Not yet: steps 01-03 and Promote, the qualitative risk register that will feed the model
-(see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
+formats). Step 01 sets up the risk register's probability-severity matrix (5 x 5 by default, rated
+Red, Amber or Green cell by cell, all editable) and saves the register as a JSON file on your device
+(docs/RISK_REGISTER.md). Not yet: steps 02-03 and Promote, which fill the register and feed it to the
+model (see ROADMAP.md, Risk workflow); until then risks are entered in step 05.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,

@@ -114,6 +114,16 @@ public sealed class MatrixSettings
     public RiskRating? Rate(Assessment a) =>
         a.Probability is int p && a.OverallSeverity is int s && InGrid(p, s) ? Ratings[p][s] : null;
 
+    /// <summary>Setup: a click on a cell moves it Green, Amber, Red, Green.</summary>
+    public void CycleRating(int probability, int severity)
+    {
+        var r = Rate(probability, severity);
+        Ratings[probability][severity] = r == RiskRating.Red ? RiskRating.Green : r + 1;
+    }
+
+    public const int MinSize = 2;
+    public static int MaxLevels => RomanNumerals.Length;
+
     public RatingGuidance? GuidanceFor(RiskRating r) => Guidance.FirstOrDefault(g => g.Rating == r);
 
     public MatrixSettings Clone() => new()

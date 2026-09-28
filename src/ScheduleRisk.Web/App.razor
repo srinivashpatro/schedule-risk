@@ -45,6 +45,9 @@
             case null or WorkflowStep.ScheduleCheck:
                 <SchedulePanel OnNext="@(() => Go(WorkflowStep.Model))" />
                 break;
+            case WorkflowStep.Setup:
+                <SetupPanel />
+                break;
             case WorkflowStep.Model:
                 <RiskModelPanel OnRun="RunFromModel" />
                 break;

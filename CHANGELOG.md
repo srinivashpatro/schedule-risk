@@ -9,6 +9,10 @@
   environment and regulatory, rated Red, Amber or Green from a grid), risks with three assessments
   (inherent, current, target), responses, owners and actions, saved as a JSON file
   (docs/RISK_REGISTER.md). It does not change the simulation.
+- Step 01 Setup in the app: the risk matrix drawn with its Red, Amber and Green cells (click a cell to change
+  it), the rating guidance, the probability bands, the severity levels and areas, the categories, which
+  risks are promoted to the model and the cost of delay per day. Open and save the register as a file on
+  your device.
 
 ### Changed
 

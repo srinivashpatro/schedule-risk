@@ -353,10 +353,19 @@ To decide before the first item (the plan assumes the choice in brackets):
       opportunity, unknown categories), overdue actions. C# only: the register does not change the
       simulation, so there is no Python twin. The model and the simulation do not read it yet (Promote).
       19 tests.
-- [ ] 01 Setup. Edit the probability scale, the severity dimensions and their bands, the cell ratings
+- [x] 01 Setup. Edit the probability scale, the severity dimensions and their bands, the cell ratings
       (click a cell to cycle Red / Amber / Green), the rating guidance, the promote rule and the
       categories, with the defaults above and a live preview of the matrix; cost of delay per day. Open and save
       the register file.
+      Done: `SetupPanel` in the app, the matrix drawn as in the reference (probability rows from E at the
+      top, severity columns I to V, cell names, Red / Amber / Green from `--rag-*` tokens in light and
+      dark), guidance cards under it, tables for probability bands, severity levels and each area
+      (measured areas with ranges), categories as editable chips, the promote rule and cost of delay in
+      the side column with the register's check messages as you edit. Adding or removing a band, a
+      level or an area, renaming an area's id and resetting the matrix go through `RiskRegister`, so the
+      grid, the areas' bands, the promote rule and the risks' assessments stay in step (10 tests). The
+      register lives in `AppState` for the tab, needs no schedule, and is opened and saved as
+      `*.register.json`.
 - [ ] 02 Identify. Propose risks (a form with the cause-event-effect prompts), approve or reject them,
       and edit their descriptions; a register table with search, category and status filters.
 - [ ] 03 Assess. Pick each approved risk's probability and severities from the guidance tables (the
@@ -368,7 +377,7 @@ To decide before the first item (the plan assumes the choice in brackets):
 - [ ] Promote. Approved risks scoring at or above the threshold become quantified risks: the
       probability letter gives a probability (band midpoint, editable: A 2.5%, B 15%, C 37.5%, D 60%,
       E 82.5%), the schedule severity gives a triangle in working days from its % band times the
-      planned project duration (data date or project start to the deterministic finish, to decide)
+      planned project duration (project start to the deterministic finish; confirmed)
       (band low / midpoint / high, editable; I gives no schedule impact, V capped at 20%, confirmed), pre-mitigation from the current assessment and post from the target, mapped to activities with the activity picker. Core `RegisterPromoter` writes them
       into the risk model's register with the same IDs (traceable both ways); promoting again updates
       them and keeps the activity mapping. CLI: `sra promote register.json model.json`. Tests on the
