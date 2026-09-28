@@ -520,9 +520,18 @@ To decide before the first item (the plan assumes the choice in brackets):
       in every report, and `sra simulate --cost-benefit [--register] [--level]`. Tests: mitigating a model's
       only risk alone gives exactly the post-mitigation run; savings are never negative for a mitigation;
       same seed, same rows. 6 tests.
-- [ ] 07 Review. The export page (PDF, Word, PowerPoint, CSV and HTML), and the reports gain the
+- [x] 07 Review. The export page (PDF, Word, PowerPoint, CSV and HTML), and the reports gain the
       register: heat maps pre and post, the register table, the action list and the cost-benefit; the
       CSV gains `register.csv`. Update README Status and Not yet.
+      Done: `RegisterReport` in Core (the heat map drawn as SVG once for the HTML report and the export
+      charts, the lead line, cells and responses), a "Risk register" section (heat maps now and after
+      the responses, the approved risks with category, owner, both cells and the response) and a "Risk
+      actions" section (overdue first, as of the report date) after the cost-benefit in the HTML, PDF,
+      Word and PowerPoint reports; `CsvExport.Register` (one row per risk: description, status, cell and
+      rating at each point, response and cost, open and overdue actions) in the app's CSVs and from `sra
+      simulate --register`. The Review page lists what the report will hold. The export fixture now
+      carries a register and a cost-benefit, so the PDF checks and the Open XML validator cover the new
+      sections in every format. 6 tests.
 
 ## Hosting and access
 

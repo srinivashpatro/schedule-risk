@@ -93,6 +93,13 @@ public static class ReportCharts
         return Wrap(key, title, "bars", Math.Max(1, bars.Count) * row, sb.ToString(), title, BarsWidth);
     }
 
+    /// <summary>The register's heat map at one assessment point (see <see cref="RegisterReport.HeatMapBody"/>).</summary>
+    public static Chart HeatMap(string key, string title, Risk.Register.MatrixSettings m, Risk.Register.HeatMap map)
+    {
+        var (body, w, h) = RegisterReport.HeatMapBody(m, map);
+        return Wrap(key, title, "heatmap", h, body, title, w);
+    }
+
     /// <summary>The risk tornado: each risk's rank correlation with the finish either side of a centre line, the
     /// pre-mitigation bar in ink and the post-mitigation bar in the accent under it.</summary>
     public static Chart Tornado(string key, string title, IReadOnlyList<TornadoRow> rows, ReportFonts fonts)
@@ -170,7 +177,7 @@ public static class ReportCharts
         ".key-dash{stroke:var(--ink);stroke-width:2;stroke-dasharray:4 3;opacity:.6}",
         "text.id{font-size:12px}text.nm,text.val{fill:var(--ink);font-size:14px;font-weight:600}",
         ".track{fill:var(--track)}.fill{fill:var(--muted)}.fill.top{fill:var(--accent)}.fill.ink{fill:var(--ink)}",
-        ".rule{stroke:var(--divider);stroke-width:1}");
+        ".rule{stroke:var(--divider);stroke-width:1}", RegisterReport.Styles);
 
     private static Chart Wrap(string key, string title, string cls, int height, string body, string alt, int width = Width) => new()
     {

@@ -49,7 +49,7 @@ public sealed class ReportExporter
                 fonts = new ReportFonts(files[0], files[1], files[2]);
             }
             var doc = ReportContent.Build(new ReportInput(s, pre, state.Post, state.Health,
-                state.Verify is { Compared: > 0 } v ? v : null, state.Model.Name, state.Percentile, CostBenefit: state.CostBenefit), fonts);
+                state.Verify is { Compared: > 0 } v ? v : null, state.Model.Name, state.Percentile, CostBenefit: state.CostBenefit, Register: state.Register.Risks.Count > 0 ? state.Register : null, Generated: DateTime.Now), fonts);
 
             var palette = format == ReportFormat.PowerPoint ? ReportPalette.Screen : ReportPalette.Paper;
             var images = new Dictionary<string, ReportImage>();

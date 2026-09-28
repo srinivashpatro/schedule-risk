@@ -38,6 +38,10 @@
   the response cost from Assess (value, net benefit, benefit / cost). In the reports too, and from the command
   line with `sra simulate --cost-benefit [--register register.json]`.
 
+- Step 07 Review: the reports (HTML, PDF, Word, PowerPoint) carry the risk register: heat maps now and after
+  the responses, the approved risks with their owners, cells and responses, and the actions with overdue
+  ones first. The CSV export adds `register.csv`. The Review page lists what the report will hold.
+
 ### Changed
 
 - Results: the risk ranking is drawn as a tornado, each risk's rank correlation with the finish before and

@@ -5,7 +5,9 @@ read a P6 XER file, recalculate it with a CPM engine that follows P6's rules,
 check the schedule's health, apply a risk model, run a Monte Carlo simulation,
 and report P-dates, criticality, sensitivity and risk rankings.
 
-Status: **v0.6 - engine core, command line, and a browser app (Blazor WebAssembly).**
+Status: **v0.6 - engine core, command line, and a browser app (Blazor WebAssembly); unreleased: the
+seven-step risk workflow (qualitative risk register -> Promote -> P6 and DCMA schedule check -> model
+-> results with tornado and cost-benefit -> reports).**
 Changes by release are in [CHANGELOG.md](CHANGELOG.md).
 The browser app runs the whole engine inside the user's browser: XER files are never uploaded,
 and the site can be hosted as plain static files. Try it at
@@ -56,6 +58,10 @@ probability band's midpoint, and a range of working days from the schedule band 
 duration, mapped to the activities they would delay (also `sra promote`, see docs/RISK_REGISTER.md).
 The model takes its discrete risks from the register: every run promotes it first, and a model
 whose risks were typed into it can move them to the register without changing its results.
+Step 07 exports the reports, which now carry the risk register (heat maps now and after the
+responses, the approved risks, the actions with overdue ones first) and the cost-benefit; the CSVs
+add `register.csv`. Not yet in the register: P6's own risk register (XER `PROJRISK`) import, cost
+impacts in the simulation (the model is schedule-only), and who approved a risk and when.
 
 "What the results mean" turns each Summary figure into a sentence or two anyone can read: how likely
 the current finish is, what the P50 and P80 promise and the contingency they need, what the mean,
@@ -150,8 +156,8 @@ their P6 dates; the project Must Finish By (`plan_end_date`; P6's calculated sch
 `scd_end_date`, is not treated as a constraint); finish, start or smallest float.
 
 **Not yet:** ALAP constraints, expected finish dates, resource levelling, "make open-ended activities
-critical", P6 XML / MS Project import. Only ALAP is flagged by `validate` (under unsupported
-constraints); a file using the others is not detected yet.
+critical", P6 XML / MS Project import. Only ALAP is noted by `validate` (as a constraint the engine
+does not model); a file using the others is not detected yet.
 
 **Risk:** three-point uncertainty (triangle, Beta-PERT, uniform) in percent or days; risk register
 with probability, impact and mitigated values; risk drivers; correlation groups; Latin Hypercube

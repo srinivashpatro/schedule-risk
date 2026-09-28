@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using ScheduleRisk.Core.Analysis;
 using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Model;
+using ScheduleRisk.Core.Risk.Register;
 using ScheduleRisk.Core.Simulation;
 
 namespace ScheduleRisk.Core.Reporting;
@@ -20,7 +21,7 @@ public static class HtmlReport
 
     public static string Build(Schedule s, SimulationSummary pre, SimulationSummary? post = null,
                                HealthReport? health = null, VerifyReport? verify = null, string? modelName = null,
-                               CostBenefitResult? costBenefit = null)
+                               CostBenefitResult? costBenefit = null, RiskRegister? register = null, DateTime? generated = null)
     {
         var pcal = s.Settings.ProjectCalendar;
         double mpd = pcal.MinutesPerDay;
@@ -132,6 +133,35 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
                   .Append("</td></tr>");
             sb.Append("</table></div>");
         }
+        if (register != null && RegisterReport.Listed(register).Count > 0)
+        {
+            var m = register.Matrix;
+            var today = DateOnly.FromDateTime(generated ?? DateTime.Now);
+            sb.Append("<h2>Risk register</h2><p class=\"muted\">").Append(E(RegisterReport.Lead(register))).Append("</p>");
+            sb.Append("<div class=\"card\"><h3>Heat map now (current assessment)</h3>")
+              .Append(RegisterReport.HeatMapSvg(m, HeatMap.Build(register, AssessmentPoint.Current), "Heat map now"))
+              .Append("</div><div class=\"card\"><h3>Heat map after the responses (target assessment)</h3>")
+              .Append(RegisterReport.HeatMapSvg(m, HeatMap.Build(register, AssessmentPoint.Target), "Heat map after the responses")).Append("</div>");
+            sb.Append("<div class=\"wrap\"><table><tr><th>ID</th><th>Risk</th><th>Category</th><th>Owner</th><th>Now</th><th>After response</th><th>Response</th></tr>");
+            foreach (var r in RegisterReport.Listed(register))
+                sb.Append("<tr><td>").Append(E(r.Id)).Append("</td><td><b>").Append(E(r.Title)).Append("</b>")
+                  .Append(r.Statement.Length > 0 ? "<br><span class=\"muted\">" + E(r.Statement) + "</span>" : "").Append("</td><td>").Append(E(r.Category))
+                  .Append("</td><td>").Append(E(r.Owner)).Append("</td><td>").Append(E(RegisterReport.Cell(m, r.Current))).Append("</td><td>")
+                  .Append(E(RegisterReport.Cell(m, r.Target))).Append("</td><td>").Append(E(RegisterReport.Response(r))).Append("</td></tr>");
+            sb.Append("</table></div>");
+            var actions = register.ActionList(today);
+            if (actions.Count > 0)
+            {
+                sb.Append("<h2>Risk actions</h2><p class=\"muted\">").Append(actions.Count(a => a.Overdue)).Append(" overdue and ")
+                  .Append(actions.Count(a => a.Action.Status == ActionStatus.Open)).Append(" open, as of ").Append(today.ToString("dd-MMM-yyyy", Inv)).Append(".</p>")
+                  .Append("<div class=\"wrap\"><table><tr><th>Risk</th><th>Action</th><th>Owner</th><th>Due</th><th>Status</th></tr>");
+                foreach (var a in actions)
+                    sb.Append("<tr><td>").Append(E(a.Risk.Id)).Append("</td><td>").Append(E(a.Action.Text)).Append("</td><td>").Append(E(a.Action.Owner))
+                      .Append("</td><td>").Append(a.Action.Due?.ToString("dd-MMM-yyyy", Inv) ?? "").Append("</td><td class=\"").Append(a.Overdue ? "fail" : "")
+                      .Append("\">").Append(E(RegisterReport.ActionStatus(a))).Append("</td></tr>");
+                sb.Append("</table></div>");
+            }
+        }
         if (health != null)
         {
             void HealthTable(string title, IEnumerable<HealthItem> items)
@@ -161,7 +191,7 @@ dl.terms dd{font-size:14px}main>h3{margin:22px 0 8px;font-size:12px;letter-spaci
               .Append(" date and float fields match the values P6 stored in the file (").Append(verify.ActivitiesMatched).Append(" of ")
               .Append(verify.Compared).Append(" activities fully match).</p>");
         }
-        sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append(DateTime.Now.ToString("yyyy-MM-dd HH:mm", Inv))
+        sb.Append("<p class=\"muted\" style=\"margin-top:40px\">Generated ").Append((generated ?? DateTime.Now).ToString("yyyy-MM-dd HH:mm", Inv))
           .Append(" by ").Append(Brand.Name).Append(' ').Append(Brand.Version).Append(".</p>");
         sb.Append("</main></body></html>");
         return sb.ToString();

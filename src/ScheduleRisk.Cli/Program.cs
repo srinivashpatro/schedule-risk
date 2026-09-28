@@ -29,6 +29,7 @@ usage:
 
 simulate writes to --out (default: ./sra-output):
   report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv
+  register.csv (with --register)
 
 promote turns the register's approved risks that meet its promote rule into risks in the model
 (--risk, or an empty model) and writes it to --out (default: promoted.risk.json). --import first moves
@@ -293,10 +294,13 @@ simulate --register promotes the register into the model before simulating, as t
             foreach (var r in cb.Rows)
                 Console.WriteLine($"  {r.Id,-6} {r.SavedP80,7:F1} {r.SavedAtLevel,7:F1} {r.SavedMean,7:F1}  {r.Value?.ToString("N0") ?? "-",14} {r.Net?.ToString("N0") ?? "-",14}  {r.Title}");
         }
+        RiskRegister? reportRegister = o.TryGetValue("register", out var rp3) ? RiskRegister.FromJson(File.ReadAllText(rp3)) : null;
+        if (reportRegister is { Risks.Count: > 0 })
+            File.WriteAllText(Path.Combine(outDir, "register.csv"), CsvExport.Register(reportRegister, DateOnly.FromDateTime(DateTime.Today)));
         var checks = HealthCheck.Run(s, det);
         var verify = P6Verifier.Verify(s, det);
         File.WriteAllText(Path.Combine(outDir, "report.html"),
-            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name, cb));
+            HtmlReport.Build(s, main, pre != null ? post : null, checks, verify.Compared > 0 ? verify : null, model.Name, cb, reportRegister));
         Console.WriteLine($"report: {Path.GetFullPath(Path.Combine(outDir, "report.html"))}");
         return 0;
     }

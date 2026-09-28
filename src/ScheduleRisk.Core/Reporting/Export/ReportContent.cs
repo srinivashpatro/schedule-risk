@@ -4,6 +4,8 @@ using ScheduleRisk.Core.Calendars;
 using ScheduleRisk.Core.Model;
 using ScheduleRisk.Core.Simulation;
 
+using ScheduleRisk.Core.Risk.Register;
+
 namespace ScheduleRisk.Core.Reporting.Export;
 
 public enum Align { Left, Right, Center }
@@ -69,7 +71,7 @@ public sealed class Section
 public sealed record ReportInput(Schedule Schedule, SimulationSummary Pre, SimulationSummary? Post = null,
                                  HealthReport? Health = null, VerifyReport? Verify = null,
                                  string? ModelName = null, int Percentile = 80, DateTime? Generated = null,
-                                 CostBenefitResult? CostBenefit = null);
+                                 CostBenefitResult? CostBenefit = null, RiskRegister? Register = null);
 
 /// <summary>
 /// The report the PDF, Word and PowerPoint exports share, in the order of the app's Results: the Summary and what the
@@ -233,6 +235,53 @@ public sealed class ReportContent
                 }));
             sec.Blocks.Add(new TableBlock(t));
             doc.Sections.Add(sec);
+        }
+        if (input.Register is { } register && RegisterReport.Listed(register).Count > 0)
+        {
+            var m = register.Matrix;
+            var today = DateOnly.FromDateTime(input.Generated ?? DateTime.Now);
+            var sec = new Section { Title = "Risk register", Lead = RegisterReport.Lead(register) };
+            sec.Blocks.Add(new ChartBlock(ReportCharts.HeatMap("heatmap-current", "Heat map now (current assessment)", m, HeatMap.Build(register, AssessmentPoint.Current))));
+            sec.Blocks.Add(new ChartBlock(ReportCharts.HeatMap("heatmap-target", "Heat map after the responses (target assessment)", m, HeatMap.Build(register, AssessmentPoint.Target))));
+            var t = new Table
+            {
+                Header = Heads("ID", "Risk", "Category", "Owner", "Now", "After response", "Response"),
+                Widths = new[] { 0.5, 2.4, 0.9, 0.9, 0.9, 0.9, 1.6 },
+                Aligns = new[] { Align.Left, Align.Left, Align.Left, Align.Left, Align.Left, Align.Left, Align.Left },
+                Note = "Now: the current assessment, with today's controls; after response: the target assessment. Cells are severity.probability.",
+            };
+            foreach (var r in RegisterReport.Listed(register))
+            {
+                var rating = m.Rate(r.Current);
+                t.Rows.Add(new Row(new Cell[]
+                {
+                    new(r.Id, Tone: Tone.Muted), new(r.Statement.Length > 0 ? $"{r.Title}. {r.Statement}" : r.Title, Tone: Tone.Strong), new(r.Category), new(r.Owner),
+                    new(RegisterReport.Cell(m, r.Current), Tone: rating == RiskRating.Red ? Tone.Accent : Tone.Normal),
+                    new(RegisterReport.Cell(m, r.Target)), new(RegisterReport.Response(r), Tone: Tone.Muted),
+                }));
+            }
+            sec.Blocks.Add(new TableBlock(t));
+            doc.Sections.Add(sec);
+
+            var actions = register.ActionList(today);
+            if (actions.Count > 0)
+            {
+                var asec = new Section { Title = "Risk actions", Lead = $"{actions.Count(a => a.Overdue)} overdue and {actions.Count(a => a.Action.Status == ActionStatus.Open)} open, as of {today:dd-MMM-yyyy}." };
+                var at = new Table
+                {
+                    Header = Heads("Risk", "Action", "Owner", "Due", "Status"),
+                    Widths = new[] { 0.6, 3, 1, 0.9, 0.8 },
+                    Aligns = new[] { Align.Left, Align.Left, Align.Left, Align.Left, Align.Left },
+                };
+                foreach (var a in actions)
+                    at.Rows.Add(new Row(new Cell[]
+                    {
+                        new(a.Risk.Id, Tone: Tone.Muted), new(a.Action.Text), new(a.Action.Owner),
+                        new(a.Action.Due?.ToString("dd-MMM-yyyy", Inv) ?? ""), new(RegisterReport.ActionStatus(a), Tone: a.Overdue ? Tone.Accent : Tone.Normal),
+                    }));
+                asec.Blocks.Add(new TableBlock(at));
+                doc.Sections.Add(asec);
+            }
         }
 
         var crit = new Section { Title = "Criticality index", Lead = "Share of iterations in which the activity sits on the critical path." };
