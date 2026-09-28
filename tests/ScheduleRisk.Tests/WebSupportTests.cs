@@ -111,4 +111,41 @@ public class WebSupportTests
             Assert.True(cum[k80 - 1] < 0.8 * sum.Iterations);
         }
     }
+
+    [Theory]
+    [InlineData(HistogramBins.Daily, 1)]
+    [InlineData(HistogramBins.Weekly, 7)]
+    public void Histogram_bars_follow_calendar_days_or_weeks(HistogramBins bins, int days)
+    {
+        long lo = 10 * Time.MinutesPerDay + 600, hi = 40 * Time.MinutesPerDay + 300;
+        long[] e = HtmlReport.BinEdges(lo, hi, bins);
+        Assert.Equal(lo, e[0]);
+        Assert.Equal(hi, e[^1]);
+        for (int k = 1; k < e.Length - 1; k++)
+        {
+            Assert.Equal(0, e[k] % Time.MinutesPerDay);
+            if (k > 1) Assert.Equal(days * Time.MinutesPerDay, e[k] - e[k - 1]);
+        }
+        Assert.Equal(41, HtmlReport.BinEdges(lo, hi, HistogramBins.Auto).Length);
+    }
+
+    [Fact]
+    public void Combined_chart_has_frequency_and_percent_axes_and_weekly_bins()
+    {
+        var (s, crit) = Synth500();
+        var m = RiskModelLoader.Load(s, TestData.PathOf("synth_500.risk.json"), crit);
+        var mc = new MonteCarloEngine(s, m, Scenario.PreMitigation);
+        var pre = SimulationSummary.Build(mc, mc.Run(300, 11));
+
+        string html = HtmlReport.SCurve(pre, null, s, interactive: true, percentile: 80, bins: HistogramBins.Weekly);
+        Assert.Contains(">Frequency</text>", html);
+        Assert.Contains("class=\"paxis\">100%</text>", html);
+        Assert.Contains("<path", html); // the S-curve is drawn over the bars
+        var d = JsonDocument.Parse(WebUtility.HtmlDecode(Regex.Match(html, "data-scurve=\"([^\"]*)\"").Groups[1].Value)).RootElement;
+        var bins = d.GetProperty("bins").EnumerateArray().Select(b => b.GetInt32()).ToArray();
+        var edges = d.GetProperty("edges").EnumerateArray().Select(b => b.GetInt64()).ToArray();
+        Assert.Equal(bins.Length + 1, edges.Length);
+        Assert.Equal(pre.Iterations, bins.Sum());
+        Assert.Equal(bins.Length, Regex.Matches(html, "class=\"bar( in)?\"").Count);
+    }
 }

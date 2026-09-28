@@ -29,9 +29,9 @@
             <div class="headrow wrap-row">
                 <h4>Finish date distribution</h4>
                 <div class="chart-controls">
-                    <div class="seg" role="radiogroup" aria-label="Chart type">
-                        <label class="seg-opt"><input type="radio" name="chart" checked="@histogram" @onchange="@(() => histogram = true)" />Histogram</label>
-                        <label class="seg-opt"><input type="radio" name="chart" checked="@(!histogram)" @onchange="@(() => histogram = false)" />Cumulative</label>
+                    <div class="seg" role="radiogroup" aria-label="Histogram bars">
+                        <label class="seg-opt"><input type="radio" name="bins" checked="@(bins == HistogramBins.Daily)" @onchange="@(() => bins = HistogramBins.Daily)" />Daily</label>
+                        <label class="seg-opt"><input type="radio" name="bins" checked="@(bins == HistogramBins.Weekly)" @onchange="@(() => bins = HistogramBins.Weekly)" />Weekly</label>
                     </div>
                     <div class="slider">
                         <label for="conf" class="sub">Confidence P@(pct)</label>
@@ -39,17 +39,14 @@
                     </div>
                 </div>
             </div>
-            @((MarkupString)HtmlReport.SCurve(pre, post, s, interactive: true, percentile: pct, histogram: histogram))
+            @((MarkupString)HtmlReport.SCurve(pre, post, s, interactive: true, percentile: pct, bins: bins))
             <div class="legend">
-                @if (!histogram)
+                <span><i class="key-line" style="background:var(--a)"></i>Pre-mitigation cumulative (right axis)</span>
+                @if (post != null)
                 {
-                    <span><i class="key-line" style="background:var(--a)"></i>Pre-mitigation</span>
-                    @if (post != null)
-                    {
-                        <span><i class="key-line" style="background:var(--b)"></i>Post-mitigation</span>
-                    }
+                    <span><i class="key-line" style="background:var(--b)"></i>Post-mitigation cumulative (right axis)</span>
                 }
-                <span><i class="key-box in"></i><i class="key-box"></i>@(post != null ? "Pre-mitigation finish dates" : "Finish dates"), red up to P@(pct)</span>
+                <span><i class="key-box in"></i><i class="key-box"></i>@(post != null ? "Pre-mitigation finish dates" : "Finish dates") per @(bins == HistogramBins.Daily ? "day" : "week") (left axis), red up to P@(pct)</span>
                 <span><i class="key-dash"></i>Deterministic finish</span>
                 <span class="sub">Hover or use the arrow keys to read the chance of finishing by any date.</span>
             </div>
@@ -279,7 +276,7 @@ else if (!State.Running)
 }
 
 @code {
-    private bool histogram;
+    private HistogramBins bins = HistogramBins.Weekly;
 
     private static string Money(double? v, string cur) => v is double x ? cur + x.ToString("N0", CultureInfo.InvariantCulture) : "–";
     private bool showAll;
