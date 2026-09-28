@@ -416,9 +416,66 @@ To decide before the first item (the plan assumes the choice in brackets):
       after mitigation). The placeholder page for unbuilt steps is gone.
 - [ ] 04 Schedule check. Its own step: the engine check against P6, the health checks, the Gantt and
       the activity table (moved from the current step 01; the landing page keeps file opening).
+      Scope (owner, 2026-09-28): the health checks become P6's Check Schedule parameters and the DCMA
+      14-Point Assessment side by side, as in the owner's health-check report (JSON with `meta`,
+      `p6_check_schedule` and `dcma_14_point`; definitions as in the p6-schedule-health-check skill).
+      Plan:
+      1. Core `Analysis/HealthCheck`, tests first: the 17 P6 parameters in three tabs (Relationships and
+         Assignments, Dates and Durations, Constraints) and the 14 DCMA checks, each with count,
+         denominator, actual, operator, target, PASS / FAIL / N/A, a note, and the flagged activities
+         or relationships (ID and name, with the value that flagged them). Thresholds in hours (352 h =
+         44 x 8 h for long lags, large float and large durations) and every target and operator
+         editable; defaults are the owner's template, including the two operators that read backwards
+         (Positive Lags `> 5%`, Relationship Types `< 90%`), reported both as configured and in the
+         conventional reading, never silently fixed. N/A with the reason for an unstarted (baseline)
+         export (Out of Sequence, Late / Missed Activities, BEI) and when the XER has no TASKRSRC table
+         (Resources / Cost). Terminal activities exempt from Logic as in the skill (open ends at most 1%
+         of activities).
+      2. ScheduleBuilder reads what the checks need and does not read yet: `target_start_date` /
+         `target_end_date` (baseline, for Late Activities, Missed Activities and BEI),
+         `driving_path_flag`, and whether the file has a TASKRSRC table and which activities have an
+         assignment. Read only: no scheduling change, and `sra verify` stays green on every fixture.
+      3. JSON in the skill's schema from `sra validate --json out.json` (and a download in the app), so
+         the owner's Word report builder reads it unchanged. Checked against the skill's
+         `health_check.py` on every fixture in testdata/: same counts and statuses except where the
+         decisions below say otherwise.
+      4. Step 04 page: the engine check against P6, a scorecard (passed / failed / N/A per section), the
+         two tables with target, actual and status, each row opening its flagged activities (click an
+         ID to show it in the Gantt), then the Gantt and the activity table. The HTML, PDF, Word and
+         PowerPoint reports and `sra validate` switch from today's 12 checks to the two sections.
+      To decide: (a) float, durations and critical path from our recalculated schedule (identical to
+      P6's stored values when `sra verify` matches, and available for files P6 never scheduled) or
+      from the values stored in the XER as the skill does; (b) DCMA #12 Critical Path Test and #13
+      CPLI by the DCMA method on our engine (delay a critical activity and check the finish moves by
+      the same amount; CPLI = (critical path length + project total float) / critical path length in
+      working days) or by the skill's approximation from `driving_path_flag` (on synth_500, which has
+      no flags, the skill fails #12 while the engine's test passes); (c) today's 12-check
+      `ScheduleValidator` (and its Python twin) retired in favour of the new checks, keeping only the
+      "constraints not modelled (ALAP)" warning.
 - [ ] 05 Model. The current risk model panel: promoted risks shown with their register ID and score
       and edited at the register (a link back to Promote), other risks, uncertainty, drivers and
       correlation as today.
+      Decided (owner, 2026-09-28): the model's discrete risks come from the risk register only.
+      Proposed link, to confirm:
+      1. The register is the single source. In step 05 the Risk register section lists the promoted
+         risks read-only (id, title, current cell, probability, days, activities) with links to Assess
+         and Promote; "+ Add risk" goes. Uncertainty, drivers, correlation and the simulation settings
+         stay in the model.
+      2. Every run promotes first: Run simulation = promote the register into the model, then simulate,
+         so the model can never drift from the register. The Promote page stays for review, activity
+         mapping and values set by hand; a run warns about eligible risks with no activities.
+      3. Ids: model risks all come from the register, so the R01 clash goes away and register ids keep
+         their R01 form. Promote no longer needs the "typed into the model" rule.
+      4. Files: the register file stays the source of risks; the model file keeps uncertainty, drivers,
+         correlation and settings, plus the promoted risks as written at the last run so a saved model
+         still reproduces its results. CLI: `sra simulate --register register.json` promotes before
+         simulating.
+      5. Existing models with typed-in risks: "Move risks to the register" (app and `sra promote
+         --import`) turns each into an approved register risk: its current probability band from its
+         probability, its schedule severity from its mean impact over the planned duration, its numbers
+         kept as values set by hand (so results do not change), mitigation as the target, and its
+         filter resolved to activity ids against the open schedule. Risks in % of duration are listed
+         for the user to convert, since the register works in days.
 - [ ] 06 Results. Pre vs post mitigation as today; the risk ranking drawn as a tornado; a cost-benefit
       table (per risk: response cost, days saved at P80 and at the chosen level, value at the cost of
       delay, net benefit) using the method chosen above, reproducible for a seed. Tornado and
