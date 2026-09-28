@@ -12,6 +12,9 @@ and the site can be hosted as plain static files. Try it at
 <https://srinivashpatro.github.io/schedule-risk/>. Earlier releases stay online: 0.4.0 at
 <https://srinivashpatro.github.io/schedule-risk/v0.4/> (built from the `v0.4.0` tag) and 0.3.0 at
 <https://srinivashpatro.github.io/schedule-risk/v0.3/> (built from the `release/0.3` branch).
+A second copy of the site can run on Cloudflare Pages behind Cloudflare Access, open only to invited
+email addresses that sign in with a one-time PIN; the app itself is the same and still uploads nothing
+(set-up and privacy notes in [docs/HOSTING.md](docs/HOSTING.md)).
 
 ## Build and test (Windows)
 
@@ -20,8 +23,9 @@ and the site can be hosted as plain static files. Try it at
    (or open `ScheduleRisk.sln` in Visual Studio 2022 and use Test Explorer).
 
 GitHub Actions runs the same build and tests, plus the Python reference tests, on every push to
-`main`, and publishes the browser app to GitHub Pages when they pass
-(see [.github/workflows/build-and-deploy.yml](.github/workflows/build-and-deploy.yml)).
+`main`, and publishes the browser app to GitHub Pages when they pass, and to Cloudflare Pages once
+that is set up (see [.github/workflows/build-and-deploy.yml](.github/workflows/build-and-deploy.yml)
+and [docs/HOSTING.md](docs/HOSTING.md)).
 
 ## Browser app
 
@@ -72,7 +76,8 @@ one CPU core in the browser, so they are much slower than the command line (spee
 measured). For large schedules, turn on ahead-of-time compilation: run
 `dotnet workload install wasm-tools` once and add `<RunAOTCompilation>true</RunAOTCompilation>`
 to `ScheduleRisk.Web.csproj` before publishing (bigger download, several times faster).
-For GitHub Pages the workflow sets `<base href>` to the repository's sub-folder automatically.
+For GitHub Pages the workflow sets `<base href>` to the repository's sub-folder automatically
+(Cloudflare Pages serves the site at the root of its address, so it keeps `/`).
 To host the site in a sub-folder anywhere else, change `<base href="/" />` in
 `src/ScheduleRisk.Web/wwwroot/index.html` to that folder.
 

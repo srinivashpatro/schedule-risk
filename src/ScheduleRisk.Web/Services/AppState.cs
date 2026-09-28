@@ -82,7 +82,7 @@ public sealed class AppState
         }
         catch (Exception e)
         {
-            Error = "Could not load the sample project: " + e.Message;
+            Error = SiteFiles.LoadFailed("the sample project", e);
             Notify();
             return;
         }
