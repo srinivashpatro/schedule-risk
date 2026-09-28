@@ -1,15 +1,19 @@
 @inherits StateComponent
 
-@* Open, save or start a register file (the matrix and every risk), kept on this device. Used by Setup and Identify. *@
+@* Open, save or start a register file (the matrix and every risk), kept on this device. Used by Setup, Identify,
+   Assess and Promote. The file is an Excel workbook (docs/RISK_REGISTER.md, "Excel workbook") or JSON. *@
 
 <div class="field">
     <label>Register file</label>
     <div class="btn-row">
-        <label class="btn btn-secondary">Open… <InputFile OnChange="OnOpen" accept=".json" style="display:none" /></label>
-        <button class="btn btn-secondary" @onclick="Save">Save</button>
+        <label class="btn btn-secondary">Open… <InputFile OnChange="OnOpen" accept=".xlsx,.json" style="display:none" /></label>
+        <button class="btn btn-secondary" @onclick="Save">Save as Excel</button>
+        <button class="btn btn-secondary" @onclick="SaveJson">Save as JSON</button>
+        <button class="btn btn-secondary" @onclick="Template">Excel template</button>
         <button class="btn btn-secondary" @onclick="New">New</button>
     </div>
-    <span class="hint">A JSON file you keep on this device: the matrix and every risk. Nothing is uploaded.</span>
+    <span class="hint">An Excel workbook (.xlsx) or JSON file you keep on this device: the matrix and every risk. Fill in the
+        template in Excel, one risk per row, then open it here; opening replaces the register. Nothing is uploaded.</span>
     @if (message != null)
     {
         <ul class="issues"><li class="err">@message</li></ul>
@@ -17,7 +21,10 @@
 </div>
 
 @code {
+    private const string Xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private string? message;
+
+    private string FileName => string.Concat((State.Register.Name ?? "risk-register").Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
 
     private void New()
     {
@@ -26,19 +33,24 @@
         State.Notify();
     }
 
-    private async Task Save()
-    {
-        string name = string.Concat((State.Register.Name ?? "risk-register").Select(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' ? ch : '-'));
-        await Download(name + ".register.json", "application/json", State.Register.ToJson());
-    }
+    private async Task Save() =>
+        await JS.InvokeVoidAsync("sraDownload", FileName + ".register.xlsx", Xlsx, RegisterWorkbook.Write(State.Register));
+
+    private async Task SaveJson() =>
+        await Download(FileName + ".register.json", "application/json", State.Register.ToJson());
+
+    /// <summary>An empty workbook on this register's matrix (step 01 Setup), for filling in.</summary>
+    private async Task Template() =>
+        await JS.InvokeVoidAsync("sraDownload", FileName + ".template.xlsx", Xlsx, RegisterWorkbook.Template(State.Register.Matrix, State.Register.Name));
 
     private async Task OnOpen(InputFileChangeEventArgs e)
     {
         try
         {
             await using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
-            using var reader = new StreamReader(stream);
-            State.Register = RiskRegister.FromJson(await reader.ReadToEndAsync());
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            State.Register = RiskRegister.Open(ms.ToArray());
             message = null;
             State.Notify();
         }

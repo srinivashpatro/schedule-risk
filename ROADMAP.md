@@ -533,6 +533,16 @@ To decide before the first item (the plan assumes the choice in brackets):
       carries a register and a cost-benefit, so the PDF checks and the Open XML validator cover the new
       sections in every format. 6 tests.
 
+- [x] Risk register as an Excel workbook, with a template. Open reads .xlsx or JSON; Save as Excel and Save
+      as JSON; an Excel template on the register's matrix. Sheets: Guide, Risks (one row per risk, grouped
+      columns for the three assessments with a severity column per area and a rating formula, response,
+      model link), Actions, Matrix (editable blocks read back). Dropdowns from the matrix, frozen headers,
+      the app's look. Read back by header name; empty IDs numbered; errors name sheet, row and column. Core
+      `RegisterWorkbook` with a small .xlsx reader and writer (no new dependency); `sra register` converts
+      and writes a template. Owner's decisions: Excel and JSON both kept, layout designed from the app's
+      fields, the Matrix sheet read back, opening replaces the register. The template is also in
+      docs/risk-register-template.xlsx. 19 tests.
+
 - [x] Report structure in the owner's order: table of contents with page numbers (PDF), a TOC field (Word),
       slide numbers (PowerPoint), links (HTML); schedule health check; Summary & Charts (bell curve and
       S-curve); Risk & Activity Breakdown; Analysis of the Result as a Parameter / Value / Analysis

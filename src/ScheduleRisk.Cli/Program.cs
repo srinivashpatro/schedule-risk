@@ -26,6 +26,8 @@ usage:
                 [--cost-benefit [--level 80]]
   sra promote   <file.xer> --register register.json [--risk model.json] [--out model.json]
                 [--import [--register-out register.json]] [--project ID]
+  sra register  <register.xlsx|register.json> --out <file.xlsx|file.json>
+  sra register  template --out register.xlsx
 
 simulate writes to --out (default: ./sra-output):
   report.html  summary.pre.json  summary.post.json  activities.csv  risks.csv  iterations.csv
@@ -34,7 +36,10 @@ simulate writes to --out (default: ./sra-output):
 promote turns the register's approved risks that meet its promote rule into risks in the model
 (--risk, or an empty model) and writes it to --out (default: promoted.risk.json). --import first moves
 the model's typed-in risks to the register (written to --register-out, default promoted.register.json).
-simulate --register promotes the register into the model before simulating, as the app does.";
+simulate --register promotes the register into the model before simulating, as the app does.
+A register file is an Excel workbook (.xlsx) or JSON; every --register reads either. register converts one
+to the other (by the --out extension), and register template writes an empty workbook on the default matrix
+(docs/RISK_REGISTER.md).";
 
     public static int Main(string[] args)
     {
@@ -48,6 +53,7 @@ simulate --register promotes the register into the model before simulating, as t
             string cmd = args[0].ToLowerInvariant();
             string path = args[1];
             var opts = ParseOptions(args.Skip(2).ToArray());
+            if (cmd == "register") return Register(path, opts);
             var doc = XerDocument.Load(path);
             foreach (var w in doc.Warnings.Take(20)) Console.Error.WriteLine("warning: " + w);
             if (cmd == "info") return Info(doc);
@@ -188,11 +194,37 @@ simulate --register promotes the register into the model before simulating, as t
         return rep.Outcome == VerifyOutcome.Differences ? 1 : 0;
     }
 
+    /// <summary>Converts a register between Excel and JSON, or writes an empty workbook to fill in.</summary>
+    private static int Register(string path, Dictionary<string, string> o)
+    {
+        if (!o.TryGetValue("out", out var outPath)) throw new ArgumentException("register needs --out file.xlsx or --out file.json");
+        if (path.Equals("template", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!outPath.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("register template writes a workbook: use --out file.xlsx");
+            File.WriteAllBytes(outPath, RegisterWorkbook.Template(MatrixSettings.Default(), "Risk register"));
+            Console.WriteLine($"template -> {outPath}");
+            return 0;
+        }
+        var reg = RiskRegister.Open(File.ReadAllBytes(path));
+        var issues = reg.Validate();
+        foreach (var i in issues) Console.Error.WriteLine((i.Error ? "error: " : "warning: ") + i.Text);
+        SaveRegister(outPath, reg);
+        Console.WriteLine($"{reg.Risks.Count} risks, {reg.Risks.Sum(r => r.Actions.Count)} actions -> {outPath}");
+        return issues.Any(i => i.Error) ? 4 : 0;
+    }
+
+    /// <summary>Writes a register as a workbook (.xlsx) or JSON (any other extension).</summary>
+    private static void SaveRegister(string path, RiskRegister reg)
+    {
+        if (path.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase)) File.WriteAllBytes(path, RegisterWorkbook.Write(reg));
+        else File.WriteAllText(path, reg.ToJson());
+    }
+
     /// <summary>Promote the register's risks into a risk model (docs/RISK_REGISTER.md), as step "Promote" in the app.</summary>
     private static int Promote(Schedule s, CpmEngine engine, CpmResult det, Dictionary<string, string> o)
     {
         if (!o.TryGetValue("register", out var regPath)) throw new ArgumentException("promote needs --register register.json");
-        var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+        var reg = RiskRegister.Open(File.ReadAllBytes(regPath));
         var issues = reg.Validate();
         foreach (var i in issues) Console.Error.WriteLine((i.Error ? "error: " : "warning: ") + i.Text);
         if (issues.Any(i => i.Error)) return 4;
@@ -208,7 +240,7 @@ simulate --register promotes the register into the model before simulating, as t
             foreach (var n in imp.NotMoved) Console.WriteLine($"  {n.Id} not moved: {n.Reason}");
             foreach (var n in imp.Notes) Console.WriteLine($"  {n}");
             string regOut = o.GetValueOrDefault("register-out", "promoted.register.json");
-            File.WriteAllText(regOut, reg.ToJson());
+            SaveRegister(regOut, reg);
             Console.WriteLine($"register -> {regOut}");
         }
         var report = RegisterPromoter.Apply(doc, reg, planned.WorkingDays);
@@ -240,7 +272,7 @@ simulate --register promotes the register into the model before simulating, as t
         if (o.TryGetValue("register", out var regPath))
         {
             // The model's discrete risks come from the register: promote it first, as the app does before every run.
-            var reg = RiskRegister.FromJson(File.ReadAllText(regPath));
+            var reg = RiskRegister.Open(File.ReadAllBytes(regPath));
             var doc = RiskModelDocument.FromJson(File.ReadAllText(riskPath));
             var rep = RegisterPromoter.Apply(doc, reg, RegisterPromoter.PlannedDuration(s, det).WorkingDays);
             Console.WriteLine($"register: {rep}");
@@ -286,7 +318,7 @@ simulate --register promotes the register into the model before simulating, as t
         if (o.ContainsKey("cost-benefit") && pre != null)
         {
             // Paired runs, one per risk with a response; costs and the cost of delay from the register when given.
-            RiskRegister? reg = o.TryGetValue("register", out var rp2) ? RiskRegister.FromJson(File.ReadAllText(rp2)) : null;
+            RiskRegister? reg = o.TryGetValue("register", out var rp2) ? RiskRegister.Open(File.ReadAllBytes(rp2)) : null;
             int level = o.TryGetValue("level", out var lv) ? int.Parse(lv) : 80;
             cb = CostBenefit.Run(s, model, engine, pre, level, id => reg?.Risks.FirstOrDefault(r => r.Id == id)?.ResponseCost,
                 reg?.Matrix.CostOfDelayPerDay ?? 0, reg?.Matrix.Currency ?? "");
@@ -294,7 +326,7 @@ simulate --register promotes the register into the model before simulating, as t
             foreach (var r in cb.Rows)
                 Console.WriteLine($"  {r.Id,-6} {r.SavedP80,7:F1} {r.SavedAtLevel,7:F1} {r.SavedMean,7:F1}  {r.Value?.ToString("N0") ?? "-",14} {r.Net?.ToString("N0") ?? "-",14}  {r.Title}");
         }
-        RiskRegister? reportRegister = o.TryGetValue("register", out var rp3) ? RiskRegister.FromJson(File.ReadAllText(rp3)) : null;
+        RiskRegister? reportRegister = o.TryGetValue("register", out var rp3) ? RiskRegister.Open(File.ReadAllBytes(rp3)) : null;
         if (reportRegister is { Risks.Count: > 0 })
             File.WriteAllText(Path.Combine(outDir, "register.csv"), CsvExport.Register(reportRegister, DateOnly.FromDateTime(DateTime.Today)));
         var checks = HealthCheck.Run(s, det);
