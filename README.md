@@ -15,6 +15,7 @@ and the site can be hosted as plain static files. Try it at
 
 | Release | Address | Built from |
 | --- | --- | --- |
+| 0.8.0 | <https://srinivashpatro.github.io/schedule-risk/v0.8/> | tag `v0.8.0` |
 | 0.7.0 | <https://srinivashpatro.github.io/schedule-risk/v0.7/> | tag `v0.7.0` |
 | 0.6.0 | <https://srinivashpatro.github.io/schedule-risk/v0.6/> | tag `V0.6.0` |
 | 0.4.0 | <https://srinivashpatro.github.io/schedule-risk/v0.4/> | tag `v0.4.0` |
