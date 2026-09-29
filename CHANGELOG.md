@@ -1,6 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Release 0.8.0 stays online next to the current app at <https://srinivashpatro.github.io/schedule-risk/v0.8/>
+  (tag `v0.8.0`), like the earlier releases.
+
 ## 0.8.0 - 2026-09-28
+
+Still online at <https://srinivashpatro.github.io/schedule-risk/v0.8/> (tag `v0.8.0`).
 
 ### Changed
 
