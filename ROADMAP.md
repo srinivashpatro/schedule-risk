@@ -584,6 +584,21 @@ To decide before the first item (the plan assumes the choice in brackets):
       the Access sign-in and no app file; an uninvited address gets no PIN; and signed in, the app,
       sample, simulation and every report export work as before.
 
+- [x] Offline copy of the browser app: the published site plus `Start-Offline.cmd`, which serves it from
+      127.0.0.1 with Windows PowerShell (browsers will not start a WebAssembly app from `file://`).
+      `publish-offline.cmd`, and the `ScheduleRisk-offline` artifact of each run on `main`.
+
+- [x] Windows app with sign-in (`src/ScheduleRisk.Desktop`). The app's screens and services moved to a
+      Razor class library (`src/ScheduleRisk.UI`, namespace unchanged) used by both the browser app and a
+      WinForms + BlazorWebView (WebView2) app, which runs the engine natively and shares the browser app's
+      styles, scripts, fonts and sample. `ProjectRiskAnalysis.exe` is self-contained (`publish-desktop.cmd`,
+      and the `ProjectRiskAnalysis-windows` artifact of each run on `main`). Sign-in (owner's decisions,
+      2026-10-02): an admin account created on the first start, managed from a Users dialog in the app;
+      single user (the admin only) or up to a set number of accounts; each other account with an optional
+      login limit, counted per successful sign-in and reset by the admin. Passwords are salted PBKDF2-SHA256
+      hashes in %LOCALAPPDATA%\ProjectRiskAnalysis\access.json. It is a deterrent, not real protection: anyone
+      who can edit or delete that file can get past it. `AccessStore`, 11 tests.
+
 ## Shipped
 
 - [x] v0.3: engine core (P6-rules CPM, calendars, constraints, risk model, Monte Carlo with

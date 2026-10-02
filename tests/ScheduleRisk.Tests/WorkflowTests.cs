@@ -5,7 +5,7 @@ namespace ScheduleRisk.Tests;
 /// <summary>The seven-step risk workflow from the design (design/workflow/steps.png) and the app's use of it.</summary>
 public class WorkflowTests
 {
-    private static readonly string WebDir = Path.Combine(Path.GetDirectoryName(TestData.Dir)!, "src", "ScheduleRisk.Web");
+    private static readonly string UiDir = Path.Combine(Path.GetDirectoryName(TestData.Dir)!, "src", "ScheduleRisk.UI");
 
     [Fact]
     public void The_steps_follow_the_design_in_order()
@@ -29,7 +29,7 @@ public class WorkflowTests
     [Fact]
     public void The_app_draws_its_steps_from_the_workflow()
     {
-        string app = File.ReadAllText(Path.Combine(WebDir, "App.razor"));
+        string app = File.ReadAllText(Path.Combine(UiDir, "App.razor"));
         Assert.Contains("Workflow.Steps", app);
         Assert.Contains("<ReviewPanel", app);
         Assert.Contains("<PromotePanel", app);
@@ -39,6 +39,6 @@ public class WorkflowTests
         Assert.Contains("<AssessPanel", app);
         // The old three-step labels are gone from the panels' kickers.
         foreach (var f in new[] { "SchedulePanel.razor", "RiskModelPanel.razor", "ResultsPanel.razor" })
-            Assert.DoesNotMatch(@"kicker"">Step 0[123]\b(?! ·)|Step 01 · Schedule<", File.ReadAllText(Path.Combine(WebDir, "Components", f)));
+            Assert.DoesNotMatch(@"kicker"">Step 0[123]\b(?! ·)|Step 01 · Schedule<", File.ReadAllText(Path.Combine(UiDir, "Components", f)));
     }
 }

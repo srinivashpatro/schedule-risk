@@ -11,6 +11,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScheduleRisk.Tests", "tests
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScheduleRisk.Web", "src\ScheduleRisk.Web\ScheduleRisk.Web.csproj", "{EFC4732D-CF89-5FEA-B070-43BC95C05F54}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleRisk.UI", "src\ScheduleRisk.UI\ScheduleRisk.UI.csproj", "{9460BA6A-462D-42AC-94E3-FA5DFD7C2F96}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScheduleRisk.Desktop", "src\ScheduleRisk.Desktop\ScheduleRisk.Desktop.csproj", "{4E1505AD-249F-4A04-BC48-9BD4272C6B46}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +37,14 @@ Global
 		{EFC4732D-CF89-5FEA-B070-43BC95C05F54}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EFC4732D-CF89-5FEA-B070-43BC95C05F54}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EFC4732D-CF89-5FEA-B070-43BC95C05F54}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9460BA6A-462D-42AC-94E3-FA5DFD7C2F96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9460BA6A-462D-42AC-94E3-FA5DFD7C2F96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9460BA6A-462D-42AC-94E3-FA5DFD7C2F96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9460BA6A-462D-42AC-94E3-FA5DFD7C2F96}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E1505AD-249F-4A04-BC48-9BD4272C6B46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E1505AD-249F-4A04-BC48-9BD4272C6B46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E1505AD-249F-4A04-BC48-9BD4272C6B46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E1505AD-249F-4A04-BC48-9BD4272C6B46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- The Windows app: the same screens and engine as the browser app, in a window of its own (WebView2), with a
+       sign-in. EnableWindowsTargeting lets it build on Linux and macOS too, though it only runs on Windows. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <RootNamespace>ScheduleRisk.Desktop</RootNamespace>
+    <AssemblyName>ProjectRiskAnalysis</AssemblyName>
+    <Product>Project Risk Analysis</Product>
+    <Version>0.8.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.WindowsForms" Version="8.0.100" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ScheduleRisk.UI\ScheduleRisk.UI.csproj" />
+  </ItemGroup>
+
+  <!-- The page's styles, scripts, fonts and sample come from the browser app, so both apps look the same.
+       Only index.html is the Windows app's own: it starts Blazor for a WebView instead of WebAssembly. -->
+  <ItemGroup>
+    <Content Include="..\ScheduleRisk.Web\wwwroot\css\**;..\ScheduleRisk.Web\wwwroot\js\**;..\ScheduleRisk.Web\wwwroot\fonts\**;..\ScheduleRisk.Web\wwwroot\sample\**"
+             Link="wwwroot\$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)..\ScheduleRisk.Web\wwwroot\', '%(FullPath)'))"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Update="wwwroot\index.html" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

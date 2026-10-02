@@ -49,6 +49,19 @@ jobs:
           name: ScheduleRisk-offline
           path: offline
 
+      # The Windows app (src/ScheduleRisk.Desktop): one .exe with .NET inside, next to its wwwroot folder. It builds
+      # here on Linux (EnableWindowsTargeting) and runs on Windows 10 and 11.
+      - name: Publish the Windows app
+        run: >
+          dotnet publish src/ScheduleRisk.Desktop -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none -o desktop
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ProjectRiskAnalysis-windows
+          path: desktop
+
       # Earlier releases stay online next to the current app, each in its own folder: v0.8/ from the v0.8.0 tag, v0.7/ from the v0.7.0 tag,
       # v0.6/ from the V0.6.0 tag, v0.4/ from the v0.4.0 tag and v0.3/ from the release/0.3 branch.
       - name: Check out release 0.8.0
