@@ -40,6 +40,13 @@ and [docs/HOSTING.md](docs/HOSTING.md)).
 
     run-web.cmd        # start locally, then open the address it prints
     publish-web.cmd    # static site in publish\wwwroot - copy to any web host
+    publish-offline.cmd  # offline copy in publish\ScheduleRisk-offline.zip
+
+To use the app with no internet connection, unzip the offline copy (built by `publish-offline.cmd`, or
+downloaded as the `ScheduleRisk-offline` artifact of a GitHub Actions run) and double-click
+`Start-Offline.cmd`. It serves the app from your own computer at `http://127.0.0.1:5180/` using
+Windows PowerShell, with nothing to install. Opening `index.html` directly doesn't work, because
+browsers won't start a WebAssembly app from a `file://` address.
 
 The quantitative steps: **04 Schedule check** (open or drop an XER, or use the sample project; the
 engine check against P6, the P6 Check Schedule and DCMA 14-Point health checks with every flagged
