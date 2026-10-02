@@ -1,0 +1,41 @@
+@implements IDisposable
+@inject AccessStore Access
+
+@* The Windows app's page: the sign-in until someone signs in, then the app with a strip naming who is signed in. *@
+
+@if (Access.CurrentUser is not { } user)
+{
+    <LoginScreen FilePath="@AccessFile.DefaultPath" />
+}
+else
+{
+    <div class="access-bar">
+        <span>Signed in as <span class="strong">@user.UserId</span></span>
+        @if (user.IsAdmin)
+        {
+            <button class="btn btn-sm btn-ghost" @onclick="@(() => showAdmin = true)">Users</button>
+        }
+        <button class="btn btn-sm btn-ghost" @onclick="SignOut">Sign out</button>
+    </div>
+    <App />
+    @if (showAdmin)
+    {
+        <AccessAdmin OnClose="@(() => showAdmin = false)" />
+    }
+}
+
+@code {
+    private bool showAdmin;
+
+    protected override void OnInitialized() => Access.Changed += Refresh;
+
+    private void Refresh() => InvokeAsync(StateHasChanged);
+
+    private void SignOut()
+    {
+        showAdmin = false;
+        Access.SignOut();
+    }
+
+    public void Dispose() => Access.Changed -= Refresh;
+}

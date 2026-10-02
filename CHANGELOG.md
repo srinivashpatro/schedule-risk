@@ -6,6 +6,19 @@
 
 - Release 0.8.0 stays online next to the current app at <https://srinivashpatro.github.io/schedule-risk/v0.8/>
   (tag `v0.8.0`), like the earlier releases.
+- An offline copy of the browser app: unzip it and double-click `Start-Offline.cmd`, which serves the app from this
+  PC only (127.0.0.1) with no internet connection and nothing to install. Built by `publish-offline.cmd` and by each
+  run on `main` (artifact `ScheduleRisk-offline`).
+- A Windows app, `ProjectRiskAnalysis.exe`: the same screens and engine in a window of its own, with no browser and
+  nothing to install. It asks for a user ID and password. On the first start it creates the admin account, and the
+  admin's Users dialog chooses single user or a set number of accounts, adds and removes accounts, sets their
+  passwords, and gives each account an optional login limit. Built by `publish-desktop.cmd` and by each run on
+  `main` (artifact `ProjectRiskAnalysis-windows`).
+
+### Changed
+
+- The app's screens and services moved from `src/ScheduleRisk.Web` to a shared library, `src/ScheduleRisk.UI`, used by
+  the browser app and the Windows app.
 
 ## 0.8.0 - 2026-09-28
 

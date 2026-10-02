@@ -48,6 +48,24 @@ downloaded as the `ScheduleRisk-offline` artifact of a GitHub Actions run) and d
 Windows PowerShell, with nothing to install. Opening `index.html` directly doesn't work, because
 browsers won't start a WebAssembly app from a `file://` address.
 
+## Windows app
+
+    publish-desktop.cmd  # publish\ProjectRiskAnalysis-windows.zip
+
+The same app as a Windows program, `ProjectRiskAnalysis.exe`, in a window of its own. .NET is included, so
+nothing needs installing; it uses Microsoft Edge WebView2, which Windows 10 and 11 already have. Unzip it
+(built by `publish-desktop.cmd`, or the `ProjectRiskAnalysis-windows` artifact of a GitHub Actions run on
+`main`), keep the `wwwroot` folder next to the `.exe`, and double-click the `.exe`. Windows may warn that it is
+from an unknown publisher, because the `.exe` is not code-signed: choose More info, then Run anyway.
+
+It asks for a user ID and password. On the first start it creates the admin account. The admin's **Users**
+button chooses single user (the admin only) or up to a set number of accounts, adds and removes accounts,
+changes passwords, and gives each account an optional login limit (how many times it can sign in; Reset count
+gives it more). Accounts are kept on that PC, in `%LOCALAPPDATA%\ProjectRiskAnalysis\access.json`, with
+passwords stored only as salted hashes. This keeps casual users out, but someone who can change files on the
+PC can get past it; for access control that cannot be bypassed, use Cloudflare Access on the hosted copy
+([docs/HOSTING.md](docs/HOSTING.md)). Schedules stay on the PC either way.
+
 The quantitative steps: **04 Schedule check** (open or drop an XER, or use the sample project; the
 engine check against P6, the P6 Check Schedule and DCMA 14-Point health checks with every flagged
 activity, a P6-style Gantt chart or the activity table) -> **05 Model** (the risks promoted from the register,

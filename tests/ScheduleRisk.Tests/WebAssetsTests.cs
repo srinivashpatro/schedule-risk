@@ -8,13 +8,19 @@ namespace ScheduleRisk.Tests;
 /// </summary>
 public class WebAssetsTests
 {
-    private static readonly string WebDir = Path.Combine(Path.GetDirectoryName(TestData.Dir)!, "src", "ScheduleRisk.Web");
+    private static readonly string SrcDir = Path.Combine(Path.GetDirectoryName(TestData.Dir)!, "src");
+    private static readonly string WebDir = Path.Combine(SrcDir, "ScheduleRisk.Web");
+    private static readonly string UiDir = Path.Combine(SrcDir, "ScheduleRisk.UI");
 
-    /// <summary>The web project's sources: pages, components, scripts and styles (not sample data, fonts or build output).</summary>
+    /// <summary>
+    /// The app's sources in the browser app, the shared screens and the Windows app: pages, components, scripts and
+    /// styles (not sample data, fonts or build output).
+    /// </summary>
     private static IEnumerable<string> SourceFiles()
     {
         string[] exts = { ".razor", ".cs", ".html", ".css", ".js" };
-        return Directory.EnumerateFiles(WebDir, "*", SearchOption.AllDirectories)
+        return new[] { "ScheduleRisk.Web", "ScheduleRisk.UI", "ScheduleRisk.Desktop" }
+            .SelectMany(d => Directory.EnumerateFiles(Path.Combine(SrcDir, d), "*", SearchOption.AllDirectories))
             .Where(f => exts.Contains(Path.GetExtension(f)))
             .Where(f => !f.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar)
                      && !f.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar));
@@ -31,6 +37,8 @@ public class WebAssetsTests
         Assert.Contains("app.css", names);
         Assert.Contains("app.js", names);
         Assert.Contains("SchedulePanel.razor", names);
+        Assert.Contains("LoginScreen.razor", names);
+        Assert.Contains("DesktopRoot.razor", names);
     }
 
     [Fact]
@@ -65,12 +73,13 @@ public class WebAssetsTests
     public void The_app_is_called_project_risk_analysis_wherever_users_see_its_name()
     {
         string Read(params string[] parts) => File.ReadAllText(Path.Combine(new[] { WebDir }.Concat(parts).ToArray()));
+        string ReadUi(params string[] parts) => File.ReadAllText(Path.Combine(new[] { UiDir }.Concat(parts).ToArray()));
         string index = Read("wwwroot", "index.html");
         Assert.Contains("<title>Project Risk Analysis</title>", index);
         Assert.Contains("content=\"Project Risk Analysis\"", index);                    // name on a phone's home screen
         Assert.Contains("<span class=\"kicker\">Project Risk Analysis</span>", index);  // loading screen
-        Assert.Contains("<span class=\"nav-brand\">Project Risk Analysis</span>", Read("App.razor"));
-        Assert.Contains("<h1>Project risk analysis for Primavera&nbsp;P6</h1>", Read("Components", "SchedulePanel.razor"));
+        Assert.Contains("<span class=\"nav-brand\">Project Risk Analysis</span>", ReadUi("App.razor"));
+        Assert.Contains("<h1>Project risk analysis for Primavera&nbsp;P6</h1>", ReadUi("Components", "SchedulePanel.razor"));
         foreach (var f in SourceFiles().Where(f => Path.GetExtension(f) is ".razor" or ".html"))
             Assert.DoesNotContain("Schedule Risk", File.ReadAllText(f));
         Assert.Equal("Project Risk Analysis", ScheduleRisk.Core.Reporting.Brand.Name);

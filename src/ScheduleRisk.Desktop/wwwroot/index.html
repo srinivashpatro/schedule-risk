@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Project Risk Analysis" />
+    <title>Project Risk Analysis</title>
+    <base href="/" />
+    <link rel="preload" href="fonts/archivo-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="css/modernist.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23ec3013'/></svg>" />
+</head>
+<body>
+    <div id="app">
+        <div class="boot">
+            <span class="kicker">Project Risk Analysis</span>
+            <div class="boot-title"><span class="brandmark"></span>Loading</div>
+            <svg class="boot-gantt" viewBox="0 0 240 64" aria-hidden="true" focusable="false">
+                <rect x="0" y="2" width="70" height="8" style="--d:0ms" />
+                <rect x="70" y="18" width="80" height="8" class="crit" style="--d:300ms" />
+                <rect x="40" y="34" width="84" height="8" style="--d:600ms" />
+                <rect x="150" y="50" width="76" height="8" class="crit" style="--d:900ms" />
+                <path d="M70 10V18M150 26V50" />
+            </svg>
+            <div class="sub">Starting the analysis engine…</div>
+        </div>
+    </div>
+    <div id="blazor-error-ui">
+        Something went wrong. <a href="" class="reload">Reload</a>
+    </div>
+    <script src="js/app.js"></script>
+    <script src="_framework/blazor.webview.js"></script>
+</body>
+</html>

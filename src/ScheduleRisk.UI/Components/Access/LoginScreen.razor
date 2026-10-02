@@ -1,0 +1,82 @@
+@using ScheduleRisk.Web.Services.Access
+@using System.Runtime.Versioning
+@attribute [UnsupportedOSPlatform("browser")]
+@inject AccessStore Access
+
+@* The Windows app's sign-in. On the first start it creates the admin account instead. *@
+
+<div class="access">
+    <form class="access-card stack" @onsubmit="Submit">
+        <span class="kicker">Project Risk Analysis</span>
+        <h2>@(Access.NeedsSetup ? "Create the admin account" : "Sign in")</h2>
+        @if (Access.Damaged)
+        {
+            <div class="banner error" role="alert">
+                <span>The sign-in file on this PC could not be read, so nobody can sign in. Ask whoever set the app up
+                    to restore it, or delete it to set the app up again: @FilePath</span>
+            </div>
+        }
+        else
+        {
+            @if (Access.NeedsSetup)
+            {
+                <p class="sub">This is the first start on this PC. The admin account signs in and manages the other
+                    accounts. Keep its password safe: it cannot be recovered.</p>
+            }
+            <div class="field">
+                <label for="acc-user">User ID</label>
+                <input id="acc-user" class="input" autocomplete="username" @bind="userId" />
+            </div>
+            <div class="field">
+                <label for="acc-pass">Password</label>
+                <input id="acc-pass" class="input" type="password" autocomplete="@(Access.NeedsSetup ? "new-password" : "current-password")" @bind="password" />
+                @if (Access.NeedsSetup)
+                {
+                    <span class="hint">At least @AccessStore.MinPasswordLength characters.</span>
+                }
+            </div>
+            @if (Access.NeedsSetup)
+            {
+                <div class="field">
+                    <label for="acc-pass2">Password again</label>
+                    <input id="acc-pass2" class="input" type="password" autocomplete="new-password" @bind="password2" />
+                </div>
+            }
+            @if (error != null)
+            {
+                <div class="banner error" role="alert"><span>@error</span></div>
+            }
+            <button type="submit" class="btn btn-primary btn-wide">@(Access.NeedsSetup ? "Create and sign in" : "Sign in")</button>
+            <span class="hint dim">Runs on this PC · no data leaves this device</span>
+        }
+    </form>
+</div>
+
+@code {
+    /// <summary>Where the sign-in file is, shown when it is damaged.</summary>
+    [Parameter] public string? FilePath { get; set; }
+
+    private string userId = "", password = "", password2 = "";
+    private string? error;
+
+    private void Submit()
+    {
+        error = null;
+        try
+        {
+            if (Access.NeedsSetup)
+            {
+                if (password != password2) { error = "The two passwords are not the same."; return; }
+                Access.CreateAdmin(userId, password);
+            }
+            error = Access.SignIn(userId, password) switch
+            {
+                SignInResult.Ok => null,
+                SignInResult.LimitReached => "This account has used all its logins. Ask the admin to reset it.",
+                _ => "The user ID or password is not right.",
+            };
+        }
+        catch (ArgumentException e) { error = e.Message; }
+        password = password2 = "";
+    }
+}

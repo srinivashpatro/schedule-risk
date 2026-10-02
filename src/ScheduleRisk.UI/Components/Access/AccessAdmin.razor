@@ -1,0 +1,125 @@
+@using ScheduleRisk.Web.Services.Access
+@using System.Runtime.Versioning
+@attribute [UnsupportedOSPlatform("browser")]
+@inject AccessStore Access
+
+@* The admin's settings: single user or a set number of accounts, and each account's password and login limit. *@
+
+<div class="busy dialog-backdrop" @onclick="OnClose" @onclick:self="true">
+    <div class="dialog access-admin stack" role="dialog" aria-label="Users and sign-in">
+        <div class="dialog-title">Users and sign-in</div>
+
+        <div class="field">
+            <label>Who can use the app on this PC</label>
+            <div class="btn-row">
+                <label class="check"><input type="radio" name="acc-mode" checked="@single" @onchange="@(() => single = true)" /> Single user (only the admin)</label>
+                <label class="check"><input type="radio" name="acc-mode" checked="@(!single)" @onchange="@(() => single = false)" /> Up to</label>
+                <input class="input w-id" type="number" min="1" aria-label="Number of accounts" disabled="@single" @bind="maxUsers" />
+                <span class="small">accounts</span>
+                <button class="btn btn-sm" @onclick="SaveMode">Save</button>
+            </div>
+            <span class="hint">The admin account counts as one. Currently @Access.Settings.Users.Count of @Access.Settings.MaxUsers in use.</span>
+        </div>
+
+        <table class="table">
+            <thead><tr><th>User ID</th><th>Login limit</th><th class="n">Logins used</th><th>Last login</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var u in Access.Settings.Users)
+                {
+                    <tr>
+                        <td>@u.UserId @(u.IsAdmin ? "(admin)" : "")</td>
+                        <td>
+                            @if (u.IsAdmin)
+                            {
+                                <span class="dim">No limit</span>
+                            }
+                            else
+                            {
+                                <input class="input w-id" type="number" min="1" placeholder="None" aria-label="Login limit for @u.UserId"
+                                       value="@u.MaxLogins" @onchange="@(e => Try(() => Access.SetLoginLimit(u.UserId, ParseLimit(e.Value))))" />
+                            }
+                        </td>
+                        <td class="n">@u.LoginCount@(u.LoginsLeft is { } left ? $" ({left} left)" : "")</td>
+                        <td>@(u.LastLogin?.ToString("d MMM yyyy HH:mm") ?? "Never")</td>
+                        <td class="nowrap">
+                            <button class="btn btn-sm btn-ghost" @onclick="@(() => { resetFor = u.UserId; newPass = ""; })">Password</button>
+                            @if (!u.IsAdmin)
+                            {
+                                <button class="btn btn-sm btn-ghost" @onclick="@(() => Try(() => Access.ResetLogins(u.UserId)))">Reset count</button>
+                                <button class="btn btn-sm btn-ghost" @onclick="@(() => Try(() => Access.RemoveUser(u.UserId)))">Remove</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (resetFor != null)
+        {
+            <div class="field">
+                <label for="acc-reset">New password for @resetFor</label>
+                <div class="btn-row">
+                    <input id="acc-reset" class="input" type="password" autocomplete="new-password" @bind="newPass" />
+                    <button class="btn btn-sm btn-primary" @onclick="@(() => Try(() => { Access.SetPassword(resetFor!, newPass); resetFor = null; }))">Set</button>
+                    <button class="btn btn-sm btn-ghost" @onclick="@(() => resetFor = null)">Cancel</button>
+                </div>
+            </div>
+        }
+
+        @if (!Access.Settings.SingleUser)
+        {
+            <div class="field">
+                <label>Add an account</label>
+                <div class="btn-row">
+                    <input class="input" placeholder="User ID" aria-label="New user ID" autocomplete="off" @bind="newUser" />
+                    <input class="input" type="password" placeholder="Password" aria-label="New password" autocomplete="new-password" @bind="newUserPass" />
+                    <input class="input w-id" type="number" min="1" placeholder="No limit" aria-label="Login limit" @bind="newLimit" />
+                    <button class="btn btn-sm btn-primary" @onclick="Add">Add</button>
+                </div>
+                <span class="hint">Login limit: how many times the account can sign in. Leave it blank for no limit.</span>
+            </div>
+        }
+
+        @if (error != null)
+        {
+            <div class="banner error" role="alert"><span>@error</span></div>
+        }
+        <p class="dialog-note">Accounts are kept on this PC only. They keep casual users out, but someone who can
+            change the app's files on this PC can get past them.</p>
+        <div class="actions-end"><button class="btn" @onclick="OnClose">Close</button></div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool single;
+    private int maxUsers;
+    private string? error, resetFor;
+    private string newPass = "", newUser = "", newUserPass = "";
+    private int? newLimit;
+
+    protected override void OnInitialized()
+    {
+        single = Access.Settings.SingleUser;
+        maxUsers = Math.Max(Access.Settings.MaxUsers, 2);
+    }
+
+    private void SaveMode() => Try(() => Access.SetMode(single, maxUsers));
+
+    private void Add() => Try(() =>
+    {
+        Access.AddUser(newUser, newUserPass, newLimit);
+        newUser = newUserPass = "";
+        newLimit = null;
+    });
+
+    private static int? ParseLimit(object? v) => int.TryParse(v?.ToString(), out int n) ? n : null;
+
+    private void Try(Action a)
+    {
+        error = null;
+        try { a(); }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException) { error = e.Message; }
+    }
+}
