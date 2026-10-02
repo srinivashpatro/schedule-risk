@@ -29,3 +29,15 @@ jobs:
 
       - name: Publish web app
         run: dotnet publish src/ScheduleRisk.Web -c Release -o publish
+
+      # The Windows app, so a pull request's .exe can be tried before it is merged.
+      - name: Publish the Windows app
+        run: >
+          dotnet publish src/ScheduleRisk.Desktop -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none -o desktop
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ProjectRiskAnalysis-windows
+          path: desktop
